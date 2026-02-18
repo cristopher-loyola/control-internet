@@ -18,14 +18,20 @@
         @if (isset($wide) && $wide)
             {{ $slot }}
         @else
-            <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100 dark:bg-gray-900">
-                <div>
-                    <a href="/">
-                        <x-application-logo class="w-20 h-20 fill-current text-gray-500" />
-                    </a>
-                </div>
+            @php
+                $hasTopbar = isset($topbar_title) && $topbar_title;
+            @endphp
 
-                <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white dark:bg-gray-800 shadow-md overflow-hidden sm:rounded-lg">
+            @if ($hasTopbar)
+                <div class="fixed inset-x-0 top-0 h-12 bg-[#0066CC] shadow-md z-50 flex items-center justify-center">
+                    <span class="text-white" style="font-size: 18px; font-weight: 500;">
+                        {{ $topbar_title }}
+                    </span>
+                </div>
+            @endif
+
+            <div class="flex flex-col items-center {{ $hasTopbar ? 'pt-8' : 'min-h-screen sm:justify-center pt-6 sm:pt-0' }} bg-[#FDFDFC] dark:bg-[#0a0a0a]">
+                <div class="w-full sm:max-w-md {{ $hasTopbar ? 'mt-0' : 'mt-6' }} px-6 py-6 bg-white dark:bg-gray-800 shadow-md overflow-hidden sm:rounded-lg">
                     {{ $slot }}
                 </div>
             </div>

@@ -1,0 +1,14 @@
+{
+  "Name": "Nombre",
+  "Email": "Correo electrónico",
+  "Password": "Contraseña",
+  "Confirm Password": "Confirmar contraseña",
+  "Already registered?": "¿Ya estás registrado?",
+  "Register": "Registrar",
+  "Log in": "Iniciar sesión",
+  "Forgot your password?": "¿Olvidaste tu contraseña?",
+  "Remember me": "Recordarme",
+  "Ingresar": "Ingresar",
+  "Correo Electrónico": "Correo electrónico",
+  "Contraseña": "Contraseña"
+}

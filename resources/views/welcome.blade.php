@@ -19,82 +19,96 @@
             </style>
         @endif
     </head>
-    <body class="bg-[#FDFDFC] dark:bg-[#0a0a0a] text-[#1b1b18] flex flex-col min-h-screen px-6 lg:px-8 pt-0 pb-6">
+    <body class="bg-[#FDFDFC] dark:bg-[#0a0a0a]">
 
-        <div class="flex justify-center w-full transition-opacity opacity-100 duration-750 starting:opacity-0">
-            <main class="w-full lg:max-w-5xl min-h-[400px] flex flex-col rounded-lg overflow-hidden bg-white dark:bg-[#161615] shadow-[0_18px_45px_rgba(15,23,42,0.35)]">
-                <div class="relative flex flex-col items-center justify-center bg-gray-900 dark:bg-black overflow-hidden px-6 py-14">
-                    <div class="absolute inset-0 bg-gradient-to-br from-red-900/40 via-black to-black opacity-90 z-0"></div>
-                    <div class="absolute -top-20 -left-16 w-72 h-72 bg-red-600 rounded-full mix-blend-multiply blur-3xl opacity-20 animate-blob"></div>
-                    <div class="absolute -bottom-20 -right-16 w-72 h-72 bg-red-800 rounded-full mix-blend-multiply blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+        <div class="min-h-screen flex flex-col">
 
-                    <div class="relative z-10 text-center px-4">
-                        <div class="mb-6 flex justify-center">
-                            <img
-                                src="{{ asset('images/Clogo.png') }}"
-                                alt="Control Internet"
-                                class="h-20 md:h-24 w-auto object-contain drop-shadow-2xl"
+            <div class="flex-1 flex flex-col lg:grid lg:grid-cols-2">
+
+            <div class="relative flex flex-col items-center justify-center bg-gray-900 dark:bg-black overflow-hidden px-6 py-14 lg:py-0 lg:min-h-screen">
+                <div class="absolute inset-0 bg-gradient-to-br from-red-900/40 via-black to-black opacity-90 z-0"></div>
+                <div class="absolute -top-20 -left-16 w-72 h-72 bg-red-600 rounded-full mix-blend-multiply blur-3xl opacity-20 animate-blob"></div>
+                <div class="absolute -bottom-20 -right-16 w-72 h-72 bg-red-800 rounded-full mix-blend-multiply blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+
+                <div class="relative z-10 text-center px-4">
+                    <div class="mb-6 flex justify-center">
+                        <img
+                            src="{{ asset('images/Clogo.png') }}"
+                            alt="Control Internet"
+                            class="h-20 md:h-24 w-auto object-contain drop-shadow-2xl"
+                        >
+                    </div>
+
+                    <h1 class="text-4xl md:text-5xl font-bold text-white tracking-wide mb-4 drop-shadow-lg">
+                        Bienvenido
+                    </h1>
+                    <!-- <p class="text-gray-400 text-sm md:text-base max-w-xs mx-auto leading-relaxed">
+                        Control Internet -->
+                    </p>
+
+                    <div class="hidden lg:flex mt-12 gap-6 justify-center">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-red-400">99.9%</div>
+                            <div class="text-gray-500 text-xs mt-1">Uptime</div>
+                        </div>
+                        <div class="w-px bg-gray-700"></div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-red-400">24/7</div>
+                            <div class="text-gray-500 text-xs mt-1">Soporte</div>
+                        </div>
+                        <div class="w-px bg-gray-700"></div>
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-red-400">SSL</div>
+                            <div class="text-gray-500 text-xs mt-1">Seguro</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-center bg-white dark:bg-gray-900 px-6 py-14 sm:px-10 lg:min-h-screen">
+                <div class="w-full max-w-md text-[15px] leading-[22px] text-center lg:text-left">
+                    <h2 class="mb-3 text-3xl font-semibold text-[#1b1b18] dark:text-[#EDEDEC]">
+                        Control Internet
+                    </h2>
+                    <!-- <p class="mb-5 text-[#706f6c] dark:text-[#A1A09A]">
+                        Bienvenido al sistema de administración. Ingresa para gestionar y monitorear tu red.
+                    </p> -->
+
+                    <div class="flex flex-col gap-4 items-center justify-center">
+                        <a
+                            href="{{ route('login') }}"
+                            class="inline-flex justify-center items-center px-6 py-3 rounded-md text-base font-semibold focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                            style="width: 230px; background: linear-gradient(90deg, #dc2626, #b91c1c); color: #ffffff; border: none;"
+                        >
+                            Iniciar sesión
+                        </a>
+                        @if (Route::has('register'))
+                            <a
+                                href="{{ route('register') }}"
+                                class="inline-flex justify-center items-center px-6 py-3 rounded-md text-base font-semibold text-[#1b1b18] dark:text-[#EDEDEC] border border-[#19140035] dark:border-[#3E3E3A] hover:border-[#1915014a] dark:hover:border-[#62605b]"
+                                style="width: 230px;"
                             >
-                        </div>
-
-                        <h1 class="text-3xl md:text-4xl font-bold text-white tracking-wide mb-3 drop-shadow-lg">
-                            Bienvenido
-                        </h1>
-                        <p class="text-gray-400 text-sm md:text-base max-w-xs mx-auto leading-relaxed">
-                            Sistema de gestión y monitoreo de Control Internet.
-                        </p>
-
-                        <div class="hidden lg:flex mt-12 gap-6 justify-center">
-                            <div class="text-center">
-                                <div class="text-2xl font-bold text-red-400">99.9%</div>
-                                <div class="text-gray-500 text-xs mt-1">Uptime</div>
-                            </div>
-                            <div class="w-px bg-gray-700"></div>
-                            <div class="text-center">
-                                <div class="text-2xl font-bold text-red-400">24/7</div>
-                                <div class="text-gray-500 text-xs mt-1">Soporte</div>
-                            </div>
-                            <div class="w-px bg-gray-700"></div>
-                            <div class="text-center">
-                                <div class="text-2xl font-bold text-red-400">SSL</div>
-                                <div class="text-gray-500 text-xs mt-1">Seguro</div>
-                            </div>
-                        </div>
+                                Registrar
+                            </a>
+                        @endif
                     </div>
                 </div>
+            </div>
 
-                <div class="flex items-center justify-center px-6 py-10 bg-white dark:bg-[#161615]">
-                    <div class="w-full max-w-sm text-[13px] leading-[20px] text-center lg:text-left">
-                        <h2 class="mb-2 text-2xl font-semibold text-[#1b1b18] dark:text-[#EDEDEC]">
+            </div>
+
+            <div class="py-6">
+                <div class="relative">
+                    <div class="absolute inset-0 flex items-center">
+                        <div class="w-full border-t border-gray-200 dark:border-gray-700"></div>
+                    </div>
+                    <div class="relative flex justify-center text-sm">
+                        <span class="px-3 bg-white dark:bg-gray-900 text-gray-400">
                             Control Internet
-                        </h2>
-                        <p class="mb-5 text-[#706f6c] dark:text-[#A1A09A]">
-                            Bienvenido al sistema de administración. Ingresa para gestionar y monitorear tu red.
-                        </p>
-
-                        <div class="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-start justify-center">
-                            @if (Route::has('login'))
-                                <a
-                                    href="{{ route('login') }}"
-                                    class="inline-flex justify-center items-center px-5 py-2.5 rounded-md text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-                                >
-                                    Iniciar sesión
-                                </a>
-                            @endif
-                            @if (Route::has('register'))
-                                <a
-                                    href="{{ route('register') }}"
-                                    class="inline-flex justify-center items-center px-5 py-2.5 rounded-md text-sm font-semibold text-[#1b1b18] dark:text-[#EDEDEC] border border-[#19140035] dark:border-[#3E3E3A] hover:border-[#1915014a] dark:hover:border-[#62605b]"
-                                >
-                                    Registrarse
-                                </a>
-                            @endif
-                        </div>
+                        </span>
                     </div>
                 </div>
-            </main>
+            </div>
         </div>
-
-        
     </body>
 </html>
