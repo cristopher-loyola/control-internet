@@ -21,6 +21,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'role',
     ];
 
     /**
@@ -44,5 +45,19 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function getRoleLabelAttribute(): string
+    {
+        $role = $this->role;
+
+        return match ($role) {
+            'admin' => 'Administrador',
+            'tecnico' => 'Técnico/Instalador',
+            'pagos' => 'Pagos',
+            'contrataciones' => 'Contrataciones',
+            null, '' => 'Tipo de usuario no definido',
+            default => ucfirst(str_replace('_', ' ', (string) $role)),
+        };
     }
 }

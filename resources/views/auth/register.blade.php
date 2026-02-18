@@ -44,6 +44,17 @@
                     <x-input-error :messages="$errors->get('email')" class="mt-2" />
                 </div>
 
+                <div class="mt-4">
+                    <x-input-label for="role" :value="__('Tipo de usuario')" />
+                    <select id="role" name="role" class="block mt-1 w-full rounded-md border-gray-300 dark:border-gray-700 shadow-sm focus:border-red-500 focus:ring-red-500 dark:bg-gray-800 dark:text-white">
+                        <option value="">Selecciona un tipo de usuario</option>
+                        <option value="tecnico" @selected(old('role') === 'tecnico')>Técnico/Instalador</option>
+                        <option value="pagos" @selected(old('role') === 'pagos')>Pagos</option>
+                        <option value="contrataciones" @selected(old('role') === 'contrataciones')>Contrataciones</option>
+                    </select>
+                    <x-input-error :messages="$errors->get('role')" class="mt-2" />
+                </div>
+
                 <!-- Password -->
                 <div class="mt-4">
                     <x-input-label for="password" :value="__('Password')" />
