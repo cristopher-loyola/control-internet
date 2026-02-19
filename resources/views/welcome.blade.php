@@ -21,6 +21,8 @@
     </head>
     <body class="bg-[#FDFDFC] dark:bg-[#0a0a0a] text-[#1b1b18] flex flex-col min-h-screen">
 
+        <div class="flex-1 flex flex-col">
+
         <div class="relative flex flex-col items-center justify-center bg-gray-900 dark:bg-black overflow-hidden px-6 lg:px-8 py-14">
             <div class="absolute inset-0 bg-gradient-to-br from-red-900/40 via-black to-black opacity-90 z-0"></div>
             <div class="absolute -top-20 -left-16 w-72 h-72 bg-red-600 rounded-full mix-blend-multiply blur-3xl opacity-20 animate-blob"></div>
@@ -44,22 +46,22 @@
             </div>
         </div>
 
-        <div class="flex-1 flex justify-center px-6 lg:px-8 pt-10">
-            <main class="w-full lg:max-w-5xl min-h-[260px] flex flex-col rounded-lg overflow-hidden bg-white dark:bg-[#161615] shadow-[0_18px_45px_rgba(15,23,42,0.35)]">
-                <div class="flex items-center justify-center px-6 py-10 bg-white dark:bg-[#161615]">
-                    <div class="w-full max-w-md text-[13px] leading-[20px] text-center mx-auto">
-                        <h2 class="mb-2 text-2xl font-semibold text-[#1b1b18] dark:text-[#EDEDEC]">
+        <div class=" flex justify-center px-4 lg:px-6 pt-6">
+            <main class="w-full max-w-xs h-fit px-6 pt-5 pb-5 bg-white dark:bg-gray-800 shadow-md overflow-hidden rounded-lg">
+                <div class="flex items-center justify-center">
+                    <div class="w-full text-[12px] leading-[18px] text-center mx-auto">
+                        <h2 class="mb-1 text-xl font-semibold text-[#1b1b18] dark:text-[#EDEDEC]">
                             Control Internet
                         </h2>
-                        <p class="mb-5 text-[#706f6c] dark:text-[#A1A09A]">
+                        <p class="mb-1 text-sm text-[#706f6c] dark:text-[#A1A09A]">
                             Bienvenido al sistema de administración.
                         </p>
 
-                        <div class="flex flex-col sm:flex-row gap-3 items-center justify-center">
+                       <div class="flex flex-col sm:flex-row gap-2 items-center justify-center mb-5">
                             @if (Route::has('login'))
                                 <a
                                     href="{{ route('login') }}"
-                                    class="inline-flex justify-center items-center px-5 py-2.5 rounded-md text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                                    class="inline-flex justify-center items-center px-4 py-2 rounded-md text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                                 >
                                     Iniciar sesión
                                 </a>
@@ -67,7 +69,7 @@
                             @if (Route::has('register'))
                                 <a
                                     href="{{ route('register') }}"
-                                    class="inline-flex justify-center items-center px-5 py-2.5 rounded-md text-sm font-semibold text-[#1b1b18] dark:text-[#EDEDEC] border border-[#19140035] dark:border-[#3E3E3A] hover:border-[#1915014a] dark:hover:border-[#62605b]"
+                                    class="inline-flex justify-center items-center px-4 py-2 rounded-md text-sm font-semibold text-[#1b1b18] dark:text-[#EDEDEC] border border-[#19140035] dark:border-[#3E3E3A] hover:border-[#1915014a] dark:hover:border-[#62605b]"
                                 >
                                     Registrarse
                                 </a>
@@ -78,7 +80,9 @@
             </main>
         </div>
 
-        <div class="py-8 mt-4">
+        </div>
+
+        <div class="py-6">
             <div class="relative">
                 <div class="absolute inset-0 flex items-center">
                     <div class="w-full border-t border-gray-200 dark:border-gray-700"></div>

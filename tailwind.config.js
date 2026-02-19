@@ -8,6 +8,18 @@ export default {
         './storage/framework/views/*.php',
         './resources/views/**/*.blade.php',
     ],
+    safelist: [
+        // Navbar colors por perfil
+        'bg-slate-900',
+        'bg-red-900',
+        'bg-emerald-900',
+        'bg-amber-900',
+        'bg-blue-600',
+        'bg-emerald-600',
+        'bg-violet-600',
+        'bg-rose-600',
+        'text-white',
+    ],
 
     theme: {
         extend: {

@@ -21,7 +21,21 @@
 
             <!-- Page Heading -->
             @isset($header)
-                <header class="bg-white dark:bg-gray-800 shadow">
+                @php
+                    $role = auth()->user()->role ?? null;
+                    $roleHeaderColors = config('role_colors.header');
+                    $defaultHeaderColor = config('role_colors.default_header');
+                @endphp
+                <header
+                    x-data="navbarRole({
+                        role: @js($role),
+                        roleColors: @js($roleHeaderColors),
+                        defaultColor: @js($defaultHeaderColor),
+                    })"
+                    x-init="init()"
+                    :class="navClass"
+                    class="shadow"
+                >
                     <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
                         {{ $header }}
                     </div>
