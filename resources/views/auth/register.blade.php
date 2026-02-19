@@ -1,11 +1,8 @@
 
 <x-guest-layout :wide="true">
 <div class="min-h-screen flex flex-col bg-[#FDFDFC] dark:bg-[#0a0a0a]">
-    <div class="fixed inset-x-0 top-0 h-12 bg-[#0066CC] shadow-md z-50 flex items-center justify-center">
-    </div>
-
     <div class="flex-1 flex flex-col">
-    <div class="relative flex flex-col items-center justify-center bg-gray-900 dark:bg-black overflow-hidden px-6 py-14 mt-12">
+    <div class="relative flex flex-col items-center justify-center bg-gray-900 dark:bg-black overflow-hidden px-6 py-14 mt-0">
         <div class="absolute inset-0 bg-gradient-to-br from-red-900/40 via-black to-black opacity-90 z-0"></div>
         <div class="absolute -top-20 -left-16 w-72 h-72 bg-red-600 rounded-full mix-blend-multiply blur-3xl opacity-20"></div>
         <div class="absolute -bottom-20 -right-16 w-72 h-72 bg-red-800 rounded-full mix-blend-multiply blur-3xl opacity-20"></div>

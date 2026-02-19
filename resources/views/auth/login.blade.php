@@ -9,11 +9,10 @@
 @endphp
 
 <x-guest-layout :wide="true">
-    <div class="min-h-screen flex flex-col">
-        <div class="flex-1 flex flex-col lg:grid lg:grid-cols-2">
+    <div class="min-h-screen flex flex-col bg-[#FDFDFC] dark:bg-[#0a0a0a]">
+        <div class="flex-1 flex flex-col">
 
-        {{-- Panel izquierdo (hero) --}}
-        <div class="relative flex flex-col items-center justify-center bg-gray-900 dark:bg-black overflow-hidden px-6 py-14 lg:py-0 lg:min-h-screen">
+        <div class="relative flex flex-col items-center justify-center bg-gray-900 dark:bg-black overflow-hidden px-6 py-14 mt-0">
             <div class="absolute inset-0 bg-gradient-to-br from-red-900/40 via-black to-black opacity-90 z-0"></div>
             <div class="absolute -top-20 -left-16 w-72 h-72 bg-red-600 rounded-full mix-blend-multiply blur-3xl opacity-20 animate-blob"></div>
             <div class="absolute -bottom-20 -right-16 w-72 h-72 bg-red-800 rounded-full mix-blend-multiply blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
@@ -30,33 +29,13 @@
                 <h1 class="text-4xl md:text-5xl font-bold text-white tracking-wide mb-4 drop-shadow-lg">
                     Bienvenido
                 </h1>
-                <!-- <p class="text-gray-400 text-sm md:text-base max-w-xs mx-auto leading-relaxed">
-                    Control Internet -->
-                </p>
 
-                {{-- Decoración extra (solo desktop) --}}
-                <div class="hidden lg:flex mt-12 gap-6 justify-center">
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-red-400">99.9%</div>
-                        <div class="text-gray-500 text-xs mt-1">Uptime</div>
-                    </div>
-                    <div class="w-px bg-gray-700"></div>
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-red-400">24/7</div>
-                        <div class="text-gray-500 text-xs mt-1">Soporte</div>
-                    </div>
-                    <div class="w-px bg-gray-700"></div>
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-red-400">SSL</div>
-                        <div class="text-gray-500 text-xs mt-1">Seguro</div>
-                    </div>
-                </div>
+               
             </div>
         </div>
 
-        {{-- Panel derecho (formulario) --}}
-        <div class="flex items-center justify-center bg-white dark:bg-gray-900 px-6 py-14 sm:px-10 lg:min-h-screen">
-            <div class="w-full sm:max-w-md px-6 py-6 bg-white dark:bg-gray-800 shadow-md overflow-hidden sm:rounded-b-lg text-[15px] leading-[22px]">
+        <div class="flex flex-col items-center bg-[#FDFDFC] dark:bg-[#0a0a0a]">
+        <div class="w-full sm:max-w-md px-6 py-6 bg-white dark:bg-gray-800 shadow-md overflow-hidden sm:rounded-b-lg text-[15px] leading-[22px] mt-8">
 
                 <div class="mb-3 text-center lg:text-left">
                     <h2 class="text-3xl font-semibold text-gray-900 dark:text-white">
