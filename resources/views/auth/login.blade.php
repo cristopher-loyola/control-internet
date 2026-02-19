@@ -37,8 +37,8 @@
         <div class="flex flex-col items-center bg-[#FDFDFC] dark:bg-[#0a0a0a]">
         <div class="w-full sm:max-w-md px-6 py-6 bg-white dark:bg-gray-800 shadow-md overflow-hidden sm:rounded-b-lg text-[15px] leading-[22px] mt-8">
 
-                <div class="mb-3 text-center lg:text-left">
-                    <h2 class="text-3xl font-semibold text-gray-900 dark:text-white">
+                <div class="mb-3 text-center">
+                    <h2 class="text-3xl font-semibold text-gray-900 dark:text-white text-center">
                         Iniciar Sesión
                     </h2>
                     <p class="mt-2 text-base text-gray-500 dark:text-gray-400">

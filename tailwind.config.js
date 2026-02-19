@@ -14,10 +14,13 @@ export default {
         'bg-red-900',
         'bg-emerald-900',
         'bg-amber-900',
+        'bg-[#D10000]',
         'bg-blue-600',
         'bg-emerald-600',
         'bg-violet-600',
         'bg-rose-600',
+        'bg-[#9CA6BA]',
+        'bg-[#5C73D1]',
         'text-white',
     ],
 

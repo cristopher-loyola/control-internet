@@ -6,14 +6,14 @@ return [
 
     'navbar' => [
         'admin' => 'bg-slate-900',
-        'tecnico' => 'bg-red-900',
-        'pagos' => 'bg-emerald-900',
-        'contrataciones' => 'bg-amber-900',
+        'tecnico' => 'bg-[#D10000]',
+        'pagos' => 'bg-[#9CA6BA]',
+        'contrataciones' => 'bg-[#5C73D1]',
     ],
     'header' => [
         'admin' => 'bg-slate-900 text-white',
-        'tecnico' => 'bg-red-900 text-white',
-        'pagos' => 'bg-emerald-900 text-white',
-        'contrataciones' => 'bg-amber-900 text-white',
+        'tecnico' => 'bg-[#D10000] text-white',
+        'pagos' => 'bg-[#9CA6BA] text-white',
+        'contrataciones' => 'bg-[#5C73D1] text-white',
     ],
 ];
