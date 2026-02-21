@@ -8,6 +8,7 @@ Route::middleware(['auth', 'role:contrataciones'])
     ->name('contrataciones.')
     ->group(function () {
         Route::get('/', [ContratacionesController::class, 'index'])->name('index');
+        Route::get('/clientes', [ContratacionesController::class, 'clientes'])->name('clientes.index');
         Route::get('/create', [ContratacionesController::class, 'create'])->name('create');
         Route::post('/', [ContratacionesController::class, 'store'])->name('store');
         Route::get('/{id}', [ContratacionesController::class, 'show'])->name('show');
@@ -15,4 +16,3 @@ Route::middleware(['auth', 'role:contrataciones'])
         Route::put('/{id}', [ContratacionesController::class, 'update'])->name('update');
         Route::delete('/{id}', [ContratacionesController::class, 'destroy'])->name('destroy');
     });
-

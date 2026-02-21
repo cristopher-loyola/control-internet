@@ -23,7 +23,7 @@ class NavbarRoleColorTest extends TestCase
 
         $response = $this->actingAs($user)->get('/dashboard');
 
-        $response->assertSee('bg-slate-900', false);
+        $response->assertSee(config('role_colors.navbar.admin'), false);
     }
 
     public function test_tecnico_navbar_uses_tecnico_color(): void
@@ -32,7 +32,7 @@ class NavbarRoleColorTest extends TestCase
 
         $response = $this->actingAs($user)->get('/dashboard');
 
-        $response->assertSee('bg-red-900', false);
+        $response->assertSee(config('role_colors.navbar.tecnico'), false);
     }
 
     public function test_pagos_navbar_uses_pagos_color(): void
@@ -41,7 +41,7 @@ class NavbarRoleColorTest extends TestCase
 
         $response = $this->actingAs($user)->get('/dashboard');
 
-        $response->assertSee('bg-emerald-900', false);
+        $response->assertSee(config('role_colors.navbar.pagos'), false);
     }
 
     public function test_contrataciones_navbar_uses_contrataciones_color(): void
@@ -50,7 +50,6 @@ class NavbarRoleColorTest extends TestCase
 
         $response = $this->actingAs($user)->get('/dashboard');
 
-        $response->assertSee('bg-amber-900', false);
+        $response->assertSee(config('role_colors.navbar.contrataciones'), false);
     }
 }
-

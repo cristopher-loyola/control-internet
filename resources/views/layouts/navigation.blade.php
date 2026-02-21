@@ -11,12 +11,23 @@
         default => route('dashboard'),
     };
 
-    $dashboardActive =
+    $clientesRoute = match ($role) {
+        'admin' => route('admin.clientes.index'),
+        'contrataciones' => route('contrataciones.clientes.index'),
+        default => null,
+    };
+
+    $clientesActive =
+        request()->routeIs('admin.clientes.*') ||
+        request()->routeIs('contrataciones.clientes.*');
+
+    $dashboardActive = (
         request()->routeIs('admin.*') ||
         request()->routeIs('tecnico.*') ||
         request()->routeIs('pagos.*') ||
         request()->routeIs('contrataciones.*') ||
-        request()->routeIs('dashboard');
+        request()->routeIs('dashboard')
+    ) && ! $clientesActive;
 @endphp
 
 <nav
@@ -45,6 +56,11 @@
                     <x-nav-link :href="$dashboardRoute" :active="$dashboardActive">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+                    @if ($clientesRoute)
+                        <x-nav-link :href="$clientesRoute" :active="$clientesActive">
+                            {{ __('Clientes') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -105,6 +121,11 @@
             <x-responsive-nav-link :href="$dashboardRoute" :active="$dashboardActive">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+            @if ($clientesRoute)
+                <x-responsive-nav-link :href="$clientesRoute" :active="$clientesActive">
+                    {{ __('Clientes') }}
+                </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->

@@ -16,6 +16,10 @@ class Usuario extends Model
         'nombre_cliente',
         'domicilio',
         'telefono',
+        'comunidad',
+        'uso',
+        'megas',
+        'tarifa',
         'paquete',
         'ip_servicio',
         'olt_ubicado',
@@ -26,4 +30,3 @@ class Usuario extends Model
         'numero_servicio_anterior',
     ];
 }
-

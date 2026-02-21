@@ -8,6 +8,9 @@ Route::middleware(['auth', 'role:admin'])
     ->name('admin.')
     ->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('index');
+        Route::get('/clientes', [AdminController::class, 'clientes'])->name('clientes.index');
+        Route::post('/clientes', [AdminController::class, 'clientesStore'])->name('clientes.store');
+        Route::post('/clientes/editar', [AdminController::class, 'clientesEditStore'])->name('clientes.edit');
         Route::get('/create', [AdminController::class, 'create'])->name('create');
         Route::post('/', [AdminController::class, 'store'])->name('store');
         Route::get('/{id}', [AdminController::class, 'show'])->name('show');
@@ -15,4 +18,3 @@ Route::middleware(['auth', 'role:admin'])
         Route::put('/{id}', [AdminController::class, 'update'])->name('update');
         Route::delete('/{id}', [AdminController::class, 'destroy'])->name('destroy');
     });
-

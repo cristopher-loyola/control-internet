@@ -12,6 +12,11 @@ class ContratacionesController extends Controller
         return view('contrataciones.index');
     }
 
+    public function clientes()
+    {
+        return view('contrataciones.clientes.index');
+    }
+
     public function create()
     {
         return response('Contrataciones create');
