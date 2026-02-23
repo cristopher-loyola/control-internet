@@ -16,7 +16,7 @@ class AdminController extends Controller
 
     public function clientes()
     {
-        $clientes = Usuario::latest()->get();
+        $clientes = Usuario::with(['estado', 'estatusServicio'])->latest()->get();
         return view('admin.clientes.index', compact('clientes'));
     }
 
@@ -32,7 +32,9 @@ class AdminController extends Controller
                 'telefono' => ['nullable', 'string', 'max:20'],
                 'uso' => ['nullable', 'string', 'max:50'],
                 'megas' => ['nullable', 'integer', 'min:0'],
+                'tecnologia' => ['nullable', 'string', 'in:ina,foi,fod'],
                 'tarifa' => ['nullable', 'numeric', 'min:0'],
+                'fecha_contratacion' => ['nullable', 'date'],
             ],
             [
                 'required' => 'El campo :attribute es obligatorio.',
@@ -50,7 +52,8 @@ class AdminController extends Controller
                 'telefono' => 'número telefónico',
                 'uso' => 'uso',
                 'megas' => 'megas',
-                'tarifa' => 'tarifa',
+                'tarifa' => 'paquete',
+                'fecha_contratacion' => 'fecha del siguiente cobro',
             ]
         )->validateWithBag('clienteCreate');
 
@@ -59,14 +62,16 @@ class AdminController extends Controller
             'nombre_cliente' => $request->nombre_cliente,
             'domicilio' => $request->domicilio,
             'telefono' => $request->telefono,
-            'paquete' => $request->uso ? ($request->uso . ($request->megas ? " {$request->megas}Mbps" : '')) : null,
+            'paquete' => $request->uso ? ($request->uso . ($request->tecnologia ? " {$request->tecnologia}" : '') . ($request->megas ? " {$request->megas}Mbps" : '')) : null,
             'estado_id' => null,
             'estatus_servicio_id' => null,
             'servicio_id' => null,
             'comunidad' => $request->comunidad ?? null,
             'uso' => $request->uso ?? null,
+            'tecnologia' => $request->tecnologia ?? null,
             'megas' => $request->megas ?? null,
             'tarifa' => $request->tarifa ?? null,
+            'fecha_contratacion' => $request->fecha_contratacion ?? null,
         ]);
 
         return redirect()->route('admin.clientes.index')->with('status', 'cliente-creado');
@@ -85,7 +90,10 @@ class AdminController extends Controller
                 'telefono' => ['nullable', 'string', 'max:20'],
                 'uso' => ['nullable', 'string', 'max:50'],
                 'megas' => ['nullable', 'integer', 'min:0'],
+                'tecnologia' => ['nullable', 'string', 'in:ina,foi,fod'],
                 'tarifa' => ['nullable', 'numeric', 'min:0'],
+                'estado_id' => ['nullable', 'exists:estados,id'],
+                'estatus_servicio_id' => ['nullable', 'exists:estatus_servicios,id'],
             ],
             [
                 'required' => 'El campo :attribute es obligatorio.',
@@ -103,7 +111,9 @@ class AdminController extends Controller
                 'telefono' => 'número telefónico',
                 'uso' => 'uso',
                 'megas' => 'megas',
-                'tarifa' => 'tarifa',
+                'tarifa' => 'paquete',
+                'estado_id' => 'estado',
+                'estatus_servicio_id' => 'estatus de servicio',
             ]
         )->validateWithBag('clienteEdit');
 
@@ -113,11 +123,14 @@ class AdminController extends Controller
             'nombre_cliente' => $request->nombre_cliente,
             'domicilio' => $request->domicilio,
             'telefono' => $request->telefono,
-            'paquete' => $request->uso ? ($request->uso . ($request->megas ? " {$request->megas}Mbps" : '')) : null,
+            'paquete' => $request->uso ? ($request->uso . ($request->tecnologia ? " {$request->tecnologia}" : '') . ($request->megas ? " {$request->megas}Mbps" : '')) : null,
             'comunidad' => $request->comunidad ?? null,
             'uso' => $request->uso ?? null,
+            'tecnologia' => $request->tecnologia ?? null,
             'megas' => $request->megas ?? null,
             'tarifa' => $request->tarifa ?? null,
+            'estado_id' => $request->estado_id ?? null,
+            'estatus_servicio_id' => $request->estatus_servicio_id ?? null,
         ]);
 
         return redirect()->route('admin.clientes.index')->with('status', 'cliente-actualizado');
@@ -151,5 +164,13 @@ class AdminController extends Controller
     public function destroy(int $id)
     {
         return response('Admin destroy '.$id);
+    }
+
+    public function clientesDestroy(int $id)
+    {
+        $usuario = Usuario::findOrFail($id);
+        $usuario->delete();
+
+        return redirect()->route('admin.clientes.index')->with('status', 'cliente-eliminado');
     }
 }

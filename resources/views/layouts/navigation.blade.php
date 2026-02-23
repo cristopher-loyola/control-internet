@@ -52,7 +52,7 @@
                 </div>
 
                 <!-- Navigation Links -->
-                <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
+                <div class="hidden space-x-12 sm:-my-px sm:ms-12 sm:flex">
                     <x-nav-link :href="$dashboardRoute" :active="$dashboardActive">
                         {{ __('Dashboard') }}
                     </x-nav-link>
@@ -65,10 +65,10 @@
             </div>
 
             <!-- Settings Dropdown -->
-            <div class="hidden sm:flex sm:items-center sm:ms-6">
+            <div class="hidden sm:flex sm:items-center sm:ms-10">
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
-                        <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-transparent hover:text-white focus:outline-none transition ease-in-out duration-150">
+                        <button class="inline-flex items-center px-3 py-2 border-0 text-sm leading-4 font-medium rounded-md text-white bg-transparent hover:text-white focus:outline-none transition ease-in-out duration-150">
                             <div class="flex flex-col items-start">
                                 <span class="text-white">{{ Auth::user()->name }}</span>
                                 <span class="text-[11px] font-semibold text-white/80 uppercase tracking-wide">

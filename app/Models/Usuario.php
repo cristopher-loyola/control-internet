@@ -18,6 +18,7 @@ class Usuario extends Model
         'telefono',
         'comunidad',
         'uso',
+        'tecnologia',
         'megas',
         'tarifa',
         'paquete',
@@ -29,4 +30,14 @@ class Usuario extends Model
         'fecha_contratacion',
         'numero_servicio_anterior',
     ];
+
+    public function estado()
+    {
+        return $this->belongsTo(Estado::class);
+    }
+
+    public function estatusServicio()
+    {
+        return $this->belongsTo(EstatusServicio::class, 'estatus_servicio_id');
+    }
 }
