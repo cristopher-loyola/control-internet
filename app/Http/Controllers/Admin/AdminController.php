@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Usuario;
+use App\Services\MegasAssigner;
 
 class AdminController extends Controller
 {
@@ -18,6 +19,12 @@ class AdminController extends Controller
     {
         $clientes = Usuario::with(['estado', 'estatusServicio'])->latest()->get();
         return view('admin.clientes.index', compact('clientes'));
+    }
+
+    public function clientesShow(int $id)
+    {
+        $cliente = Usuario::with(['estado', 'estatusServicio'])->findOrFail($id);
+        return view('admin.clientes.show', compact('cliente'));
     }
 
     public function clientesStore(Request $request)
@@ -33,6 +40,7 @@ class AdminController extends Controller
                 'uso' => ['nullable', 'string', 'max:50'],
                 'megas' => ['nullable', 'integer', 'min:0'],
                 'tecnologia' => ['nullable', 'string', 'in:ina,foi,fod'],
+                'dispositivo' => ['nullable', 'string', 'in:permanencia voluntaria,como dato'],
                 'tarifa' => ['nullable', 'numeric', 'min:0'],
                 'fecha_contratacion' => ['nullable', 'date'],
             ],
@@ -53,23 +61,35 @@ class AdminController extends Controller
                 'uso' => 'uso',
                 'megas' => 'megas',
                 'tarifa' => 'paquete',
+                'dispositivo' => 'dispositivo',
                 'fecha_contratacion' => 'fecha del siguiente cobro',
             ]
         )->validateWithBag('clienteCreate');
+
+        // Asignación automática de megas si hay costo y tecnología
+        $megasAsignados = null;
+        if ($request->filled('tarifa') && $request->filled('tecnologia')) {
+            try {
+                $megasAsignados = MegasAssigner::assign($request->tarifa, $request->tecnologia);
+            } catch (\InvalidArgumentException $e) {
+                $megasAsignados = null;
+            }
+        }
 
         Usuario::create([
             'numero_servicio' => $request->numero_servicio,
             'nombre_cliente' => $request->nombre_cliente,
             'domicilio' => $request->domicilio,
             'telefono' => $request->telefono,
-            'paquete' => $request->uso ? ($request->uso . ($request->tecnologia ? " {$request->tecnologia}" : '') . ($request->megas ? " {$request->megas}Mbps" : '')) : null,
+            'paquete' => $request->uso ? ($request->uso . ($request->tecnologia ? " {$request->tecnologia}" : '') . (($megasAsignados ?? $request->megas) ? " " . ($megasAsignados ?? $request->megas) . "Mbps" : '')) : null,
             'estado_id' => null,
             'estatus_servicio_id' => null,
             'servicio_id' => null,
             'comunidad' => $request->comunidad ?? null,
             'uso' => $request->uso ?? null,
             'tecnologia' => $request->tecnologia ?? null,
-            'megas' => $request->megas ?? null,
+            'dispositivo' => $request->dispositivo ?? null,
+            'megas' => $megasAsignados ?? $request->megas ?? null,
             'tarifa' => $request->tarifa ?? null,
             'fecha_contratacion' => $request->fecha_contratacion ?? null,
         ]);
@@ -91,6 +111,7 @@ class AdminController extends Controller
                 'uso' => ['nullable', 'string', 'max:50'],
                 'megas' => ['nullable', 'integer', 'min:0'],
                 'tecnologia' => ['nullable', 'string', 'in:ina,foi,fod'],
+                'dispositivo' => ['nullable', 'string', 'in:permanencia voluntaria,como dato'],
                 'tarifa' => ['nullable', 'numeric', 'min:0'],
                 'estado_id' => ['nullable', 'exists:estados,id'],
                 'estatus_servicio_id' => ['nullable', 'exists:estatus_servicios,id'],
@@ -112,10 +133,21 @@ class AdminController extends Controller
                 'uso' => 'uso',
                 'megas' => 'megas',
                 'tarifa' => 'paquete',
+                'dispositivo' => 'dispositivo',
                 'estado_id' => 'estado',
                 'estatus_servicio_id' => 'estatus de servicio',
             ]
         )->validateWithBag('clienteEdit');
+
+        // Asignación automática de megas si hay costo y tecnología
+        $megasAsignados = null;
+        if ($request->filled('tarifa') && $request->filled('tecnologia')) {
+            try {
+                $megasAsignados = MegasAssigner::assign($request->tarifa, $request->tecnologia);
+            } catch (\InvalidArgumentException $e) {
+                $megasAsignados = null;
+            }
+        }
 
         $usuario = Usuario::findOrFail($request->id);
         $usuario->update([
@@ -123,11 +155,12 @@ class AdminController extends Controller
             'nombre_cliente' => $request->nombre_cliente,
             'domicilio' => $request->domicilio,
             'telefono' => $request->telefono,
-            'paquete' => $request->uso ? ($request->uso . ($request->tecnologia ? " {$request->tecnologia}" : '') . ($request->megas ? " {$request->megas}Mbps" : '')) : null,
+            'paquete' => $request->uso ? ($request->uso . ($request->tecnologia ? " {$request->tecnologia}" : '') . (($megasAsignados ?? $request->megas) ? " " . ($megasAsignados ?? $request->megas) . "Mbps" : '')) : null,
             'comunidad' => $request->comunidad ?? null,
             'uso' => $request->uso ?? null,
             'tecnologia' => $request->tecnologia ?? null,
-            'megas' => $request->megas ?? null,
+            'dispositivo' => $request->dispositivo ?? null,
+            'megas' => $megasAsignados ?? $request->megas ?? null,
             'tarifa' => $request->tarifa ?? null,
             'estado_id' => $request->estado_id ?? null,
             'estatus_servicio_id' => $request->estatus_servicio_id ?? null,

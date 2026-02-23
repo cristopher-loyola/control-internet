@@ -9,7 +9,9 @@
         selected: null,
         isNuevoCliente: true,
         deleteId: null,
-        form: { id: null, numero_servicio: '', nombre_cliente: '', domicilio: '', comunidad: '', telefono: '', uso: '', megas: '', tarifa: '', estado_id: '', estatus_servicio_id: '' },
+        createMegasReadonly: false,
+        editMegasReadonly: false,
+        form: { id: null, numero_servicio: '', nombre_cliente: '', domicilio: '', comunidad: '', telefono: '', uso: '', megas: '', tecnologia: '', dispositivo: '', tarifa: '', estado_id: '', estatus_servicio_id: '' },
         selectRow(row) {
             this.selected = row.id;
             this.form = {
@@ -21,11 +23,51 @@
                 telefono: row.telefono ?? '',
                 uso: row.uso ?? '',
                 megas: row.megas ?? '',
-                tecnologia: '',
+                tecnologia: row.tecnologia ?? '',
+                dispositivo: row.dispositivo ?? '',
                 tarifa: row.tarifa ?? '',
                 estado_id: row.estado_id ?? '',
                 estatus_servicio_id: row.estatus_servicio_id ?? '',
             };
+        },
+        parseCost(val) {
+            if (!val) return null;
+            if (typeof val === 'string') val = parseFloat(val);
+            return Math.round(val);
+        },
+        assignMegas(costo, tecnologia) {
+            const c = this.parseCost(costo);
+            const t = (tecnologia || '').toUpperCase();
+            const validC = [300, 400, 500, 600];
+            const validT = ['FOD', 'FOI', 'INA'];
+            if (!validC.includes(c) || !validT.includes(t)) return null;
+            const matrix = {
+                300: { FOD: 30, FOI: 20, INA: 10 },
+                400: { FOD: 50, FOI: 30, INA: 20 },
+                500: { FOD: 70, FOI: 40, INA: 30 },
+                600: { FOD: 100, FOI: 50, INA: 40 },
+            };
+            return matrix[c][t];
+        },
+        updateMegasCreate() {
+            const costo = this.$refs.createTarifa?.value;
+            const tec = this.$refs.createTecnologia?.value;
+            const m = this.assignMegas(costo, tec);
+            if (m !== null && this.$refs.createMegas) {
+                this.$refs.createMegas.value = m;
+                this.createMegasReadonly = true;
+            } else {
+                this.createMegasReadonly = false;
+            }
+        },
+        updateMegasEdit() {
+            const m = this.assignMegas(this.form.tarifa, this.form.tecnologia);
+            if (m !== null) {
+                this.form.megas = m;
+                this.editMegasReadonly = true;
+            } else {
+                this.editMegasReadonly = false;
+            }
         },
         openEdit() {
             if (this.form.id) this.$dispatch('open-modal', 'admin-clientes-edit')
@@ -77,10 +119,10 @@
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Número de Cliente</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nombre</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Dirección</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Comunidad</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Número Telefónico</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Uso</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tecnología</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Dispositivo</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Megas</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paquete</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Siguiente Cobro</th>
@@ -101,6 +143,7 @@
                                             'telefono' => $c->telefono,
                                             'uso' => $c->uso,
                                             'tecnologia' => $c->tecnologia,
+                                            'dispositivo' => $c->dispositivo,
                                             'megas' => $c->megas,
                                             'tarifa' => $c->tarifa,
                                             'fecha_contratacion' => $c->fecha_contratacion,
@@ -120,12 +163,18 @@
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{{ $c->numero_servicio }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{{ $c->nombre_cliente }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{{ $c->domicilio ?? '—' }}</td>
-                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{{ $c->comunidad ?? '—' }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{{ $c->telefono ?? '—' }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{{ $c->uso ?? '—' }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                                             @if(!is_null($c->tecnologia))
                                                 {{ strtoupper($c->tecnologia) }}
+                                            @else
+                                                —
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                                            @if(!is_null($c->dispositivo))
+                                                {{ $c->dispositivo }}
                                             @else
                                                 —
                                             @endif
@@ -155,7 +204,13 @@
                                                 {{ optional($c->estatusServicio)->nombre ?? '—' }}
                                             </span>
                                         </td>
-                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-center">
+                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-center space-x-2">
+                                            <a
+                                                href="{{ route('admin.clientes.show', $c->id) }}"
+                                                class="inline-flex items-center px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                            >
+                                                Ver
+                                            </a>
                                             <button
                                                 type="button"
                                                 class="btn btn-danger btn-sm"
@@ -209,11 +264,7 @@
                     <x-text-input id="domicilio" name="domicilio" type="text" class="mt-1 block w-full" :value="old('domicilio')" />
                     <x-input-error :messages="$errors->clienteCreate->get('domicilio')" class="mt-2" />
                 </div>
-                <div>
-                    <x-input-label for="comunidad" value="Comunidad" />
-                    <x-text-input id="comunidad" name="comunidad" type="text" class="mt-1 block w-full" :value="old('comunidad')" />
-                    <x-input-error :messages="$errors->clienteCreate->get('comunidad')" class="mt-2" />
-                </div>
+                <input type="hidden" id="comunidad" name="comunidad" :value="old('comunidad')" />
                 <div>
                     <x-input-label for="telefono" value="Número Telefónico" />
                     <x-text-input id="telefono" name="telefono" type="text" class="mt-1 block w-full" :value="old('telefono')" />
@@ -229,8 +280,17 @@
                     <x-input-error :messages="$errors->clienteCreate->get('uso')" class="mt-2" />
                 </div>
                 <div>
+                    <x-input-label for="dispositivo" value="Dispositivo" />
+                    <select id="dispositivo" name="dispositivo" class="form-select mt-1 w-full">
+                        <option value="">Selecciona una opción</option>
+                        <option value="permanencia voluntaria" {{ old('dispositivo') === 'permanencia voluntaria' ? 'selected' : '' }}>Permanencia voluntaria</option>
+                        <option value="como dato" {{ old('dispositivo') === 'como dato' ? 'selected' : '' }}>Como dato</option>
+                    </select>
+                    <x-input-error :messages="$errors->clienteCreate->get('dispositivo')" class="mt-2" />
+                </div>
+                <div>
                     <x-input-label for="tecnologia" value="Tecnología" />
-                    <select id="tecnologia" name="tecnologia" class="form-select mt-1 w-full">
+                    <select id="tecnologia" name="tecnologia" class="form-select mt-1 w-full" x-ref="createTecnologia" x-on:change="updateMegasCreate()">
                         <option value="">Selecciona una opción</option>
                         <option value="ina" {{ old('tecnologia') === 'ina' ? 'selected' : '' }}>INA (Inalámbrico)</option>
                         <option value="foi" {{ old('tecnologia') === 'foi' ? 'selected' : '' }}>FOI (Fibra óptica indirecta)</option>
@@ -240,12 +300,18 @@
                 </div>
                 <div>
                     <x-input-label for="tarifa" value="Costo de paquete" />
-                    <x-text-input id="tarifa" name="tarifa" type="number" step="0.01" class="mt-1 block w-full" :value="old('tarifa')" />
+                    <select id="tarifa" name="tarifa" class="form-select mt-1 w-full" x-ref="createTarifa" x-on:change="updateMegasCreate()">
+                        <option value="">Selecciona una opción</option>
+                        <option value="300.00" {{ in_array(old('tarifa'), ['300', '300.00']) ? 'selected' : '' }}>$300</option>
+                        <option value="400.00" {{ in_array(old('tarifa'), ['400', '400.00']) ? 'selected' : '' }}>$400</option>
+                        <option value="500.00" {{ in_array(old('tarifa'), ['500', '500.00']) ? 'selected' : '' }}>$500</option>
+                        <option value="600.00" {{ in_array(old('tarifa'), ['600', '600.00']) ? 'selected' : '' }}>$600</option>
+                    </select>
                     <x-input-error :messages="$errors->clienteCreate->get('tarifa')" class="mt-2" />
                 </div>
                 <div>
                     <x-input-label for="megas" value="Megas" />
-                    <x-text-input id="megas" name="megas" type="number" class="mt-1 block w-full" :value="old('megas')" />
+                    <x-text-input id="megas" name="megas" type="number" class="mt-1 block w-full" :value="old('megas')" x-ref="createMegas" x-bind:readonly="createMegasReadonly" />
                     <x-input-error :messages="$errors->clienteCreate->get('megas')" class="mt-2" />
                 </div>
                 <div class="sm:col-span-2" x-show="isNuevoCliente">
@@ -318,11 +384,7 @@
                     <x-text-input id="edit_domicilio" name="domicilio" type="text" class="mt-1 block w-full" x-model="form.domicilio" value="{{ old('domicilio') }}" />
                     <x-input-error :messages="$errors->clienteEdit->get('domicilio')" class="mt-2" />
                 </div>
-                <div>
-                    <x-input-label for="edit_comunidad" value="Comunidad" />
-                    <x-text-input id="edit_comunidad" name="comunidad" type="text" class="mt-1 block w-full" x-model="form.comunidad" value="{{ old('comunidad') }}" />
-                    <x-input-error :messages="$errors->clienteEdit->get('comunidad')" class="mt-2" />
-                </div>
+                <input type="hidden" id="edit_comunidad" name="comunidad" x-model="form.comunidad" value="{{ old('comunidad') }}" />
                 <div>
                     <x-input-label for="edit_telefono" value="Número Telefónico" />
                     <x-text-input id="edit_telefono" name="telefono" type="text" class="mt-1 block w-full" x-model="form.telefono" value="{{ old('telefono') }}" />
@@ -338,8 +400,17 @@
                     <x-input-error :messages="$errors->clienteEdit->get('uso')" class="mt-2" />
                 </div>
                 <div>
+                    <x-input-label for="edit_dispositivo" value="Dispositivo" />
+                    <select id="edit_dispositivo" name="dispositivo" class="form-select mt-1 w-full" x-model="form.dispositivo">
+                        <option value="">Selecciona una opción</option>
+                        <option value="permanencia voluntaria">Permanencia voluntaria</option>
+                        <option value="como dato">Como dato</option>
+                    </select>
+                    <x-input-error :messages="$errors->clienteEdit->get('dispositivo')" class="mt-2" />
+                </div>
+                <div>
                     <x-input-label for="edit_tecnologia" value="Tecnología" />
-                    <select id="edit_tecnologia" name="tecnologia" class="form-select mt-1 w-full" x-model="form.tecnologia">
+                    <select id="edit_tecnologia" name="tecnologia" class="form-select mt-1 w-full" x-model="form.tecnologia" x-on:change="updateMegasEdit()">
                         <option value="">Selecciona una opción</option>
                         <option value="ina">INA (Inalámbrico)</option>
                         <option value="foi">FOI (Fibra óptica indirecta)</option>
@@ -349,12 +420,18 @@
                 </div>
                 <div>
                     <x-input-label for="edit_tarifa" value="Costo de paquete" />
-                    <x-text-input id="edit_tarifa" name="tarifa" type="number" step="0.01" class="mt-1 block w-full" x-model="form.tarifa" value="{{ old('tarifa') }}" />
+                    <select id="edit_tarifa" name="tarifa" class="form-select mt-1 w-full" x-model="form.tarifa" x-on:change="updateMegasEdit()">
+                        <option value="">Selecciona una opción</option>
+                        <option value="300.00">$300</option>
+                        <option value="400.00">$400</option>
+                        <option value="500.00">$500</option>
+                        <option value="600.00">$600</option>
+                    </select>
                     <x-input-error :messages="$errors->clienteEdit->get('tarifa')" class="mt-2" />
                 </div>
                 <div>
                     <x-input-label for="edit_megas" value="Megas" />
-                    <x-text-input id="edit_megas" name="megas" type="number" class="mt-1 block w-full" x-model="form.megas" value="{{ old('megas') }}" />
+                    <x-text-input id="edit_megas" name="megas" type="number" class="mt-1 block w-full" x-model="form.megas" value="{{ old('megas') }}" x-bind:readonly="editMegasReadonly" />
                     <x-input-error :messages="$errors->clienteEdit->get('megas')" class="mt-2" />
                 </div>
                 <div>

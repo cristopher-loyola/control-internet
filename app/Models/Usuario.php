@@ -19,6 +19,7 @@ class Usuario extends Model
         'comunidad',
         'uso',
         'tecnologia',
+        'dispositivo',
         'megas',
         'tarifa',
         'paquete',
