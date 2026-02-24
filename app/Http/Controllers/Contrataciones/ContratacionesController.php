@@ -16,10 +16,24 @@ class ContratacionesController extends Controller
         return view('contrataciones.index');
     }
 
-    public function clientes()
+    public function clientes(Request $request)
     {
-        $clientes = Usuario::with(['estado', 'estatusServicio'])->latest()->get();
-        return view('contrataciones.clientes.index', compact('clientes'));
+        $q = trim((string) $request->input('q'));
+        $query = Usuario::with(['estado', 'estatusServicio']);
+
+        if ($q !== '') {
+            $query->where(function ($sub) use ($q) {
+                if (ctype_digit($q)) {
+                    $sub->where('numero_servicio', $q);
+                } else {
+                    $sub->where('nombre_cliente', 'like', "%{$q}%")
+                        ->orWhereRaw("SOUNDEX(nombre_cliente) LIKE CONCAT(SOUNDEX(?), '%')", [$q]);
+                }
+            });
+        }
+
+        $clientes = $query->orderBy('numero_servicio', 'asc')->get();
+        return view('contrataciones.clientes.index', compact('clientes', 'q'));
     }
 
     public function clientesStore(Request $request)
@@ -240,7 +254,8 @@ class ContratacionesController extends Controller
     public function clientesHistorial($numero)
     {
         $numero = (int) $numero;
-        $historial = HistorialUsuario::where('numero_servicio', $numero)
+        $historial = HistorialUsuario::with(['estado', 'estatusServicio'])
+            ->where('numero_servicio', $numero)
             ->orderByDesc('captured_at')
             ->get();
         $actual = Usuario::where('numero_servicio', $numero)->first();

@@ -74,33 +74,52 @@
         }
     }">
         <div class="max-w-screen-2xl mx-auto sm:px-6 lg:px-7">
-        <div class="flex justify-end mb-4 gap-3">
-                <a
-                    x-data=""
-                    x-on:click.prevent="$dispatch('open-modal', 'admin-clientes-add-confirm')"
-                    href="#"
-                    class="btn btn-primary"
-                    style="text-decoration: none;"
-                >
-                    Añadir
-                </a>
-                <button
-                    type="button"
-                    class="btn btn-secondary"
-                    x-data
-                    x-on:click.prevent="$dispatch('open-modal', 'admin-clientes-historial-buscar')"
-                    title="Buscar historial por número o nombre"
-                >
-                    Buscar historial
-                </button>
-                <a
-                    :href="selected ? '{{ route('admin.clientes.historial', ['numero' => '__NUM__']) }}'.replace('__NUM__', form.numero_servicio ?? '') : '#'"
-                    :class="selected ? 'btn btn-info' : 'btn btn-primary info'"
-                    :aria-disabled="!selected"
-                    title="Ver historial de este número"
-                >
-                    Historial
-                </a>
+        <div class="flex justify-between items-center mb-4 gap-3">
+                <form action="{{ route('admin.clientes.index') }}" method="GET" class="flex items-center gap-2">
+                    <input
+                        type="text"
+                        name="q"
+                        value="{{ request('q') }}"
+                        placeholder="Buscar por nombre o número..."
+                        class="form-input rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-1"
+                    >
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        Buscar
+                    </button>
+                    @if(request('q'))
+                        <a href="{{ route('admin.clientes.index') }}" class="btn btn-secondary btn-sm" style="text-decoration: none;">
+                            Limpiar
+                        </a>
+                    @endif
+                </form>
+                <div class="flex gap-3">
+                    <a
+                        x-data=""
+                        x-on:click.prevent="$dispatch('open-modal', 'admin-clientes-add-confirm')"
+                        href="#"
+                        class="btn btn-primary"
+                        style="text-decoration: none;"
+                    >
+                        Añadir
+                    </a>
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        x-data
+                        x-on:click.prevent="$dispatch('open-modal', 'admin-clientes-historial-buscar')"
+                        title="Buscar historial por número o nombre"
+                    >
+                        Buscar historial
+                    </button>
+                    <a
+                        :href="selected ? '{{ route('admin.clientes.historial', ['numero' => '__NUM__']) }}'.replace('__NUM__', form.numero_servicio ?? '') : '#'"
+                        :class="selected ? 'btn btn-info' : 'btn btn-primary info'"
+                        :aria-disabled="!selected"
+                        title="Ver historial de este número"
+                    >
+                        Historial
+                    </a>
+                </div>
             </div>
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-gray-100">

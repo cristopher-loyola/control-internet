@@ -55,8 +55,8 @@
                                                 —
                                             @endif
                                         </td>
-                                        <td class="px-4 py-2 whitespace-nowrap text-sm">{{ $h->estado_id ?? '—' }}</td>
-                                        <td class="px-4 py-2 whitespace-nowrap text-sm">{{ $h->estatus_servicio_id ?? '—' }}</td>
+                                        <td class="px-4 py-2 whitespace-nowrap text-sm">{{ optional($h->estado)->nombre ?? '—' }}</td>
+                                        <td class="px-4 py-2 whitespace-nowrap text-sm">{{ optional($h->estatusServicio)->nombre ?? '—' }}</td>
                                     </tr>
                                 @empty
                                     <tr>

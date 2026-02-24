@@ -31,5 +31,15 @@ class HistorialUsuario extends Model
         'servicio_id',
         'fecha_contratacion',
     ];
+
+    public function estado()
+    {
+        return $this->belongsTo(Estado::class);
+    }
+
+    public function estatusServicio()
+    {
+        return $this->belongsTo(EstatusServicio::class, 'estatus_servicio_id');
+    }
 }
 

@@ -70,35 +70,54 @@
         }
     }" x-init="Alpine.store('contrataciones', { isNuevoCliente: true })">
         <div class="max-w-screen-2xl mx-auto sm:px-6 lg:px-7">
-            <div class="flex justify-end mb-3 gap-3">
-                <a
-                    href="#"
-                    class="btn btn-primary"
-                    x-on:click.prevent="$dispatch('open-modal', 'contrataciones-clientes-add-confirm')"
-                    style="text-decoration: none;"
-                >
-                    Añadir
-                </a>
-                <button
-                    type="button"
-                    class="btn btn-secondary"
-                    x-data
-                    x-on:click.prevent="$dispatch('open-modal', 'contrataciones-clientes-historial-buscar')"
-                    title="Buscar historial por número o nombre"
-                >
-                    Buscar historial
-                </button>
-                <a
-                    href="#"
-                    :href="selected ? '{{ route('contrataciones.clientes.historial', ['numero' => '__NUM__']) }}'.replace('__NUM__', form.numero_servicio ?? '') : '#'"
-                    class="btn btn-secondary disabled"
-                    :class="selected ? 'btn btn-info' : 'btn btn-secondary disabled'"
-                    style="text-decoration: none;"
-                    :aria-disabled="!selected"
-                    title="Ver historial de este número"
-                >
-                    Historial
-                </a>
+            <div class="flex justify-between items-center mb-3 gap-3">
+                <form action="{{ route('contrataciones.clientes.index') }}" method="GET" class="flex items-center gap-2">
+                    <input
+                        type="text"
+                        name="q"
+                        value="{{ request('q') }}"
+                        placeholder="Buscar por nombre o número..."
+                        class="form-input rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-1"
+                    >
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        Buscar
+                    </button>
+                    @if(request('q'))
+                        <a href="{{ route('contrataciones.clientes.index') }}" class="btn btn-secondary btn-sm" style="text-decoration: none;">
+                            Limpiar
+                        </a>
+                    @endif
+                </form>
+                <div class="flex gap-3">
+                    <a
+                        href="#"
+                        class="btn btn-primary"
+                        x-on:click.prevent="$dispatch('open-modal', 'contrataciones-clientes-add-confirm')"
+                        style="text-decoration: none;"
+                    >
+                        Añadir
+                    </a>
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        x-data
+                        x-on:click.prevent="$dispatch('open-modal', 'contrataciones-clientes-historial-buscar')"
+                        title="Buscar historial por número o nombre"
+                    >
+                        Buscar historial
+                    </button>
+                    <a
+                        href="#"
+                        :href="selected ? '{{ route('contrataciones.clientes.historial', ['numero' => '__NUM__']) }}'.replace('__NUM__', form.numero_servicio ?? '') : '#'"
+                        class="btn btn-secondary disabled"
+                        :class="selected ? 'btn btn-info' : 'btn btn-secondary disabled'"
+                        style="text-decoration: none;"
+                        :aria-disabled="!selected"
+                        title="Ver historial de este número"
+                    >
+                        Historial
+                    </a>
+                </div>
             </div>
             <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg">
                 <div class="p-4 overflow-x-auto">
