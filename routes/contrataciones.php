@@ -9,6 +9,7 @@ Route::middleware(['auth', 'role:contrataciones'])
     ->group(function () {
         Route::get('/', [ContratacionesController::class, 'index'])->name('index');
         Route::get('/clientes', [ContratacionesController::class, 'clientes'])->name('clientes.index');
+        Route::get('/clientes/{id}', [ContratacionesController::class, 'clientesShow'])->name('clientes.show');
         Route::get('/create', [ContratacionesController::class, 'create'])->name('create');
         Route::post('/', [ContratacionesController::class, 'store'])->name('store');
         Route::get('/{id}', [ContratacionesController::class, 'show'])->name('show');

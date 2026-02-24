@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Contrataciones;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\Usuario;
 
 class ContratacionesController extends Controller
 {
@@ -14,7 +15,8 @@ class ContratacionesController extends Controller
 
     public function clientes()
     {
-        return view('contrataciones.clientes.index');
+        $clientes = Usuario::with(['estado', 'estatusServicio'])->latest()->get();
+        return view('contrataciones.clientes.index', compact('clientes'));
     }
 
     public function create()
@@ -30,6 +32,12 @@ class ContratacionesController extends Controller
     public function show(int $id)
     {
         return response('Contrataciones show '.$id);
+    }
+
+    public function clientesShow(int $id)
+    {
+        $cliente = Usuario::with(['estado', 'estatusServicio'])->findOrFail($id);
+        return view('contrataciones.clientes.show', compact('cliente'));
     }
 
     public function edit(int $id)
