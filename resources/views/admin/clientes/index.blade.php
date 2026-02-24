@@ -42,7 +42,7 @@
             const validT = ['FOD', 'FOI', 'INA'];
             if (!validC.includes(c) || !validT.includes(t)) return null;
             const matrix = {
-                300: { FOD: 30, FOI: 20, INA: 10 },
+                300: { FOD: 30, FOI: 20, INA: 12 },
                 400: { FOD: 50, FOI: 30, INA: 20 },
                 500: { FOD: 70, FOI: 40, INA: 30 },
                 600: { FOD: 100, FOI: 50, INA: 40 },
@@ -84,13 +84,22 @@
                 >
                     Añadir
                 </a>
-                <a
-                    x-on:click.prevent="openEdit()"
-                    href="#"
-                    :class="selected ? 'btn btn-success' : 'btn btn-success disabled'"
-                    :aria-disabled="!selected"
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    x-data
+                    x-on:click.prevent="$dispatch('open-modal', 'admin-clientes-historial-buscar')"
+                    title="Buscar historial por número o nombre"
                 >
-                    Editar
+                    Buscar historial
+                </button>
+                <a
+                    :href="selected ? '{{ route('admin.clientes.historial', ['numero' => '__NUM__']) }}'.replace('__NUM__', form.numero_servicio ?? '') : '#'"
+                    :class="selected ? 'btn btn-info' : 'btn btn-primary info'"
+                    :aria-disabled="!selected"
+                    title="Ver historial de este número"
+                >
+                    Historial
                 </a>
             </div>
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
@@ -115,17 +124,13 @@
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-700/40">
                                 <tr>
-                                    <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nuevo</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Número de Cliente</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nombre</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Dirección</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Número Telefónico</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Uso</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tecnología</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Dispositivo</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Megas</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paquete</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Siguiente Cobro</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estatus</th>
 
@@ -153,28 +158,20 @@
                                         :class="selected === {{ $c->id }} ? 'bg-red-50 dark:bg-gray-700/40' : ''"
                                         class="cursor-pointer"
                                     >
-                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 text-center">
-                                            @if(!is_null($c->fecha_contratacion))
-                                                <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-600 text-white text-xs font-semibold">
-                                                    N
-                                                </span>
-                                            @endif
-                                        </td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{{ $c->numero_servicio }}</td>
-                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{{ $c->nombre_cliente }}</td>
+                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 align-middle">
+                                            <span class="inline-flex items-center gap-2 leading-none">
+                                                <span
+                                                    class="inline-block w-2 h-2 rounded-full {{ !is_null($c->fecha_contratacion) ? 'bg-emerald-600' : 'bg-gray-300 dark:bg-gray-600' }}"
+                                                ></span>
+                                                <span>{{ $c->nombre_cliente }}</span>
+                                            </span>
+                                        </td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{{ $c->domicilio ?? '—' }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{{ $c->telefono ?? '—' }}</td>
-                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{{ $c->uso ?? '—' }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                                             @if(!is_null($c->tecnologia))
                                                 {{ strtoupper($c->tecnologia) }}
-                                            @else
-                                                —
-                                            @endif
-                                        </td>
-                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                                            @if(!is_null($c->dispositivo))
-                                                {{ $c->dispositivo }}
                                             @else
                                                 —
                                             @endif
@@ -183,13 +180,6 @@
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                                             @if(!is_null($c->tarifa))
                                                 ${{ number_format((float) $c->tarifa, 2) }}
-                                            @else
-                                                —
-                                            @endif
-                                        </td>
-                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                                            @if(!is_null($c->fecha_contratacion))
-                                                {{ \Carbon\Carbon::parse($c->fecha_contratacion)->format('d/m/Y') }}
                                             @else
                                                 —
                                             @endif
@@ -207,7 +197,7 @@
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-center space-x-2">
                                             <a
                                                 href="{{ route('admin.clientes.show', $c->id) }}"
-                                                class="inline-flex items-center px-2 py-1 border border-gray-300 dark:border-gray-600 rounded text-xs text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                                class="btn btn-warning btn-sm"
                                             >
                                                 Ver
                                             </a>
@@ -225,7 +215,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="13" class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                                        <td colspan="9" class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
                                             No hay clientes registrados.
                                         </td>
                                     </tr>
@@ -236,6 +226,25 @@
                 </div>
             </div>
         </div>
+
+        <x-modal name="admin-clientes-historial-buscar" maxWidth="sm" focusable>
+        <form method="GET" action="{{ route('admin.clientes.historial.buscar') }}" class="p-6">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Buscar historial</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Ingresa el número de cliente o el nombre.</p>
+            <div>
+                <x-input-label for="historial_q" value="Número o nombre" />
+                <x-text-input id="historial_q" name="q" type="text" class="mt-1 block w-full" placeholder="Ej. 122 o Pedro" required />
+            </div>
+            <div class="mt-6 flex justify-end">
+                <x-secondary-button x-on:click="$dispatch('close')">
+                    Cancelar
+                </x-secondary-button>
+                <button type="submit" class="ms-3 btn btn-primary">
+                    Buscar
+                </button>
+            </div>
+        </form>
+        </x-modal>
 
         <x-modal name="admin-clientes-add" :show="$errors->clienteCreate->isNotEmpty()" maxWidth="lg" focusable>
         <form method="POST" action="{{ route('admin.clientes.store') }}" class="p-6">
@@ -276,6 +285,7 @@
                         <option value="">Selecciona una opción</option>
                         <option value="hogar" {{ old('uso') === 'hogar' ? 'selected' : '' }}>Hogar</option>
                         <option value="empresarial" {{ old('uso') === 'empresarial' ? 'selected' : '' }}>Empresarial</option>
+                        <option value="escolar" {{ old('uso') === 'escolar' ? 'selected' : '' }}>Escolar</option>
                     </select>
                     <x-input-error :messages="$errors->clienteCreate->get('uso')" class="mt-2" />
                 </div>
@@ -396,6 +406,7 @@
                         <option value="">Selecciona una opción</option>
                         <option value="hogar">Hogar</option>
                         <option value="empresarial">Empresarial</option>
+                        <option value="escolar">Escolar</option>
                     </select>
                     <x-input-error :messages="$errors->clienteEdit->get('uso')" class="mt-2" />
                 </div>

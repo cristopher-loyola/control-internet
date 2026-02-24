@@ -9,10 +9,18 @@
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-gray-100">
-                    <div class="mb-4">
+                    <div class="mb-4 flex items-center justify-between">
                         <a href="{{ route('admin.clientes.index') }}" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
                             ← Volver a la lista de clientes
                         </a>
+                        <button
+                            type="button"
+                            class="btn btn-success btn-sm"
+                            x-data
+                            x-on:click="$dispatch('open-modal', 'admin-clientes-show-edit')"
+                        >
+                            Editar
+                        </button>
                     </div>
 
                     <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -105,4 +113,96 @@
             </div>
         </div>
     </div>
+
+    <x-modal name="admin-clientes-show-edit" maxWidth="lg" focusable>
+        <form method="POST" action="{{ route('admin.clientes.edit') }}" class="p-6">
+            @csrf
+            <input type="hidden" name="id" value="{{ $cliente->id }}">
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">Editar cliente</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Actualiza los datos del cliente.</p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <x-input-label for="edit_numero_servicio" value="Número de Cliente" />
+                    <x-text-input id="edit_numero_servicio" name="numero_servicio" type="number" class="mt-1 block w-full" value="{{ $cliente->numero_servicio }}" required />
+                </div>
+                <div>
+                    <x-input-label for="edit_nombre_cliente" value="Nombre" />
+                    <x-text-input id="edit_nombre_cliente" name="nombre_cliente" type="text" class="mt-1 block w-full" value="{{ $cliente->nombre_cliente }}" required />
+                </div>
+                <div class="sm:col-span-2">
+                    <x-input-label for="edit_domicilio" value="Dirección" />
+                    <x-text-input id="edit_domicilio" name="domicilio" type="text" class="mt-1 block w-full" value="{{ $cliente->domicilio }}" />
+                </div>
+                <input type="hidden" name="comunidad" value="{{ $cliente->comunidad }}">
+                <div>
+                    <x-input-label for="edit_telefono" value="Número Telefónico" />
+                    <x-text-input id="edit_telefono" name="telefono" type="text" class="mt-1 block w-full" value="{{ $cliente->telefono }}" />
+                </div>
+                <div>
+                    <x-input-label for="edit_uso" value="Uso" />
+                    <select id="edit_uso" name="uso" class="form-select mt-1 w-full">
+                        <option value="">Selecciona una opción</option>
+                        <option value="hogar" {{ $cliente->uso === 'hogar' ? 'selected' : '' }}>Hogar</option>
+                        <option value="empresarial" {{ $cliente->uso === 'empresarial' ? 'selected' : '' }}>Empresarial</option>
+                        <option value="escolar" {{ $cliente->uso === 'escolar' ? 'selected' : '' }}>Escolar</option>
+                    </select>
+                </div>
+                <div>
+                    <x-input-label for="edit_dispositivo" value="Dispositivo" />
+                    <select id="edit_dispositivo" name="dispositivo" class="form-select mt-1 w-full">
+                        <option value="">Selecciona una opción</option>
+                        <option value="permanencia voluntaria" {{ $cliente->dispositivo === 'permanencia voluntaria' ? 'selected' : '' }}>Permanencia voluntaria</option>
+                        <option value="como dato" {{ $cliente->dispositivo === 'como dato' ? 'selected' : '' }}>Como dato</option>
+                    </select>
+                </div>
+                <div>
+                    <x-input-label for="edit_tecnologia" value="Tecnología" />
+                    <select id="edit_tecnologia" name="tecnologia" class="form-select mt-1 w-full">
+                        <option value="">Selecciona una opción</option>
+                        <option value="ina" {{ $cliente->tecnologia === 'ina' ? 'selected' : '' }}>INA (Inalámbrico)</option>
+                        <option value="foi" {{ $cliente->tecnologia === 'foi' ? 'selected' : '' }}>FOI (Fibra óptica indirecta)</option>
+                        <option value="fod" {{ $cliente->tecnologia === 'fod' ? 'selected' : '' }}>FOD (Fibra óptica directa)</option>
+                    </select>
+                </div>
+                <div>
+                    <x-input-label for="edit_tarifa" value="Costo de paquete" />
+                    <select id="edit_tarifa" name="tarifa" class="form-select mt-1 w-full">
+                        <option value="">Selecciona una opción</option>
+                        <option value="300.00" {{ (float)$cliente->tarifa === 300.00 ? 'selected' : '' }}>$300</option>
+                        <option value="400.00" {{ (float)$cliente->tarifa === 400.00 ? 'selected' : '' }}>$400</option>
+                        <option value="500.00" {{ (float)$cliente->tarifa === 500.00 ? 'selected' : '' }}>$500</option>
+                        <option value="600.00" {{ (float)$cliente->tarifa === 600.00 ? 'selected' : '' }}>$600</option>
+                    </select>
+                </div>
+                <div>
+                    <x-input-label for="edit_megas" value="Megas" />
+                    <x-text-input id="edit_megas" name="megas" type="number" class="mt-1 block w-full" value="{{ $cliente->megas }}" />
+                </div>
+                <div>
+                    <x-input-label for="edit_estado" value="Estado" />
+                    <select id="edit_estado" name="estado_id" class="form-select mt-1 w-full">
+                        <option value="">Selecciona una opción</option>
+                        <option value="1" {{ optional($cliente->estado)->id === 1 ? 'selected' : '' }}>Activado</option>
+                        <option value="2" {{ optional($cliente->estado)->id === 2 ? 'selected' : '' }}>Desactivado</option>
+                    </select>
+                </div>
+                <div>
+                    <x-input-label for="edit_estatus_servicio" value="Estatus de servicio" />
+                    <select id="edit_estatus_servicio" name="estatus_servicio_id" class="form-select mt-1 w-full">
+                        <option value="">Selecciona una opción</option>
+                        <option value="1" {{ optional($cliente->estatusServicio)->id === 1 ? 'selected' : '' }}>Pagado</option>
+                        <option value="2" {{ optional($cliente->estatusServicio)->id === 2 ? 'selected' : '' }}>Suspendido</option>
+                        <option value="3" {{ optional($cliente->estatusServicio)->id === 3 ? 'selected' : '' }}>Cancelado</option>
+                        <option value="4" {{ optional($cliente->estatusServicio)->id === 4 ? 'selected' : '' }}>Pendiente de pago</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-2">
+                <x-secondary-button x-on:click="$dispatch('close')">Cancelar</x-secondary-button>
+                <button type="submit" class="btn btn-success">Guardar cambios</button>
+            </div>
+        </form>
+    </x-modal>
 </x-app-layout>

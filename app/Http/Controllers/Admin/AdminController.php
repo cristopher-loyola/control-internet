@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Usuario;
 use App\Services\MegasAssigner;
+use App\Models\HistorialUsuario;
 
 class AdminController extends Controller
 {
@@ -94,6 +95,27 @@ class AdminController extends Controller
             'fecha_contratacion' => $request->fecha_contratacion ?? null,
         ]);
 
+        // Snapshot historial (creación)
+        HistorialUsuario::create([
+            'accion' => 'create',
+            'captured_at' => now(),
+            'numero_servicio' => $request->numero_servicio,
+            'nombre_cliente' => $request->nombre_cliente,
+            'domicilio' => $request->domicilio,
+            'telefono' => $request->telefono,
+            'comunidad' => $request->comunidad,
+            'uso' => $request->uso,
+            'tecnologia' => $request->tecnologia,
+            'dispositivo' => $request->dispositivo,
+            'megas' => $megasAsignados ?? $request->megas,
+            'tarifa' => $request->tarifa,
+            'paquete' => $request->uso ? ($request->uso . ($request->tecnologia ? " {$request->tecnologia}" : '') . (($megasAsignados ?? $request->megas) ? " " . ($megasAsignados ?? $request->megas) . "Mbps" : '')) : null,
+            'estado_id' => null,
+            'estatus_servicio_id' => null,
+            'servicio_id' => null,
+            'fecha_contratacion' => $request->fecha_contratacion,
+        ]);
+
         return redirect()->route('admin.clientes.index')->with('status', 'cliente-creado');
     }
 
@@ -150,6 +172,27 @@ class AdminController extends Controller
         }
 
         $usuario = Usuario::findOrFail($request->id);
+        // Snapshot historial (antes de actualizar)
+        HistorialUsuario::create([
+            'usuario_original_id' => $usuario->id,
+            'accion' => 'update',
+            'captured_at' => now(),
+            'numero_servicio' => $usuario->numero_servicio,
+            'nombre_cliente' => $usuario->nombre_cliente,
+            'domicilio' => $usuario->domicilio,
+            'telefono' => $usuario->telefono,
+            'comunidad' => $usuario->comunidad,
+            'uso' => $usuario->uso,
+            'tecnologia' => $usuario->tecnologia,
+            'dispositivo' => $usuario->dispositivo,
+            'megas' => $usuario->megas,
+            'tarifa' => $usuario->tarifa,
+            'paquete' => $usuario->paquete,
+            'estado_id' => $usuario->estado_id,
+            'estatus_servicio_id' => $usuario->estatus_servicio_id,
+            'servicio_id' => $usuario->servicio_id,
+            'fecha_contratacion' => $usuario->fecha_contratacion,
+        ]);
         $usuario->update([
             'numero_servicio' => $request->numero_servicio,
             'nombre_cliente' => $request->nombre_cliente,
@@ -202,8 +245,101 @@ class AdminController extends Controller
     public function clientesDestroy(int $id)
     {
         $usuario = Usuario::findOrFail($id);
+        // Snapshot historial (antes de eliminar)
+        HistorialUsuario::create([
+            'usuario_original_id' => $usuario->id,
+            'accion' => 'delete',
+            'captured_at' => now(),
+            'numero_servicio' => $usuario->numero_servicio,
+            'nombre_cliente' => $usuario->nombre_cliente,
+            'domicilio' => $usuario->domicilio,
+            'telefono' => $usuario->telefono,
+            'comunidad' => $usuario->comunidad,
+            'uso' => $usuario->uso,
+            'tecnologia' => $usuario->tecnologia,
+            'dispositivo' => $usuario->dispositivo,
+            'megas' => $usuario->megas,
+            'tarifa' => $usuario->tarifa,
+            'paquete' => $usuario->paquete,
+            'estado_id' => $usuario->estado_id,
+            'estatus_servicio_id' => $usuario->estatus_servicio_id,
+            'servicio_id' => $usuario->servicio_id,
+            'fecha_contratacion' => $usuario->fecha_contratacion,
+        ]);
         $usuario->delete();
 
         return redirect()->route('admin.clientes.index')->with('status', 'cliente-eliminado');
+    }
+
+    public function clientesHistorial($numero)
+    {
+        $numero = (int) $numero;
+        $historial = HistorialUsuario::where('numero_servicio', $numero)
+            ->orderByDesc('captured_at')
+            ->get();
+        $actual = Usuario::where('numero_servicio', $numero)->first();
+        return view('admin.clientes.historial', compact('numero', 'historial', 'actual'));
+    }
+
+    public function clientesHistorialBuscar(Request $request)
+    {
+        $q = trim((string) $request->query('q', ''));
+        if ($q === '') {
+            return redirect()->route('admin.clientes.index');
+        }
+
+        if (ctype_digit($q)) {
+            return redirect()->route('admin.clientes.historial', ['numero' => (int) $q]);
+        }
+
+        $activos = Usuario::where(function ($query) use ($q) {
+                $query->where('nombre_cliente', 'like', '%' . $q . '%')
+                    ->orWhereRaw("SOUNDEX(nombre_cliente) LIKE CONCAT(SOUNDEX(?), '%')", [$q]);
+            })
+            ->orderBy('nombre_cliente')
+            ->get(['numero_servicio', 'nombre_cliente', 'telefono']);
+
+        $eliminadosRaw = HistorialUsuario::select('numero_servicio', 'nombre_cliente', 'telefono', 'captured_at')
+            ->where('accion', 'delete')
+            ->where(function ($query) use ($q) {
+                $query->where('nombre_cliente', 'like', '%' . $q . '%')
+                    ->orWhereRaw("SOUNDEX(nombre_cliente) LIKE CONCAT(SOUNDEX(?), '%')", [$q]);
+            })
+            ->orderByDesc('captured_at')
+            ->get()
+            ->groupBy('numero_servicio')
+            ->map->first(); // tomar el más reciente por número
+
+        $activosNumeros = $activos->pluck('numero_servicio')->filter()->all();
+
+        $resultados = collect();
+        foreach ($activos as $u) {
+            $resultados->push((object) [
+                'numero_servicio' => $u->numero_servicio,
+                'nombre_cliente' => $u->nombre_cliente,
+                'telefono' => $u->telefono,
+                'estado' => 'Activo',
+            ]);
+        }
+
+        foreach ($eliminadosRaw as $num => $e) {
+            if (!$num || in_array($num, $activosNumeros, true)) {
+                continue;
+            }
+            $resultados->push((object) [
+                'numero_servicio' => $e->numero_servicio,
+                'nombre_cliente' => $e->nombre_cliente,
+                'telefono' => $e->telefono,
+                'estado' => 'Eliminado',
+            ]);
+        }
+
+        // ordenar por nombre para consistencia
+        $resultados = $resultados->sortBy('nombre_cliente')->values();
+
+        return view('admin.clientes.historial_buscar', [
+            'q' => $q,
+            'resultados' => $resultados,
+        ]);
     }
 }

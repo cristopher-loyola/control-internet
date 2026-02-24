@@ -22,6 +22,12 @@ export default {
         'bg-[#9CA6BA]',
         'bg-[#5C73D1]',
         'text-white',
+        'bg-yellow-400',
+        'hover:bg-yellow-500',
+        'border-yellow-500',
+        'dark:bg-yellow-500',
+        'dark:hover:bg-yellow-400',
+        'text-gray-900',
     ],
 
     theme: {
