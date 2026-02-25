@@ -19,21 +19,52 @@ class ContratacionesController extends Controller
     public function clientes(Request $request)
     {
         $q = trim((string) $request->input('q'));
+        $tec = strtolower(trim((string) $request->input('tec', '')));
         $query = Usuario::with(['estado', 'estatusServicio']);
 
         if ($q !== '') {
             $query->where(function ($sub) use ($q) {
                 if (ctype_digit($q)) {
-                    $sub->where('numero_servicio', $q);
+                    $sub->where('numero_servicio', $q)
+                        ->orWhere('telefono', 'like', "%{$q}%");
                 } else {
                     $sub->where('nombre_cliente', 'like', "%{$q}%")
-                        ->orWhereRaw("SOUNDEX(nombre_cliente) LIKE CONCAT(SOUNDEX(?), '%')", [$q]);
+                        ->orWhereRaw("SOUNDEX(nombre_cliente) LIKE CONCAT(SOUNDEX(?), '%')", [$q])
+                        ->orWhere('telefono', 'like', "%{$q}%");
+                    $upper = strtoupper($q);
+                    if (in_array($upper, ['INA', 'FOI', 'FOD'], true)) {
+                        $sub->orWhere(function ($r) use ($upper) {
+                            if ($upper === 'INA') {
+                                $r->whereBetween('numero_servicio', [1000, 4200]);
+                            } elseif ($upper === 'FOI') {
+                                $r->whereBetween('numero_servicio', [4800, 5400])
+                                  ->orWhereBetween('numero_servicio', [5500, 5999]);
+                            } elseif ($upper === 'FOD') {
+                                $r->whereBetween('numero_servicio', [5401, 5499])
+                                  ->orWhereBetween('numero_servicio', [6000, 7414]);
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        if (in_array($tec, ['ina', 'foi', 'fod'], true)) {
+            $query->where(function ($r) use ($tec) {
+                if ($tec === 'ina') {
+                    $r->whereBetween('numero_servicio', [1000, 4200]);
+                } elseif ($tec === 'foi') {
+                    $r->whereBetween('numero_servicio', [4800, 5400])
+                      ->orWhereBetween('numero_servicio', [5500, 5999]);
+                } elseif ($tec === 'fod') {
+                    $r->whereBetween('numero_servicio', [5401, 5499])
+                      ->orWhereBetween('numero_servicio', [6000, 7414]);
                 }
             });
         }
 
         $clientes = $query->orderBy('numero_servicio', 'asc')->get();
-        return view('contrataciones.clientes.index', compact('clientes', 'q'));
+        return view('contrataciones.clientes.index', compact('clientes', 'q', 'tec'));
     }
 
     public function clientesStore(Request $request)
@@ -180,6 +211,7 @@ class ContratacionesController extends Controller
                 'numeric' => 'El campo :attribute debe ser numérico.',
                 'integer' => 'El campo :attribute debe ser un número entero.',
                 'unique' => 'El :attribute ya existe.',
+                'numero_servicio.unique' => 'numero de servicio en uso',
                 'exists' => 'El registro seleccionado no existe.',
             ],
             [
@@ -197,6 +229,16 @@ class ContratacionesController extends Controller
                 'estatus_servicio_id' => 'estatus de servicio',
             ]
         )->validateWithBag('clienteEdit');
+
+        if (
+            Usuario::where('numero_servicio', $request->numero_servicio)
+                ->where('id', '!=', $request->id)
+                ->exists()
+        ) {
+            return back()
+                ->withErrors(['numero_servicio' => 'numero de servicio en uso'], 'clienteEdit')
+                ->withInput();
+        }
 
         $megasAsignados = null;
         if ($request->filled('tarifa') && $request->filled('tecnologia')) {

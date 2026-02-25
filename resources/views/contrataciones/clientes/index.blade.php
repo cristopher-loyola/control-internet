@@ -69,20 +69,26 @@
             }
         }
     }" x-init="Alpine.store('contrataciones', { isNuevoCliente: true })">
-        <div class="max-w-screen-2xl mx-auto sm:px-6 lg:px-7">
+        <div class="max-w-none w-full mx-auto sm:px-4 lg:px-8">
             <div class="flex justify-between items-center mb-3 gap-3">
                 <form action="{{ route('contrataciones.clientes.index') }}" method="GET" class="flex items-center gap-2">
                     <input
                         type="text"
                         name="q"
                         value="{{ request('q') }}"
-                        placeholder="Buscar por nombre o número..."
-                        class="form-input rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-1"
+                        placeholder="Buscar por nombre, número o teléfono..."
+                        class="form-input rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-1 w-64"
                     >
+                    <select name="tec" class="form-select rounded-md border-gray-300 text-sm py-1">
+                        <option value="">Filtrar por rango/clave</option>
+                        <option value="ina" {{ request('tec') === 'ina' ? 'selected' : '' }}>INA (1000–4200)</option>
+                        <option value="foi" {{ request('tec') === 'foi' ? 'selected' : '' }}>FOI (4800–5400, 5500–5999)</option>
+                        <option value="fod" {{ request('tec') === 'fod' ? 'selected' : '' }}>FOD (5401–5499, 6000–7414)</option>
+                    </select>
                     <button type="submit" class="btn btn-primary btn-sm">
                         Buscar
                     </button>
-                    @if(request('q'))
+                    @if(request('q') || request('tec'))
                         <a href="{{ route('contrataciones.clientes.index') }}" class="btn btn-secondary btn-sm" style="text-decoration: none;">
                             Limpiar
                         </a>
@@ -124,6 +130,11 @@
                     @if (session('status') === 'cliente-creado')
                         <div class="mb-4 p-3 rounded bg-emerald-600 text-white text-sm">
                             Cliente creado correctamente.
+                        </div>
+                    @endif
+                    @if (session('status') === 'cliente-actualizado')
+                        <div class="mb-4 p-3 rounded bg-emerald-600 text-white text-sm">
+                            Cliente actualizado correctamente.
                         </div>
                     @endif
                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

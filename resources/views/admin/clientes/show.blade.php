@@ -114,17 +114,21 @@
         </div>
     </div>
 
-    <x-modal name="admin-clientes-show-edit" maxWidth="lg" focusable>
+    <x-modal name="admin-clientes-show-edit" :show="$errors->clienteEdit->isNotEmpty()" maxWidth="lg" focusable>
         <form method="POST" action="{{ route('admin.clientes.edit') }}" class="p-6">
             @csrf
             <input type="hidden" name="id" value="{{ $cliente->id }}">
             <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">Editar cliente</h3>
             <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Actualiza los datos del cliente.</p>
+            @if ($errors->clienteEdit->any())
+               
+            @endif
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <x-input-label for="edit_numero_servicio" value="Número de Cliente" />
                     <x-text-input id="edit_numero_servicio" name="numero_servicio" type="number" class="mt-1 block w-full" value="{{ $cliente->numero_servicio }}" required />
+                    <x-input-error :messages="$errors->clienteEdit->get('numero_servicio')" class="mt-2" />
                 </div>
                 <div>
                     <x-input-label for="edit_nombre_cliente" value="Nombre" />

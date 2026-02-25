@@ -73,20 +73,31 @@
             if (this.form.id) this.$dispatch('open-modal', 'admin-clientes-edit')
         }
     }">
-        <div class="max-w-screen-2xl mx-auto sm:px-6 lg:px-7">
+        <div class="max-w-none w-full mx-auto sm:px-4 lg:px-8">
+        @if (session('import_report'))
+            <div class="mb-4">
+                <div x-data x-init="$nextTick(() => $dispatch('open-modal', 'admin-clientes-import-result'))"></div>
+            </div>
+        @endif
         <div class="flex justify-between items-center mb-4 gap-3">
                 <form action="{{ route('admin.clientes.index') }}" method="GET" class="flex items-center gap-2">
                     <input
                         type="text"
                         name="q"
                         value="{{ request('q') }}"
-                        placeholder="Buscar por nombre o número..."
-                        class="form-input rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-1"
+                        placeholder="Buscar por nombre, número o teléfono..."
+                        class="form-input rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-1 w-64"
                     >
+                    <select name="tec" class="form-select rounded-md border-gray-300 text-sm py-1 px-2">    ">
+                        <option value="">Filtrar por rango/clave</option>
+                        <option value="ina" {{ request('tec') === 'ina' ? 'selected' : '' }}>INA (1000–4200)</option>
+                        <option value="foi" {{ request('tec') === 'foi' ? 'selected' : '' }}>FOI (4800–5400, 5500–5999)</option>
+                        <option value="fod" {{ request('tec') === 'fod' ? 'selected' : '' }}>FOD (5401–5499, 6000–7414)</option>
+                    </select>
                     <button type="submit" class="btn btn-primary btn-sm">
                         Buscar
                     </button>
-                    @if(request('q'))
+                    @if(request('q') || request('tec'))
                         <a href="{{ route('admin.clientes.index') }}" class="btn btn-secondary btn-sm" style="text-decoration: none;">
                             Limpiar
                         </a>
@@ -102,6 +113,15 @@
                     >
                         Añadir
                     </a>
+                    <button
+                        type="button"
+                        class="btn btn-success"
+                        x-data
+                        x-on:click.prevent="$dispatch('open-modal', 'admin-clientes-import')"
+                        title="Importar desde Excel (CSV)"
+                    >
+                        Importar
+                    </button>
                     <button
                         type="button"
                         class="btn btn-secondary"
@@ -152,7 +172,7 @@
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paquete</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estatus</th>
-
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -386,6 +406,61 @@
         </div>
         </x-modal>
 
+        <x-modal name="admin-clientes-import" maxWidth="sm" focusable>
+        <form method="POST" action="{{ route('admin.clientes.import') }}" enctype="multipart/form-data" class="p-6">
+            @csrf
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Importar clientes</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Sube un archivo CSV exportado desde Excel con estas columnas (mínimas): numero_servicio, nombre_cliente, telefono. Los demás campos quedarán en blanco.</p>
+            <div>
+                <input type="file" name="file" accept=".csv,text/csv" class="block w-full text-sm">
+                @if ($errors->has('file'))
+                    <div class="mt-2 text-sm text-red-600">{{ $errors->first('file') }}</div>
+                @endif
+            </div>
+            <div class="mt-3 flex items-center gap-2">
+                <input id="telefono_nullable" type="checkbox" name="telefono_nullable" checked class="rounded">
+                <label for="telefono_nullable" class="text-sm text-gray-700 dark:text-gray-300">Dejar teléfono en nulo si viene vacío</label>
+            </div>
+            <div class="mt-5 flex justify-end gap-2">
+                <button type="button" class="btn btn-secondary" x-on:click="$dispatch('close')">Cancelar</button>
+                <button type="submit" class="btn btn-success">Importar</button>
+            </div>
+        </form>
+        </x-modal>
+
+        @php $rep = session('import_report'); @endphp
+        @if ($rep)
+        <x-modal name="admin-clientes-import-result" maxWidth="lg" focusable>
+            <div class="p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Resultado de la importación</h3>
+                <div class="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                    Resumen:
+                    <span class="ms-2">Creados: <strong>{{ $rep['created'] ?? 0 }}</strong></span>,
+                    <span class="ms-2">Actualizados: <strong>{{ $rep['updated'] ?? 0 }}</strong></span>,
+                    <span class="ms-2">Omitidos: <strong>{{ $rep['skipped'] ?? 0 }}</strong></span>
+                </div>
+                @if (!empty($rep['errors']))
+                    <div class="max-h-64 overflow-auto rounded border border-gray-200 dark:border-gray-700 p-3 bg-white dark:bg-gray-800">
+                        <div class="text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">Errores (máx. 200):</div>
+                        <ul class="list-disc ms-5 text-xs text-gray-700 dark:text-gray-300 space-y-1">
+                            @foreach (array_slice($rep['errors'], 0, 200) as $err)
+                                <li>{{ $err }}</li>
+                            @endforeach
+                            @if (count($rep['errors']) > 200)
+                                <li>… y {{ count($rep['errors']) - 200 }} más</li>
+                            @endif
+                        </ul>
+                    </div>
+                @else
+                    <p class="text-sm text-gray-700 dark:text-gray-300">No hubo errores.</p>
+                @endif
+                <div class="mt-4 flex justify-end">
+                    <button type="button" class="btn btn-primary" x-on:click="$dispatch('close')">Cerrar</button>
+                </div>
+            </div>
+        </x-modal>
+        @endif
+
         <x-modal name="admin-clientes-edit" :show="$errors->clienteEdit->isNotEmpty()" maxWidth="lg" focusable>
         <form id="admin-clientes-edit-form" method="POST" action="{{ route('admin.clientes.edit') }}" class="p-6">
             @csrf
@@ -396,6 +471,11 @@
             <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
                 Actualiza los datos del cliente seleccionado.
             </p>
+            @if ($errors->clienteEdit->any())
+                <div class="mt-3 mb-4 p-3 rounded bg-red-600 text-white text-sm">
+                    {{ $errors->clienteEdit->first() }}
+                </div>
+            @endif
 
             <div class="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>

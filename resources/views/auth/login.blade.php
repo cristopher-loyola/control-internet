@@ -8,7 +8,7 @@
     }
 @endphp
 
-<x-guest-layout :wide="true">
+<x-guest-layout :wide="true" title="Control Internet">
     <div class="min-h-screen flex flex-col bg-[#FDFDFC] dark:bg-[#0a0a0a]">
         <div class="flex-1 flex flex-col">
 
@@ -80,7 +80,7 @@
                         <x-input-error :messages="$errors->get('password')" class="mt-1 text-[11px]" />
                     </div>
 
-                    {{-- Recordarme --}}
+                    <!-- {{-- Recordarme --}}
                     <div class="w-64 mx-auto pt-1 flex justify-center">
                         <label for="remember_me" class="inline-flex items-center gap-1.5 cursor-pointer">
                             <input
@@ -91,7 +91,7 @@
                             >
                             <span class="text-xs text-gray-500 dark:text-gray-400">{{ __('Recordarme') }}</span>
                         </label>
-                    </div>
+                    </div> -->
 
                     {{-- Submit --}}
                     <div class="w-full flex justify-center mt-3">

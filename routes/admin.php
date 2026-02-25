@@ -8,12 +8,14 @@ Route::middleware(['auth', 'role:admin'])
     ->name('admin.')
     ->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('index');
+        Route::get('/pagos', [AdminController::class, 'pagos'])->name('pagos.index');
         Route::get('/clientes', [AdminController::class, 'clientes'])->name('clientes.index');
         Route::post('/clientes', [AdminController::class, 'clientesStore'])->name('clientes.store');
         Route::post('/clientes/editar', [AdminController::class, 'clientesEditStore'])->name('clientes.edit');
         Route::get('/clientes/historial/buscar', [AdminController::class, 'clientesHistorialBuscar'])->name('clientes.historial.buscar');
         Route::get('/clientes/{id}', [AdminController::class, 'clientesShow'])->name('clientes.show');
         Route::get('/clientes/{numero}/historial', [AdminController::class, 'clientesHistorial'])->name('clientes.historial');
+        Route::post('/clientes/import', [AdminController::class, 'clientesImport'])->name('clientes.import');
         Route::delete('/clientes/{id}', [AdminController::class, 'clientesDestroy'])->name('clientes.destroy');
         Route::get('/create', [AdminController::class, 'create'])->name('create');
         Route::post('/', [AdminController::class, 'store'])->name('store');
