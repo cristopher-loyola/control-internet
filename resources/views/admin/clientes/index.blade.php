@@ -170,8 +170,7 @@
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tecnología</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Megas</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paquete</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estatus</th>
+                                    <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-36 sm:w-40">Estatus</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
                                 </tr>
                             </thead>
@@ -223,15 +222,13 @@
                                                 —
                                             @endif
                                         </td>
-                                        <td class="px-4 py-2 whitespace-nowrap text-sm">
-                                            <span class="inline-flex items-center px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                                                {{ optional($c->estado)->nombre ?? '—' }}
-                                            </span>
-                                        </td>
-                                        <td class="px-4 py-2 whitespace-nowrap text-sm">
-                                            <span class="inline-flex items-center px-2 py-1 rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
-                                                {{ optional($c->estatusServicio)->nombre ?? '—' }}
-                                            </span>
+                                        <td class="px-2 py-2 whitespace-normal text-sm align-top">
+                                            <div class="flex flex-col leading-tight">
+                                                <span class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 tracking-wide uppercase">ESTATUS</span>
+                                                <span class="mt-0.5 inline-flex items-center px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
+                                                    {{ optional($c->estatusServicio)->nombre ?? '—' }}/{{ optional($c->estado)->nombre ?? '—' }}
+                                                </span>
+                                            </div>
                                         </td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-center space-x-2">
                                             <a

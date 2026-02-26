@@ -10,8 +10,8 @@
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-gray-100">
                     <div class="mb-4 flex items-center justify-between">
-                        <a href="{{ route('admin.clientes.index') }}" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
-                            ← Volver a la lista de clientes
+                        <a href="{{ route('admin.clientes.index') }}" class="btn btn-primary">
+                            Volver a la lista de clientes
                         </a>
                         <button
                             type="button"
@@ -89,17 +89,15 @@
                             <dd class="text-sm">{{ $cliente->paquete ?? '—' }}</dd>
                         </div>
                         <div>
-                            <dt class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Estado</dt>
-                            <dd class="text-sm">{{ optional($cliente->estado)->nombre ?? '—' }}</dd>
+                            <dt class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">ESTATUS</dt>
+                            <dd class="text-sm">
+                                {{ optional($cliente->estatusServicio)->nombre ?? '—' }}/{{ optional($cliente->estado)->nombre ?? '—' }}
+                            </dd>
                         </div>
-                        <div>
-                            <dt class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Estatus de servicio</dt>
-                            <dd class="text-sm">{{ optional($cliente->estatusServicio)->nombre ?? '—' }}</dd>
-                        </div>
-                        <div>
+                        <!-- <div>
                             <dt class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Servicio ID</dt>
                             <dd class="text-sm">{{ $cliente->servicio_id ?? '—' }}</dd>
-                        </div>
+                        </div> -->
                         <div>
                             <dt class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Creado en</dt>
                             <dd class="text-sm">{{ optional($cliente->created_at)->format('d/m/Y H:i') ?? '—' }}</dd>
@@ -115,7 +113,25 @@
     </div>
 
     <x-modal name="admin-clientes-show-edit" :show="$errors->clienteEdit->isNotEmpty()" maxWidth="lg" focusable>
-        <form method="POST" action="{{ route('admin.clientes.edit') }}" class="p-6">
+        <form method="POST" action="{{ route('admin.clientes.edit') }}" class="p-6"
+              x-data="{
+                updateEstado() {
+                    const estatus = this.$refs.editEstatusServicio?.value;
+                    const estadoSelect = this.$refs.editEstado;
+                    
+                    if (!estatus || !estadoSelect) return;
+
+                    // 1: Pagado, 4: Pendiente de pago -> 1: Activado
+                    if (['1', '4'].includes(estatus)) {
+                        estadoSelect.value = '1';
+                    } 
+                    // 2: Suspendido, 3: Cancelado -> 2: Desactivado
+                    else if (['2', '3'].includes(estatus)) {
+                        estadoSelect.value = '2';
+                    }
+                }
+              }"
+        >
             @csrf
             <input type="hidden" name="id" value="{{ $cliente->id }}">
             <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">Editar cliente</h3>
@@ -185,7 +201,7 @@
                 </div>
                 <div>
                     <x-input-label for="edit_estado" value="Estado" />
-                    <select id="edit_estado" name="estado_id" class="form-select mt-1 w-full">
+                    <select id="edit_estado" name="estado_id" class="form-select mt-1 w-full" x-ref="editEstado">
                         <option value="">Selecciona una opción</option>
                         <option value="1" {{ optional($cliente->estado)->id === 1 ? 'selected' : '' }}>Activado</option>
                         <option value="2" {{ optional($cliente->estado)->id === 2 ? 'selected' : '' }}>Desactivado</option>
@@ -193,7 +209,7 @@
                 </div>
                 <div>
                     <x-input-label for="edit_estatus_servicio" value="Estatus de servicio" />
-                    <select id="edit_estatus_servicio" name="estatus_servicio_id" class="form-select mt-1 w-full">
+                    <select id="edit_estatus_servicio" name="estatus_servicio_id" class="form-select mt-1 w-full" x-ref="editEstatusServicio" x-on:change="updateEstado()">
                         <option value="">Selecciona una opción</option>
                         <option value="1" {{ optional($cliente->estatusServicio)->id === 1 ? 'selected' : '' }}>Pagado</option>
                         <option value="2" {{ optional($cliente->estatusServicio)->id === 2 ? 'selected' : '' }}>Suspendido</option>
