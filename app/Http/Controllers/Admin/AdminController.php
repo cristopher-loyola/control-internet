@@ -21,6 +21,140 @@ class AdminController extends Controller
         return view('admin.pagos');
     }
 
+    public function pagosFacturaStore(\Illuminate\Http\Request $request)
+    {
+        $request->validate([
+            'numero_servicio' => ['nullable', 'string'],
+            'usuario_id' => ['nullable', 'integer'],
+            'total' => ['nullable', 'numeric'],
+            'payload' => ['nullable', 'array'],
+        ]);
+
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
+            $row = \Illuminate\Support\Facades\DB::table('invoice_sequences')
+                ->where('name', 'facturas')
+                ->lockForUpdate()
+                ->first();
+            if (!$row) {
+                \Illuminate\Support\Facades\DB::table('invoice_sequences')->insert([
+                    'name' => 'facturas',
+                    'current_value' => 0,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                $row = (object)['current_value' => 0];
+            }
+            $payload = $request->input('payload', []);
+            $fingerprintData = [
+                'numero_servicio' => $request->input('numero_servicio'),
+                'total' => round((float)$request->input('total', 0), 2),
+                'nombre' => $payload['nombre'] ?? null,
+                'mensualidad' => $payload['mensualidad'] ?? null,
+                'recargo' => $payload['recargo'] ?? null,
+                'pago_anterior' => $payload['pago_anterior'] ?? null,
+                'metodo' => $payload['metodo'] ?? null,
+            ];
+            $fingerprint = hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+
+            $existing = \App\Models\Factura::withTrashed()
+                ->where(function($q) use ($fingerprint, $request){
+                    $q->where('fingerprint', $fingerprint);
+                })
+                ->orWhere(function($q) use ($request){
+                    $q->where('numero_servicio', $request->input('numero_servicio'))
+                        ->where('total', $request->input('total', 0))
+                        ->whereRaw('payload = ?', [json_encode($request->input('payload', []))]);
+                })
+                ->orderBy('id', 'desc')
+                ->first();
+            if ($existing) {
+                return response()->json([
+                    'ok' => true,
+                    'referencia' => $existing->reference_number,
+                    'id' => $existing->id,
+                    'reused' => true,
+                ]);
+            }
+            $next = (int) $row->current_value + 1;
+            \Illuminate\Support\Facades\DB::table('invoice_sequences')
+                ->where('name', 'facturas')
+                ->update(['current_value' => $next, 'updated_at' => now()]);
+
+            try {
+                $factura = new \App\Models\Factura();
+                $factura->reference_number = $next;
+                $factura->usuario_id = $request->input('usuario_id');
+                $factura->numero_servicio = $request->input('numero_servicio');
+                $factura->total = $request->input('total', 0);
+                $factura->payload = $payload;
+                $factura->created_by = $request->user()?->id;
+                $factura->fingerprint = $fingerprint;
+                $factura->save();
+            } catch (\Illuminate\Database\QueryException $e) {
+                $c = \App\Models\Factura::withTrashed()->where('fingerprint', $fingerprint)->first();
+                if ($c) {
+                    return response()->json([
+                        'ok' => true,
+                        'referencia' => $c->reference_number,
+                        'id' => $c->id,
+                        'reused' => true,
+                    ]);
+                }
+                throw $e;
+            }
+
+            return response()->json([
+                'ok' => true,
+                'referencia' => $factura->reference_number,
+                'id' => $factura->id,
+            ]);
+        });
+    }
+
+    public function pagosFacturasIndex(\Illuminate\Http\Request $request)
+    {
+        $limit = (int) $request->query('limit', 50);
+        $rows = \App\Models\Factura::orderByDesc('id')->limit($limit)->get([
+            'id', 'reference_number', 'numero_servicio', 'total', 'created_at'
+        ]);
+        return response()->json(['ok' => true, 'data' => $rows]);
+    }
+
+    public function pagosFacturaShow(int $id)
+    {
+        $f = \App\Models\Factura::findOrFail($id);
+        return response()->json([
+            'ok' => true,
+            'data' => [
+                'id' => $f->id,
+                'reference_number' => $f->reference_number,
+                'numero_servicio' => $f->numero_servicio,
+                'total' => $f->total,
+                'payload' => $f->payload,
+                'created_at' => $f->created_at,
+            ],
+        ]);
+    }
+
+    public function pagosFacturaByFolio(int $ref)
+    {
+        $f = \App\Models\Factura::where('reference_number', $ref)->first();
+        if (!$f) {
+            return response()->json(['ok' => false, 'message' => 'Folio no encontrado'], 404);
+        }
+        return response()->json([
+            'ok' => true,
+            'data' => [
+                'id' => $f->id,
+                'reference_number' => $f->reference_number,
+                'numero_servicio' => $f->numero_servicio,
+                'total' => $f->total,
+                'payload' => $f->payload,
+                'created_at' => $f->created_at,
+            ],
+        ]);
+    }
+
     public function pagosLookup(Request $request)
     {
         $numero = (string) $request->query('numero');

@@ -10,6 +10,10 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/', [AdminController::class, 'index'])->name('index');
         Route::get('/pagos', [AdminController::class, 'pagos'])->name('pagos.index');
         Route::get('/pagos/lookup', [AdminController::class, 'pagosLookup'])->name('pagos.lookup');
+        Route::post('/pagos/facturas', [AdminController::class, 'pagosFacturaStore'])->name('pagos.facturas.store');
+        Route::get('/pagos/facturas', [AdminController::class, 'pagosFacturasIndex'])->name('pagos.facturas.index');
+        Route::get('/pagos/facturas/{id}', [AdminController::class, 'pagosFacturaShow'])->name('pagos.facturas.show');
+        Route::get('/pagos/folio/{ref}', [AdminController::class, 'pagosFacturaByFolio'])->name('pagos.facturas.by_folio');
         Route::get('/clientes', [AdminController::class, 'clientes'])->name('clientes.index');
         Route::post('/clientes', [AdminController::class, 'clientesStore'])->name('clientes.store');
         Route::post('/clientes/editar', [AdminController::class, 'clientesEditStore'])->name('clientes.edit');

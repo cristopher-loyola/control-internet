@@ -49,15 +49,41 @@
                             </div>
                         </div>
                         <div class="flex items-end justify-end md:justify-start gap-2">
-                            <button class="btn btn-secondary" @click="toggleEditor()"
+                            <button class="btn btn-secondary" @click="openHistorial()">Historial</button>
+                            <!-- <button class="btn btn-secondary" @click="toggleEditor()"
                                 x-text="editMode ? 'Cerrar editor de plantilla' : 'Editar plantilla'"></button>
-                            <button class="btn btn-secondary" @click="resetLayout()">Restablecer</button>
+                            <button class="btn btn-secondary" @click="resetLayout()">Restablecer</button> -->
                             <!-- <button class="btn btn-secondary" @click="saveAsDefault()">Guardar como predeterminado</button> -->
-                            <button class="btn btn-primary" @click="prepareAndPrint()">Exportar a PDF</button>
+                            <button class="btn btn-danger" @click="openConfirm()">Exportar a PDF</button>
                         </div>
                     </div>
 
                     <div class="mt-6 print-sheet" x-ref="sheet">
+                        <div x-show="saveConfirmOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 not-print">
+                            <div class="bg-white dark:bg-gray-800 rounded shadow p-6 w-96">
+                                <div class="text-lg font-semibold mb-4">¿Guardar información?</div>
+                                <div class="flex justify-end gap-2">
+                                    <button class="btn btn-secondary" @click="confirmSaveNo()">No</button>
+                                    <button class="btn btn-primary" @click="confirmSaveYes()">Sí</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div x-show="historialOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 not-print">
+                            <div class="bg-white dark:bg-gray-800 rounded shadow p-4 w-[480px] max-w-[92vw]">
+                                <div class="flex items-center justify-between mb-3">
+                                    <div class="text-base font-semibold">Reimprimir por folio</div>
+                                    <button class="btn btn-secondary btn-sm" @click="historialOpen=false">Cerrar</button>
+                                </div>
+                                <div class="space-y-3">
+                                    <label class="text-xs uppercase text-gray-500 dark:text-gray-400 block">Ingresa folio</label>
+                                    <input type="number" class="form-input w-full" x-model.number="busquedaFolio" placeholder="Ej. 12345">
+                                    <div class="flex justify-end gap-2">
+                                        <button class="btn btn-primary" @click="buscarPorFolio()">Reimprimir</button>
+                                    </div>
+                                    <p class="text-sm text-red-600" x-text="folioError" x-show="folioError"></p>
+                                </div>
+                            </div>
+                        </div>
                         <template x-if="editMode">
                             <div class="text-xs text-gray-500 mb-2 not-print">Arrastra las imágenes para acomodarlas. Se guardará tu plantilla.</div>
                         </template>
@@ -147,6 +173,9 @@
                         </div>
 
                         <div class="receipt">
+                            <div class="ref-number" x-show="ref.numero">
+                                <span x-text="refNumberPad()"></span>
+                            </div>
                             <div class="text-right text-xs text-gray-500">Copia: COBRADOR</div>
                             <div class="receipt-head"></div>
                             <div class="id-band">
@@ -174,6 +203,9 @@
                         <div class="divider-line"></div>
 
                         <div class="receipt client-receipt">
+                            <div class="ref-number" x-show="ref.numero">
+                                <span x-text="refNumberPad()"></span>
+                            </div>
                             <div class="text-right text-xs text-gray-500">Copia: CLIENTE</div>
                             <div class="receipt-head"></div>
                             <div class="id-band">
@@ -220,6 +252,7 @@
         .receipt{position:relative;height:calc((297mm - 0.6mm)/2);border:1px solid #d1d5db;border-radius:8px;padding:6mm;background:#fff;overflow:hidden}
         .divider-line{height:0.6mm;background:#111;margin:0}
         .client-receipt{padding-top:8mm}
+        .ref-number{position:absolute;top:2mm;left:6mm;font-weight:700;font-size:12px;color:#111;z-index:30}
         .id-band{background:#fde047;border:1px solid #eab308;border-radius:4px;padding:4px 8px;display:inline-flex;gap:10px;margin:10px 0;width:fit-content;max-width:60%}
         .receipt-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;font-size:0.95rem}
         .receipt-head img{max-height:120px;object-fit:contain}
@@ -288,6 +321,13 @@
             form:{ numero:'', recargo:'no', pago_anterior:0, metodo:'', cobro:'' },
             datos:{ nombre:'', mensualidad:0 },
             totales:{ total:0, letra:'' },
+            ref:{ numero:null, id:null },
+            saveConfirmOpen:false,
+            historialOpen:false,
+            historial:[],
+            busquedaFolio:null,
+            folioError:'',
+            printTimerId:null,
             error:'',
             editMode:false,
             defaultLayoutRef: JSON.parse(JSON.stringify(defaultLayout)),
@@ -393,10 +433,152 @@
                 this.totales.total = total;
                 this.totales.letra = toWords(total);
             },
-            prepareAndPrint(){
+            refNumberPad(){
+                const n = this.ref.numero;
+                if(!n) return '';
+                return String(n).padStart(8,'0');
+            },
+            openConfirm(){ this.saveConfirmOpen = true },
+            async confirmSaveYes(){
+                this.saveConfirmOpen = false;
+                await this.emitirFactura();
                 const sheet = document.querySelector('.print-sheet');
                 if(sheet){ sheet.style.transform = 'none'; }
-                window.print();
+                await this.$nextTick();
+                this.printTimerId = setTimeout(()=>{ window.print(); this.printTimerId=null; },100);
+            },
+            confirmSaveNo(){
+                if(this.printTimerId){ clearTimeout(this.printTimerId); this.printTimerId=null; }
+                this.saveConfirmOpen = false;
+            },
+            async openHistorial(){
+                this.folioError='';
+                this.busquedaFolio=null;
+                this.historialOpen = true;
+            },
+            async buscarPorFolio(){
+                this.folioError='';
+                const ref = Number(this.busquedaFolio);
+                if(!ref || ref<1){ this.folioError='Ingresa un folio válido'; return }
+                try{
+                    const r = await fetch('{{ route('admin.pagos.facturas.by_folio', ['ref'=>'__REF__']) }}'.replace('__REF__', ref),{headers:{'Accept':'application/json'}});
+                    const j = await r.json();
+                    if(!r.ok || !j?.ok){ this.folioError = j?.message || 'Folio no encontrado'; return }
+                    const d = j.data;
+                    this.ref.numero = d.reference_number;
+                    this.ref.id = d.id;
+                    this.form.numero = d.numero_servicio || '';
+                    const p = d.payload || {};
+                    this.datos.nombre = p.nombre || '';
+                    this.datos.mensualidad = Number(p.mensualidad)||0;
+                    this.form.recargo = p.recargo || 'no';
+                    this.form.pago_anterior = p.pago_anterior || 0;
+                    this.form.metodo = p.metodo || '';
+                    this.form.cobro = p.cobro || '';
+                    this.recalcular();
+                    this.historialOpen=false;
+                    const sheet = document.querySelector('.print-sheet');
+                    if(sheet){ sheet.style.transform = 'none'; }
+                    await this.$nextTick();
+                    setTimeout(()=>window.print(),150);
+                }catch(_){
+                    this.folioError='Error al buscar el folio';
+                }
+            },
+            async reimprimir(id){
+                try{
+                    const r = await fetch('{{ route('admin.pagos.facturas.show', ['id'=>'__ID__']) }}'.replace('__ID__', id),{headers:{'Accept':'application/json'}});
+                    const j = await r.json();
+                    if(r.ok && j?.ok){
+                        const d = j.data;
+                        this.ref.numero = d.reference_number;
+                        this.ref.id = d.id;
+                        this.form.numero = d.numero_servicio || '';
+                        const p = d.payload || {};
+                        this.datos.nombre = p.nombre || '';
+                        this.datos.mensualidad = Number(p.mensualidad)||0;
+                        this.form.recargo = p.recargo || 'no';
+                        this.form.pago_anterior = p.pago_anterior || 0;
+                        this.form.metodo = p.metodo || '';
+                        this.form.cobro = p.cobro || '';
+                        this.recalcular();
+                        this.historialOpen=false;
+                        const sheet = document.querySelector('.print-sheet');
+                        if(sheet){ sheet.style.transform = 'none'; }
+                        await this.$nextTick();
+                        setTimeout(()=>window.print(),150);
+                    }
+                }catch(_){}
+            },
+            async emitirFactura(){
+                try{
+                    const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
+                    const r = await fetch('{{ route('admin.pagos.facturas.store') }}', {
+                        method:'POST',
+                        headers:{
+                            'Content-Type':'application/json',
+                            'Accept':'application/json',
+                            'X-CSRF-TOKEN': token
+                        },
+                        body: JSON.stringify({
+                            numero_servicio: this.form.numero || null,
+                            usuario_id: null,
+                            total: this.totales.total || 0,
+                            payload: {
+                                nombre: this.datos.nombre,
+                                mensualidad: this.datos.mensualidad,
+                                recargo: this.form.recargo,
+                                pago_anterior: this.form.pago_anterior,
+                                metodo: this.form.metodo,
+                                cobro: this.form.cobro,
+                                fecha: this.fecha(),
+                                hora: this.hora()
+                            }
+                        })
+                    });
+                    const j = await r.json();
+                    if(r.ok && j?.ok){
+                        this.ref.numero = j.referencia;
+                        this.ref.id = j.id;
+                    }
+                }catch(_){}
+            },
+            async prepareAndPrint(){
+                try{
+                    const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
+                    const r = await fetch('{{ route('admin.pagos.facturas.store') }}', {
+                        method:'POST',
+                        headers:{
+                            'Content-Type':'application/json',
+                            'Accept':'application/json',
+                            'X-CSRF-TOKEN': token
+                        },
+                        body: JSON.stringify({
+                            numero_servicio: this.form.numero || null,
+                            usuario_id: null,
+                            total: this.totales.total || 0,
+                            payload: {
+                                nombre: this.datos.nombre,
+                                mensualidad: this.datos.mensualidad,
+                                recargo: this.form.recargo,
+                                pago_anterior: this.form.pago_anterior,
+                                metodo: this.form.metodo,
+                                cobro: this.form.cobro,
+                                fecha: this.fecha(),
+                                hora: this.hora()
+                            }
+                        })
+                    });
+                    const j = await r.json();
+                    if(r.ok && j?.ok){
+                        this.ref.numero = j.referencia;
+                        this.ref.id = j.id;
+                    }
+                }catch(_){}
+                const sheet = document.querySelector('.print-sheet');
+                if(sheet){ sheet.style.transform = 'none'; }
+                await this.$nextTick();
+                setTimeout(()=>window.print(),0);
             },
             async buscar(){
                 this.error='';
