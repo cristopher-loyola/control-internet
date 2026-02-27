@@ -9,6 +9,7 @@ Route::middleware(['auth', 'role:admin'])
     ->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('index');
         Route::get('/pagos', [AdminController::class, 'pagos'])->name('pagos.index');
+        Route::get('/pagos/lookup', [AdminController::class, 'pagosLookup'])->name('pagos.lookup');
         Route::get('/clientes', [AdminController::class, 'clientes'])->name('clientes.index');
         Route::post('/clientes', [AdminController::class, 'clientesStore'])->name('clientes.store');
         Route::post('/clientes/editar', [AdminController::class, 'clientesEditStore'])->name('clientes.edit');

@@ -10,6 +10,7 @@
         createMegasReadonly: false,
         editMegasReadonly: false,
         isNuevoCliente: true,
+        isLoading: false,
         form: { id: null, numero_servicio: '', nombre_cliente: '', domicilio: '', comunidad: '', telefono: '', uso: '', megas: '', tecnologia: '', dispositivo: '', tarifa: '', estado_id: '', estatus_servicio_id: '' },
         selectRow(row) {
             this.selected = row.id;
@@ -71,7 +72,7 @@
     }" x-init="Alpine.store('contrataciones', { isNuevoCliente: true })">
         <div class="max-w-none w-full mx-auto sm:px-4 lg:px-8">
             <div class="flex justify-between items-center mb-3 gap-3">
-                <form action="{{ route('contrataciones.clientes.index') }}" method="GET" class="flex items-center gap-2">
+                <form action="{{ route('contrataciones.clientes.index') }}" method="GET" class="flex items-center gap-2" x-on:submit="isLoading = true">
                     <input
                         type="text"
                         name="q"
@@ -127,6 +128,12 @@
             </div>
             <div class="bg-white dark:bg-gray-800 shadow-sm rounded-lg">
                 <div class="p-4 overflow-x-auto">
+                    <style>
+                        .skel{position:relative;overflow:hidden;background-color:rgba(229,231,235,var(--tw-bg-opacity,1));border-radius:4px}
+                        .skel::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:skel-shimmer 1.4s infinite}
+                        @keyframes skel-shimmer{100%{transform:translateX(100%)}}
+                        @media (prefers-reduced-motion:reduce){.skel::after{animation:none}}
+                    </style>
                     @if (session('status') === 'cliente-creado')
                         <div class="mb-4 p-3 rounded bg-emerald-600 text-white text-sm">
                             Cliente creado correctamente.
@@ -137,7 +144,18 @@
                             Cliente actualizado correctamente.
                         </div>
                     @endif
-                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700" style="table-layout:fixed">
+                        <colgroup>
+                            <col style="width:8%">
+                            <col style="width:18%">
+                            <col style="width:18%">
+                            <col style="width:14%">
+                            <col style="width:8%">
+                            <col style="width:8%">
+                            <col style="width:10%">
+                            <col style="width:10%">
+                            <col style="width:6%">
+                        </colgroup>
                         <thead class="bg-gray-50 dark:bg-gray-700/40">
                             <tr>
                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Número de Cliente</th>
@@ -151,7 +169,22 @@
                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                        <tbody x-show="isLoading" aria-busy="true" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700" x-cloak>
+                            @foreach(range(1,8) as $i)
+                            <tr>
+                                <td class="px-4 py-2"><div class="skel h-4 w-12"></div></td>
+                                <td class="px-4 py-2"><div class="skel h-4 w-24"></div></td>
+                                <td class="px-4 py-2"><div class="skel h-4 w-28"></div></td>
+                                <td class="px-4 py-2"><div class="skel h-4 w-24"></div></td>
+                                <td class="px-4 py-2"><div class="skel h-4 w-12"></div></td>
+                                <td class="px-4 py-2"><div class="skel h-4 w-10"></div></td>
+                                <td class="px-4 py-2"><div class="skel h-4 w-16"></div></td>
+                                <td class="px-2 py-2"><div class="skel h-6 w-24"></div></td>
+                                <td class="px-4 py-2 text-center"><div class="skel h-7 w-16 inline-block"></div></td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                        <tbody x-show="!isLoading" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                             @forelse ($clientes as $c)
                                 <tr
                                     x-on:click="selectRow({{ json_encode([

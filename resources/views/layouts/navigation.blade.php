@@ -45,7 +45,7 @@
     })"
     x-init="init()"
     :class="navClass"
-    class="border-b border-gray-100 dark:border-gray-700"
+    class="border-b border-gray-100 dark:border-gray-700 {{ ($roleColors[$role] ?? $defaultNavColor) }}"
 >
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -11,6 +11,7 @@
         deleteId: null,
         createMegasReadonly: false,
         editMegasReadonly: false,
+        isLoading: false,
         form: { id: null, numero_servicio: '', nombre_cliente: '', domicilio: '', comunidad: '', telefono: '', uso: '', megas: '', tecnologia: '', dispositivo: '', tarifa: '', estado_id: '', estatus_servicio_id: '' },
         selectRow(row) {
             this.selected = row.id;
@@ -80,7 +81,7 @@
             </div>
         @endif
         <div class="flex justify-between items-center mb-4 gap-3">
-                <form action="{{ route('admin.clientes.index') }}" method="GET" class="flex items-center gap-2">
+                <form action="{{ route('admin.clientes.index') }}" method="GET" class="flex items-center gap-2" x-on:submit="isLoading = true">
                     <input
                         type="text"
                         name="q"
@@ -143,6 +144,12 @@
             </div>
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-gray-100">
+                    <style>
+                        .skel{position:relative;overflow:hidden;background-color:rgba(229,231,235,var(--tw-bg-opacity,1));border-radius:4px}
+                        .skel::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:skel-shimmer 1.4s infinite}
+                        @keyframes skel-shimmer{100%{transform:translateX(100%)}}
+                        @media (prefers-reduced-motion:reduce){.skel::after{animation:none}}
+                    </style>
                     @if (session('status') === 'cliente-creado')
                         <div class="mb-4 p-3 rounded bg-emerald-600 text-white text-sm">
                             Cliente creado correctamente.
@@ -159,22 +166,48 @@
                         </div>
                     @endif
 
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <div class="overflow-x-auto" style="scrollbar-gutter: stable both-edges;">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700" style="table-layout:fixed">
+                            <colgroup>
+                                <col style="width:8%">
+                                <col style="width:18%">
+                                <col style="width:18%">
+                                <col style="width:14%">
+                                <col style="width:8%">
+                                <col style="width:8%">
+                                <col style="width:10%">
+                                <col style="width:10%">
+                                <col style="width:6%">
+                            </colgroup>
                             <thead class="bg-gray-50 dark:bg-gray-700/40">
                                 <tr>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Número de Cliente</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nombre</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Dirección</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Número Telefónico</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tecnología</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Megas</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paquete</th>
-                                    <th class="px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-36 sm:w-40">Estatus</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
+                                    <th class="h-10 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Número de Cliente</th>
+                                    <th class="h-10 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nombre</th>
+                                    <th class="h-10 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Dirección</th>
+                                    <th class="h-10 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Número Telefónico</th>
+                                    <th class="h-10 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tecnología</th>
+                                    <th class="h-10 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Megas</th>
+                                    <th class="h-10 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paquete</th>
+                                    <th class="h-10 px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-36 sm:w-40">Estatus</th>
+                                    <th class="h-10 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            <tbody x-show="isLoading" aria-busy="true" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700" x-cloak>
+                                @foreach(range(1,8) as $i)
+                                <tr>
+                                    <td class="h-10 px-4 py-2 align-middle"><div class="skel h-4 w-12"></div></td>
+                                    <td class="h-10 px-4 py-2 align-middle"><div class="skel h-4 w-24"></div></td>
+                                    <td class="h-10 px-4 py-2 align-middle"><div class="skel h-4 w-28"></div></td>
+                                    <td class="h-10 px-4 py-2 align-middle"><div class="skel h-4 w-24"></div></td>
+                                    <td class="h-10 px-4 py-2 align-middle"><div class="skel h-4 w-12"></div></td>
+                                    <td class="h-10 px-4 py-2 align-middle"><div class="skel h-4 w-10"></div></td>
+                                    <td class="h-10 px-4 py-2 align-middle"><div class="skel h-4 w-16"></div></td>
+                                    <td class="h-10 px-2 py-2 align-middle"><div class="skel h-6 w-24"></div></td>
+                                    <td class="h-10 px-4 py-2 text-center align-middle"><div class="skel h-7 w-16 inline-block"></div></td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                            <tbody x-show="!isLoading" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                 @forelse ($clientes as $c)
                                     <tr
                                         x-on:click="selectRow(@js([
@@ -196,8 +229,8 @@
                                         :class="selected === {{ $c->id }} ? 'bg-red-50 dark:bg-gray-700/40' : ''"
                                         class="cursor-pointer"
                                     >
-                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">{{ $c->numero_servicio }}</td>
-                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 align-middle">
+                                        <td class="h-10 px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 align-middle">{{ $c->numero_servicio }}</td>
+                                        <td class="h-10 px-4 py-2 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 align-middle">
                                             <span class="inline-flex items-center gap-2 leading-none">
                                                 <span
                                                     class="inline-block w-2 h-2 rounded-full {{ !is_null($c->fecha_contratacion) ? 'bg-emerald-600' : 'bg-gray-300 dark:bg-gray-600' }}"
@@ -205,24 +238,24 @@
                                                 <span>{{ $c->nombre_cliente }}</span>
                                             </span>
                                         </td>
-                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{{ $c->domicilio ?? '—' }}</td>
-                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{{ $c->telefono ?? '—' }}</td>
-                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                                        <td class="h-10 px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 align-middle">{{ $c->domicilio ?? '—' }}</td>
+                                        <td class="h-10 px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 align-middle">{{ $c->telefono ?? '—' }}</td>
+                                        <td class="h-10 px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 align-middle">
                                             @if(!is_null($c->tecnologia))
                                                 {{ strtoupper($c->tecnologia) }}
                                             @else
                                                 —
                                             @endif
                                         </td>
-                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{{ $c->megas ?? '—' }}</td>
-                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                                        <td class="h-10 px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 align-middle">{{ $c->megas ?? '—' }}</td>
+                                        <td class="h-10 px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 align-middle">
                                             @if(!is_null($c->tarifa))
                                                 ${{ number_format((float) $c->tarifa, 2) }}
                                             @else
                                                 —
                                             @endif
                                         </td>
-                                        <td class="px-2 py-2 whitespace-normal text-sm align-top">
+                                        <td class="h-10 px-2 py-2 whitespace-normal text-sm align-middle">
                                             <div class="flex flex-col leading-tight">
                                                 <span class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 tracking-wide uppercase">ESTATUS</span>
                                                 <span class="mt-0.5 inline-flex items-center px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200">
@@ -230,7 +263,7 @@
                                                 </span>
                                             </div>
                                         </td>
-                                        <td class="px-4 py-2 whitespace-nowrap text-sm text-center space-x-2">
+                                        <td class="h-10 px-4 py-2 whitespace-nowrap text-sm text-center space-x-2 align-middle">
                                             <a
                                                 href="{{ route('admin.clientes.show', $c->id) }}"
                                                 class="btn btn-warning btn-sm"

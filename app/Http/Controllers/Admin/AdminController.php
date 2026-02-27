@@ -21,6 +21,34 @@ class AdminController extends Controller
         return view('admin.pagos');
     }
 
+    public function pagosLookup(Request $request)
+    {
+        $numero = (string) $request->query('numero');
+        if ($numero === '' || !ctype_digit($numero)) {
+            return response()->json(['ok' => false, 'message' => 'Número inválido'], 422);
+        }
+        $u = \App\Models\Usuario::with(['estado', 'estatusServicio'])->where('numero_servicio', $numero)->first();
+        if (!$u) {
+            return response()->json(['ok' => false, 'message' => 'No encontrado'], 404);
+        }
+        return response()->json([
+            'ok' => true,
+            'data' => [
+                'numero_servicio' => $u->numero_servicio,
+                'nombre_cliente' => $u->nombre_cliente,
+                'domicilio' => $u->domicilio,
+                'telefono' => $u->telefono,
+                'paquete' => $u->paquete,
+                'tarifa' => $u->tarifa,
+                'uso' => $u->uso,
+                'tecnologia' => $u->tecnologia,
+                'megas' => $u->megas,
+                'estado' => optional($u->estado)->nombre,
+                'estatus' => optional($u->estatusServicio)->nombre,
+            ],
+        ]);
+    }
+
     public function clientes(Request $request)
     {
         $q = trim((string) $request->input('q'));
