@@ -52,6 +52,7 @@
                             <button class="btn btn-secondary" @click="toggleEditor()"
                                 x-text="editMode ? 'Cerrar editor de plantilla' : 'Editar plantilla'"></button>
                             <button class="btn btn-secondary" @click="resetLayout()">Restablecer</button>
+                            <!-- <button class="btn btn-secondary" @click="saveAsDefault()">Guardar como predeterminado</button> -->
                             <button class="btn btn-primary" @click="prepareAndPrint()">Exportar a PDF</button>
                         </div>
                     </div>
@@ -107,6 +108,42 @@
                                 </template>
                             </div>
                             @endif
+                            @php $cuenta = public_path('images/cuenta.png'); @endphp
+                            @if (file_exists($cuenta))
+                            <div class="abs-img"
+                                 :style="'left:'+layout.cuenta.left+'px; top:'+layout.cuenta.top+'px; width:'+layout.cuenta.w+'px'"
+                                 :class="editMode ? 'draggable' : ''"
+                                 @mousedown="startDrag('cuenta', $event)" @touchstart.prevent="startDrag('cuenta', $event.touches[0])">
+                                <img src="{{ asset('images/cuenta.png') }}" class="block w-full h-auto" alt="Cuenta bancaria">
+                                <template x-if="editMode">
+                                    <span class="resize-handle" @mousedown.stop="startResize('cuenta', $event)" @touchstart.stop.prevent="startResize('cuenta', $event.touches[0])"></span>
+                                </template>
+                            </div>
+                            @endif
+                            @php $reportes = public_path('images/reportes.png'); @endphp
+                            @if (file_exists($reportes))
+                            <div class="abs-img"
+                                 :style="'left:'+layout.reportes.left+'px; top:'+layout.reportes.top+'px; width:'+layout.reportes.w+'px'"
+                                 :class="editMode ? 'draggable' : ''"
+                                 @mousedown="startDrag('reportes', $event)" @touchstart.prevent="startDrag('reportes', $event.touches[0])">
+                                <img src="{{ asset('images/reportes.png') }}" class="block w-full h-auto" alt="Reportes teléfono">
+                                <template x-if="editMode">
+                                    <span class="resize-handle" @mousedown.stop="startResize('reportes', $event)" @touchstart.stop.prevent="startResize('reportes', $event.touches[0])"></span>
+                                </template>
+                            </div>
+                            @endif
+                            @php $wha = public_path('images/wha.png'); @endphp
+                            @if (file_exists($wha))
+                            <div class="abs-img"
+                                 :style="'left:'+layout.wha.left+'px; top:'+layout.wha.top+'px; width:'+layout.wha.w+'px'"
+                                 :class="editMode ? 'draggable' : ''"
+                                 @mousedown="startDrag('wha', $event)" @touchstart.prevent="startDrag('wha', $event.touches[0])">
+                                <img src="{{ asset('images/wha.png') }}" class="block w-full h-auto" alt="WhatsApp">
+                                <template x-if="editMode">
+                                    <span class="resize-handle" @mousedown.stop="startResize('wha', $event)" @touchstart.stop.prevent="startResize('wha', $event.touches[0])"></span>
+                                </template>
+                            </div>
+                            @endif
                         </div>
 
                         <div class="receipt">
@@ -136,7 +173,7 @@
 
                         <div class="divider-line"></div>
 
-                        <div class="receipt">
+                        <div class="receipt client-receipt">
                             <div class="text-right text-xs text-gray-500">Copia: CLIENTE</div>
                             <div class="receipt-head"></div>
                             <div class="id-band">
@@ -169,17 +206,21 @@
     <style>
         @media print{
             nav, header, .not-print{display:none!important}
-            main, body{background:#fff!important;margin:0!important;padding:0!important}
-            .print-sheet{padding:0!important;margin:0!important;page-break-inside:avoid}
+            main, body{background:#fff!important;margin:0!important;padding:0!important;width:210mm;height:297mm;overflow:hidden}
+            .print-sheet{padding:0!important;margin:0!important;page-break-inside:avoid;break-inside:avoid;break-after:avoid}
             .py-6,.py-12{padding:0!important}
             .p-6{padding:0!important}
             .shadow-sm,.sm\:rounded-lg,.overflow-hidden{box-shadow:none!important;border-radius:0!important;overflow:visible!important}
+            .receipt{border:0!important;border-radius:0!important}
+            .divider-line{display:none!important}
+            .print-sheet::after{content:'';position:absolute;left:0;right:0;top:calc(50% - 0.3mm);height:0.6mm;background:#111;z-index:50}
         }
-        .print-sheet{position:relative;max-width:820px;margin-inline:auto;transform-origin:top center;height:277mm}
+        .print-sheet{position:relative;width:210mm;max-width:none;margin:0;transform:none;height:297mm;background:#fff}
         .sheet-abs{position:absolute;inset:0;z-index:20;pointer-events:none}
-        .receipt{position:relative;height:calc((277mm - 0.6mm)/2);border:1px solid #d1d5db;border-radius:8px;padding:6mm;background:#fff;overflow:hidden}
+        .receipt{position:relative;height:calc((297mm - 0.6mm)/2);border:1px solid #d1d5db;border-radius:8px;padding:6mm;background:#fff;overflow:hidden}
         .divider-line{height:0.6mm;background:#111;margin:0}
-        .id-band{background:#fde047;border:1px solid #eab308;border-radius:4px;padding:4px 8px;display:flex;gap:10px;margin:10px 0}
+        .client-receipt{padding-top:8mm}
+        .id-band{background:#fde047;border:1px solid #eab308;border-radius:4px;padding:4px 8px;display:inline-flex;gap:10px;margin:10px 0;width:fit-content;max-width:60%}
         .receipt-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;font-size:0.95rem}
         .receipt-head img{max-height:120px;object-fit:contain}
         .logo-center{display:inline-block;max-width:680px;width:90%}
@@ -187,7 +228,7 @@
         .draggable{outline:1px dashed #888;pointer-events:auto;cursor:move;background:transparent}
         .text-box{max-width:680px}
         .resize-handle{position:absolute;right:-6px;bottom:-6px;width:14px;height:14px;background:#fff;border:1px solid #666;border-radius:2px;box-shadow:0 0 0 2px rgba(255,255,255,.6);cursor:se-resize}
-        @page{size:A4;margin:10mm}
+        @page{size:A4;margin:0}
         html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
     </style>
 
@@ -218,19 +259,48 @@
             const cents = Math.round((num - Math.floor(num))*100).toString().padStart(2,'0');
             return txt + ' PESOS ' + cents + '/100 M.N.';
         };
-        const defaultLayout = {
-            logo:{ left:60, top:8, w:680 },
-            mes:{ left:300, top:120, w:220 },
-            sello:{ left:20, top:440, w:140 },
-            alerta:{ left:560, top:460, w:220 }
-        };
+        const defaultLayout = (()=>{
+            const baseDefaults = {
+                logo:{ left:60, top:130, w:680 },      // centrado cercano a la división
+                mes:{ left:580, top:118, w:180 },      // texto del mes a la derecha
+                sello:{ left:600, top:40, w:120 },     // sello parte superior derecha
+                alerta:{ left:260, top:146, w:280 },   // banda de contacto bajo el logo
+                cuenta:{ left:120, top:430, w:460 },   // datos de cuenta
+                reportes:{ left:140, top:470, w:420 },  // teléfono de reportes
+                wha:{ left:560, top:460, w:180 }
+            };
+            const d = localStorage.getItem('reciboLayoutDefault');
+            if (d) {
+                try {
+                    const parsed = JSON.parse(d);
+                    const merged = JSON.parse(JSON.stringify(baseDefaults));
+                    if (parsed && typeof parsed === 'object') {
+                        Object.keys(parsed).forEach(k=>{
+                            merged[k] = Object.assign(merged[k]||{}, parsed[k]||{});
+                        });
+                    }
+                    return merged;
+                } catch(_) {}
+            }
+            return baseDefaults;
+        })();
         return {
             form:{ numero:'', recargo:'no', pago_anterior:0, metodo:'', cobro:'' },
             datos:{ nombre:'', mensualidad:0 },
             totales:{ total:0, letra:'' },
             error:'',
             editMode:false,
-            layout: JSON.parse(localStorage.getItem('reciboLayout') || 'null') || defaultLayout,
+            defaultLayoutRef: JSON.parse(JSON.stringify(defaultLayout)),
+            layout: (()=>{
+                const saved = JSON.parse(localStorage.getItem('reciboLayout') || 'null');
+                const base = JSON.parse(JSON.stringify(defaultLayout));
+                if (saved && typeof saved === 'object') {
+                    Object.keys(saved).forEach(k=>{
+                        base[k] = Object.assign(base[k]||{}, saved[k]||{});
+                    });
+                }
+                return base;
+            })(),
             dragging:null, dragRef:null, dragStart:{x:0,y:0}, orig:{x:0,y:0},
             _moveB:null, _upB:null, _moveTouchB:null,
             resizing:false, resizeKey:null, resizeStart:{x:0,w:0}, _resizeB:null, _resizeTouchB:null,
@@ -265,11 +335,15 @@
                     this.saveLayout();
                 }
             },
-            resetLayout(){ this.layout = JSON.parse(JSON.stringify(defaultLayout)); this.saveLayout(); },
+            resetLayout(){ this.layout = JSON.parse(JSON.stringify(this.defaultLayoutRef)); this.saveLayout(); },
+            saveAsDefault(){
+                localStorage.setItem('reciboLayoutDefault', JSON.stringify(this.layout));
+                this.defaultLayoutRef = JSON.parse(JSON.stringify(this.layout));
+            },
             saveLayout(){ localStorage.setItem('reciboLayout', JSON.stringify(this.layout)); },
             startDrag(key, e){
                 if(!this.editMode) return;
-                if(this.resizing) return; // evita arrastre si está redimensionando
+                if(this.resizing) return; 
                 this.dragging = key;
                 this.dragRef = this.$refs.sheet;
                 this.dragStart = { x: e.clientX, y: e.clientY };
@@ -321,21 +395,7 @@
             },
             prepareAndPrint(){
                 const sheet = document.querySelector('.print-sheet');
-                if(!sheet){ window.print(); return; }
-                // Target printable height in px for A4 with 10mm margins (approx at 96dpi)
-                const targetPx = Math.round(277 * 96 / 25.4); // 277mm usable height
-                let scale = 1.0;
-                sheet.style.transform = 'scale(1)';
-                // Measure and shrink until it fits
-                const getHeight = () => sheet.getBoundingClientRect().height;
-                let h = getHeight();
-                let guard = 0;
-                while (h > targetPx && scale > 0.82 && guard < 12){
-                    scale -= 0.02;
-                    sheet.style.transform = `scale(${scale})`;
-                    h = getHeight();
-                    guard++;
-                }
+                if(sheet){ sheet.style.transform = 'none'; }
                 window.print();
             },
             async buscar(){
