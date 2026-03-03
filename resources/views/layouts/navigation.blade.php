@@ -33,6 +33,7 @@
 
     $pagosActive = request()->routeIs('admin.pagos.*');
     $recibosActive = request()->routeIs('pagos.recibos*');
+    // historial link removido de navbar a petición del usuario
 
     $dashboardActive = (
         request()->routeIs('admin.*') ||

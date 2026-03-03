@@ -17,6 +17,30 @@ class AdminController extends Controller
         return view('admin.index');
     }
 
+    public function pagosPagoAnterior(Request $request)
+    {
+        $numero = (string) $request->query('numero');
+        if ($numero === '' || !ctype_digit($numero)) {
+            return response()->json(['ok' => false, 'message' => 'Número inválido'], 422);
+        }
+        $f = \App\Models\Factura::where('numero_servicio', $numero)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->first();
+        if (!$f) {
+            return response()->json(['ok' => false, 'message' => 'Sin pagos anteriores'], 404);
+        }
+        return response()->json([
+            'ok' => true,
+            'data' => [
+                'monto' => (float) $f->total,
+                'fecha' => optional($f->created_at)->toDateString(),
+                'created_at' => $f->created_at,
+                'reference_number' => $f->reference_number,
+            ],
+        ]);
+    }
+
     public function pagos()
     {
         return view('admin.pagos');
@@ -56,6 +80,9 @@ class AdminController extends Controller
         ]);
 
         return \Illuminate\Support\Facades\DB::transaction(function () use ($request) {
+            $periodo = now()->format('Y-m');
+            $numero = $request->input('numero_servicio');
+            $usuarioId = $request->input('usuario_id');
             $row = \Illuminate\Support\Facades\DB::table('invoice_sequences')
                 ->where('name', 'facturas')
                 ->lockForUpdate()
@@ -72,6 +99,7 @@ class AdminController extends Controller
             $payload = $request->input('payload', []);
             $fingerprintData = [
                 'numero_servicio' => $request->input('numero_servicio'),
+                'periodo' => $periodo,
                 'total' => round((float)$request->input('total', 0), 2),
                 'nombre' => $payload['nombre'] ?? null,
                 'mensualidad' => $payload['mensualidad'] ?? null,
@@ -93,12 +121,59 @@ class AdminController extends Controller
                 ->orderBy('id', 'desc')
                 ->first();
             if ($existing) {
+                \Illuminate\Support\Facades\DB::table('payment_attempts')->insert([
+                    'usuario_id' => $usuarioId,
+                    'numero_servicio' => $numero,
+                    'periodo' => $periodo,
+                    'status' => 'success',
+                    'reason' => 'Reimpresión / reuso de factura',
+                    'created_by' => optional($request->user())->id,
+                    'payload' => json_encode($request->input('payload', [])),
+                    'attempted_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
                 return response()->json([
                     'ok' => true,
                     'referencia' => $existing->reference_number,
                     'id' => $existing->id,
                     'reused' => true,
                 ]);
+            }
+            // Validación de duplicados por periodo solo si no es reimpresión
+            if (($numero !== null && $numero !== '') || !empty($usuarioId)) {
+                $dup = \App\Models\Factura::where('periodo', $periodo)
+                    ->where(function($q) use ($numero, $usuarioId){
+                        if ($numero !== null && $numero !== '') {
+                            $q->where('numero_servicio', $numero);
+                        }
+                        if (!empty($usuarioId)) {
+                            $q->orWhere('usuario_id', $usuarioId);
+                        }
+                    })
+                    ->first();
+            } else {
+                $dup = null;
+            }
+            if ($dup) {
+                \Illuminate\Support\Facades\DB::table('payment_attempts')->insert([
+                    'usuario_id' => $usuarioId,
+                    'numero_servicio' => $numero,
+                    'periodo' => $periodo,
+                    'status' => 'duplicate',
+                    'reason' => 'Pago ya registrado para este periodo',
+                    'created_by' => optional($request->user())->id,
+                    'payload' => json_encode($request->input('payload', [])),
+                    'attempted_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+                return response()->json([
+                    'ok' => false,
+                    'message' => 'Ya existe un pago registrado para este periodo',
+                    'referencia' => $dup->reference_number,
+                    'periodo' => $periodo,
+                ], 409);
             }
             $next = (int) $row->current_value + 1;
             \Illuminate\Support\Facades\DB::table('invoice_sequences')
@@ -110,6 +185,7 @@ class AdminController extends Controller
                 $factura->reference_number = $next;
                 $factura->usuario_id = $request->input('usuario_id');
                 $factura->numero_servicio = $request->input('numero_servicio');
+                $factura->periodo = $periodo;
                 $factura->total = $request->input('total', 0);
                 $factura->payload = $payload;
                 $factura->created_by = $request->user()?->id;
@@ -127,6 +203,19 @@ class AdminController extends Controller
                 }
                 throw $e;
             }
+
+            \Illuminate\Support\Facades\DB::table('payment_attempts')->insert([
+                'usuario_id' => $usuarioId,
+                'numero_servicio' => $numero,
+                'periodo' => $periodo,
+                'status' => 'success',
+                'reason' => 'Factura creada',
+                'created_by' => optional($request->user())->id,
+                'payload' => json_encode($request->input('payload', [])),
+                'attempted_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
             return response()->json([
                 'ok' => true,
@@ -180,6 +269,143 @@ class AdminController extends Controller
         ]);
     }
 
+    public function pagosHistorial(Request $request)
+    {
+        $from = $request->query('from');
+        $to = $request->query('to');
+        $cliente = trim((string) $request->query('cliente', ''));
+        $perPage = 50;
+        $query = \App\Models\Factura::withTrashed()
+            ->orderByDesc('id');
+        if ($from) {
+            $query->whereDate('created_at', '>=', $from);
+        }
+        if ($to) {
+            $query->whereDate('created_at', '<=', $to);
+        }
+        if ($cliente !== '') {
+            $query->where(function ($q) use ($cliente) {
+                if (ctype_digit($cliente)) {
+                    $q->where('numero_servicio', $cliente);
+                } else {
+                    $q->orWhereRaw("JSON_EXTRACT(payload, '$.nombre') LIKE ?", ['%' . $cliente . '%']);
+                }
+            });
+        }
+        $paginator = $query->paginate($perPage)->appends($request->query());
+        $ids = $paginator->getCollection()->pluck('created_by')->filter()->unique()->all();
+        $users = \App\Models\User::whereIn('id', $ids)->get(['id', 'name'])->keyBy('id');
+        $rows = $paginator->getCollection()->map(function ($f) use ($users) {
+            $nombre = null;
+            $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+            if (is_array($payload) && array_key_exists('nombre', $payload)) {
+                $nombre = $payload['nombre'];
+            }
+            return (object)[
+                'id' => $f->id,
+                'reference_number' => $f->reference_number,
+                'numero_servicio' => $f->numero_servicio,
+                'total' => $f->total,
+                'cliente' => $nombre,
+                'created_at' => $f->created_at,
+                'deleted_at' => $f->deleted_at,
+                'status' => $f->deleted_at ? 'Cancelado' : 'Vigente',
+                'user_name' => optional($users->get($f->created_by))->name,
+            ];
+        });
+        return view('admin.pagos_historial', [
+            'rows' => $rows,
+            'paginator' => $paginator,
+            'from' => $from,
+            'to' => $to,
+            'cliente' => $cliente,
+        ]);
+    }
+
+    public function pagosHistorialExport(Request $request)
+    {
+        $format = strtolower((string) $request->query('format', 'csv'));
+        $from = $request->query('from');
+        $to = $request->query('to');
+        $cliente = trim((string) $request->query('cliente', ''));
+        $query = \App\Models\Factura::withTrashed()->orderByDesc('id');
+        if ($from) {
+            $query->whereDate('created_at', '>=', $from);
+        }
+        if ($to) {
+            $query->whereDate('created_at', '<=', $to);
+        }
+        if ($cliente !== '') {
+            $query->where(function ($q) use ($cliente) {
+                if (ctype_digit($cliente)) {
+                    $q->where('numero_servicio', $cliente);
+                } else {
+                    $q->orWhereRaw("JSON_EXTRACT(payload, '$.nombre') LIKE ?", ['%' . $cliente . '%']);
+                }
+            });
+        }
+        $items = $query->get();
+        if ($format === 'csv' || $format === 'excel') {
+            $headers = [
+                'Content-Type' => 'text/csv; charset=UTF-8',
+                'Content-Disposition' => 'attachment; filename="historial_recibos.csv"',
+            ];
+            $callback = function () use ($items) {
+                $out = fopen('php://output', 'w');
+                fputcsv($out, ['Folio', 'Fecha', 'Monto', 'Cliente', 'Número', 'Estado', 'Usuario']);
+                $userNames = \App\Models\User::whereIn('id', $items->pluck('created_by')->filter()->unique())->pluck('name', 'id');
+                foreach ($items as $f) {
+                    $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+                    $cliente = is_array($payload) ? ($payload['nombre'] ?? '') : '';
+                    fputcsv($out, [
+                        $f->reference_number,
+                        optional($f->created_at)->format('Y-m-d H:i'),
+                        number_format((float)$f->total, 2, '.', ''),
+                        $cliente,
+                        $f->numero_servicio,
+                        $f->deleted_at ? 'Cancelado' : 'Vigente',
+                        $userNames[$f->created_by] ?? '',
+                    ]);
+                }
+                fclose($out);
+            };
+            return response()->stream($callback, 200, $headers);
+        }
+        return view('admin.pagos_historial_pdf', [
+            'items' => $items,
+            'from' => $from,
+            'to' => $to,
+            'cliente' => $cliente,
+        ]);
+    }
+
+    public function pagosFacturaCancel(Request $request, int $id)
+    {
+        $request->validate([
+            'motivo' => ['required', 'string', 'max:255'],
+        ]);
+        if ($request->user()?->role !== 'admin') {
+            abort(403);
+        }
+        $f = \App\Models\Factura::withTrashed()->findOrFail($id);
+        if ($f->deleted_at) {
+            return back()->with('status', 'La factura ya estaba cancelada.');
+        }
+        $f->delete();
+        \Illuminate\Support\Facades\DB::table('payment_attempts')->insert([
+            'usuario_id' => $f->usuario_id,
+            'numero_servicio' => $f->numero_servicio,
+            'periodo' => $f->periodo,
+            'status' => 'canceled',
+            'reason' => $request->input('motivo'),
+            'created_by' => optional($request->user())->id,
+            'payload' => json_encode($f->payload),
+            'attempted_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        return back()->with('status', 'Recibo cancelado correctamente.');
+    }
     public function pagosLookup(Request $request)
     {
         $numero = (string) $request->query('numero');

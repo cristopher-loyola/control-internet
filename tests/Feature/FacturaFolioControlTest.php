@@ -81,14 +81,10 @@ class FacturaFolioControlTest extends TestCase
             'payload' => $this->payload(),
         ])->assertOk()->json('referencia');
 
-        $r2 = $this->postJson(route('admin.pagos.facturas.store'), [
+        $this->postJson(route('admin.pagos.facturas.store'), [
             'numero_servicio' => '5678',
             'total' => 350.00,
             'payload' => $this->payload(['mensualidad' => 350.00]),
-        ])->assertOk()->json('referencia');
-
-        $this->assertNotSame($r1, $r2);
-        $this->assertSame($r1 + 1, $r2);
+        ])->assertStatus(409);
     }
 }
-

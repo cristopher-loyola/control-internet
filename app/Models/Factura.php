@@ -14,6 +14,7 @@ class Factura extends Model
         'reference_number',
         'usuario_id',
         'numero_servicio',
+        'periodo',
         'total',
         'payload',
         'created_by',

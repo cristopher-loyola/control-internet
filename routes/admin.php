@@ -16,6 +16,10 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/pagos/facturas', [AdminController::class, 'pagosFacturasIndex'])->name('pagos.facturas.index');
         Route::get('/pagos/facturas/{id}', [AdminController::class, 'pagosFacturaShow'])->name('pagos.facturas.show');
         Route::get('/pagos/folio/{ref}', [AdminController::class, 'pagosFacturaByFolio'])->name('pagos.facturas.by_folio');
+        Route::get('/pagos/previo', [AdminController::class, 'pagosPagoAnterior'])->name('pagos.prev');
+        Route::get('/pagos/historial', [AdminController::class, 'pagosHistorial'])->name('pagos.historial');
+        Route::get('/pagos/historial/export', [AdminController::class, 'pagosHistorialExport'])->name('pagos.historial.export');
+        Route::post('/pagos/facturas/{id}/cancel', [AdminController::class, 'pagosFacturaCancel'])->name('pagos.facturas.cancel');
         Route::get('/clientes', [AdminController::class, 'clientes'])->name('clientes.index');
         Route::post('/clientes', [AdminController::class, 'clientesStore'])->name('clientes.store');
         Route::post('/clientes/editar', [AdminController::class, 'clientesEditStore'])->name('clientes.edit');

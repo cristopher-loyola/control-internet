@@ -48,12 +48,12 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="flex items-end justify-end md:justify-start gap-2">
-                            <button class="btn btn-secondary" @click="openHistorial()">Historial</button>
+                        <div class="flex items-end justify-end md:justify-start gap-2 not-print">
+                            <a class="btn btn-secondary" href="{{ route('admin.pagos.historial') }}">Historial</a>
                             <!-- <button class="btn btn-secondary" @click="toggleEditor()"
-                                x-text="editMode ? 'Cerrar editor' : 'Editar plantilla'"></button> -->
-                            <button class="btn btn-secondary" x-show="editMode" @click="resetLayout()">Restablecer</button>
-                            <button class="btn btn-secondary" x-show="editMode" @click="saveAsDefault()">Guardar cambios</button>
+                                x-text="editMode ? 'Cerrar editor de plantilla' : 'Editar plantilla'"></button>
+                            <button class="btn btn-secondary" @click="resetLayout()">Restablecer</button> -->
+                            <!-- <button class="btn btn-secondary" @click="saveAsDefault()">Guardar como predeterminado</button> -->
                             <button class="btn btn-danger" @click="openConfirm()">Exportar a PDF</button>
                         </div>
                     </div>
@@ -68,22 +68,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div x-show="historialOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 not-print">
-                            <div class="bg-white dark:bg-gray-800 rounded shadow p-4 w-[480px] max-w-[92vw]">
-                                <div class="flex items-center justify-between mb-3">
-                                    <div class="text-base font-semibold">Reimprimir por folio</div>
-                                    <button class="btn btn-secondary btn-sm" @click="historialOpen=false">Cerrar</button>
-                                </div>
-                                <div class="space-y-3">
-                                    <label class="text-xs uppercase text-gray-500 dark:text-gray-400 block">Ingresa folio</label>
-                                    <input type="number" class="form-input w-full" x-model.number="busquedaFolio" placeholder="Ej. 12345">
-                                    <div class="flex justify-end gap-2">
-                                        <button class="btn btn-primary" @click="buscarPorFolio()">Reimprimir</button>
-                                    </div>
-                                    <p class="text-sm text-red-600" x-text="folioError" x-show="folioError"></p>
-                                </div>
-                            </div>
-                        </div>
+                        
                         <template x-if="editMode">
                             <div class="text-xs text-gray-500 mb-2 not-print">Arrastra las imágenes para acomodarlas. Se guardará tu plantilla.</div>
                         </template>
@@ -191,6 +176,7 @@
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
                                 <div>Su pago anterior</div><div x-text="moneda(form.pago_anterior || 0)"></div>
+                                <div>Fecha de pago anterior</div><div x-text="pagoAnteriorFecha || '—'"></div>
                                 <div>Total a pagar en número</div><div x-text="moneda(totales.total)"></div>
                                 <div class="col-span-1">Total a pagar en letra</div><div class="col-span-1" x-text="totales.letra"></div>
                                 <div>Método de pago</div><div x-text="form.metodo || '—'"></div>
@@ -221,6 +207,7 @@
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
                                 <div>Su pago anterior</div><div x-text="moneda(form.pago_anterior || 0)"></div>
+                                <div>Fecha de pago anterior</div><div x-text="pagoAnteriorFecha || '—'"></div>
                                 <div>Total a pagar en número</div><div x-text="moneda(totales.total)"></div>
                                 <div class="col-span-1">Total a pagar en letra</div><div class="col-span-1" x-text="totales.letra"></div>
                                 <div>Método de pago</div><div x-text="form.metodo || '—'"></div>
@@ -319,14 +306,13 @@
         })();
         return {
             form:{ numero:'', recargo:'no', pago_anterior:0, metodo:'', cobro:'' },
+            pagoAnteriorFecha:'',
             datos:{ nombre:'', mensualidad:0 },
             totales:{ total:0, letra:'' },
             ref:{ numero:null, id:null },
             saveConfirmOpen:false,
-            historialOpen:false,
+            isPrinting:false,
             historial:[],
-            busquedaFolio:null,
-            folioError:'',
             printTimerId:null,
             layoutSaveTimer:null,
             error:'',
@@ -351,6 +337,7 @@
             mesEnCursoCompleto(){ const d=new Date(); return d.toLocaleDateString('es-MX',{month:'long'})+' de '+d.getFullYear() },
             fecha(){ return new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) },
             hora(){ return new Date().toLocaleTimeString('es-MX') },
+            fechaLocal(d){ try{ if(!d) return ''; const dt=new Date(d); return dt.toLocaleDateString('es-MX',{year:'numeric',month:'long',day:'numeric'});}catch(_){ return String(d) } },
             toggleEditor(){
                 this.editMode = !this.editMode;
                 if(this.editMode){
@@ -424,8 +411,82 @@
                 this.layoutReady = true;
             },
             saveLayout(){ localStorage.setItem('reciboLayout', JSON.stringify(this.layout)); },
-            init(){
-                this.loadServerLayout();
+            async init(){
+                await this.loadServerLayout();
+                try{
+                    const params = new URLSearchParams(window.location.search);
+                    const folio = Number(params.get('folio') || '');
+                    if(folio && folio>0){
+                        (async ()=>{
+                            try{
+                                const r = await fetch('{{ route('admin.pagos.facturas.by_folio', ['ref'=>'__REF__']) }}'.replace('__REF__', folio),{headers:{'Accept':'application/json'}});
+                                const j = await r.json();
+                                if(!r.ok || !j?.ok){ return }
+                                const d = j.data;
+                                this.ref.numero = d.reference_number;
+                                this.ref.id = d.id;
+                                this.form.numero = d.numero_servicio || '';
+                                const p = d.payload || {};
+                                this.datos.nombre = p.nombre || '';
+                                this.datos.mensualidad = Number(p.mensualidad)||0;
+                                this.form.recargo = p.recargo || 'no';
+                                this.form.pago_anterior = p.pago_anterior || 0;
+                                this.form.metodo = p.metodo || '';
+                                this.form.cobro = p.cobro || '';
+                                this.recalcular();
+                                await this.doPrintOnce();
+                            }catch(_){}
+                        })();
+                    }
+                }catch(_){}
+            },
+            async ensurePrintableReady(){
+                const sheet = document.querySelector('.print-sheet');
+                if(sheet){ sheet.style.transform = 'none'; }
+                const isVisible = (el)=>{
+                    if(!el) return false;
+                    const st = getComputedStyle(el);
+                    return st.display!=='none' && st.visibility!=='hidden' && el.offsetWidth>0 && el.offsetHeight>0;
+                };
+                let tries = 0;
+                while((!this.layoutReady || !isVisible(sheet)) && tries < 50){
+                    tries++;
+                    await new Promise(r=>setTimeout(r,20));
+                }
+                if(!this.layoutReady || !isVisible(sheet)){
+                    throw new Error('print-sheet no está listo/visible');
+                }
+                await this.$nextTick();
+                await this.waitForImages();
+                if(document.fonts && document.fonts.ready){
+                    try{ await document.fonts.ready }catch(_){}
+                }
+                await new Promise(r=>setTimeout(r,50));
+            },
+            async doPrintOnce(){
+                if(this.isPrinting) return;
+                this.isPrinting = true;
+                const handler = ()=>{ this.isPrinting=false; window.removeEventListener('afterprint', handler); };
+                window.addEventListener('afterprint', handler, {once:true});
+                try{
+                    await this.ensurePrintableReady();
+                    setTimeout(()=>window.print(),0);
+                }catch(e){
+                    this.isPrinting=false;
+                    this.error = 'No se pudo preparar la impresión. Intenta de nuevo.';
+                }
+            },
+            async waitForImages(){
+                const sheet = document.querySelector('.print-sheet');
+                if(!sheet) return;
+                const imgs = Array.from(sheet.querySelectorAll('img'));
+                await Promise.all(imgs.map(img=>{
+                    if(img.complete) return Promise.resolve();
+                    return new Promise(res=>{
+                        img.addEventListener('load', res, {once:true});
+                        img.addEventListener('error', res, {once:true});
+                    });
+                }));
             },
             startDrag(key, e){
                 if(!this.editMode) return;
@@ -484,53 +545,35 @@
                 if(!n) return '';
                 return String(n).padStart(8,'0');
             },
+            async fetchPagoAnterior(){
+                this.pagoAnteriorFecha = '';
+                try{
+                    const r = await fetch('{{ route('admin.pagos.prev') }}?numero='+encodeURIComponent(this.form.numero), { headers:{'Accept':'application/json'} });
+                    const j = await r.json();
+                    if(r.ok && j?.ok){
+                        this.form.pago_anterior = Number(j.data.monto)||0;
+                        this.pagoAnteriorFecha = this.fechaLocal(j.data.fecha || j.data.created_at);
+                    }else{
+                        this.form.pago_anterior = 0;
+                        this.pagoAnteriorFecha = '';
+                    }
+                }catch(_){
+                    this.form.pago_anterior = 0;
+                    this.pagoAnteriorFecha = '';
+                }
+                this.recalcular();
+            },
             openConfirm(){ this.saveConfirmOpen = true },
             async confirmSaveYes(){
                 this.saveConfirmOpen = false;
                 await this.emitirFactura();
-                const sheet = document.querySelector('.print-sheet');
-                if(sheet){ sheet.style.transform = 'none'; }
-                await this.$nextTick();
-                this.printTimerId = setTimeout(()=>{ window.print(); this.printTimerId=null; },100);
+                await this.doPrintOnce();
             },
             confirmSaveNo(){
                 if(this.printTimerId){ clearTimeout(this.printTimerId); this.printTimerId=null; }
                 this.saveConfirmOpen = false;
             },
-            async openHistorial(){
-                this.folioError='';
-                this.busquedaFolio=null;
-                this.historialOpen = true;
-            },
-            async buscarPorFolio(){
-                this.folioError='';
-                const ref = Number(this.busquedaFolio);
-                if(!ref || ref<1){ this.folioError='Ingresa un folio válido'; return }
-                try{
-                    const r = await fetch('{{ route('admin.pagos.facturas.by_folio', ['ref'=>'__REF__']) }}'.replace('__REF__', ref),{headers:{'Accept':'application/json'}});
-                    const j = await r.json();
-                    if(!r.ok || !j?.ok){ this.folioError = j?.message || 'Folio no encontrado'; return }
-                    const d = j.data;
-                    this.ref.numero = d.reference_number;
-                    this.ref.id = d.id;
-                    this.form.numero = d.numero_servicio || '';
-                    const p = d.payload || {};
-                    this.datos.nombre = p.nombre || '';
-                    this.datos.mensualidad = Number(p.mensualidad)||0;
-                    this.form.recargo = p.recargo || 'no';
-                    this.form.pago_anterior = p.pago_anterior || 0;
-                    this.form.metodo = p.metodo || '';
-                    this.form.cobro = p.cobro || '';
-                    this.recalcular();
-                    this.historialOpen=false;
-                    const sheet = document.querySelector('.print-sheet');
-                    if(sheet){ sheet.style.transform = 'none'; }
-                    await this.$nextTick();
-                    setTimeout(()=>window.print(),150);
-                }catch(_){
-                    this.folioError='Error al buscar el folio';
-                }
-            },
+            
             async reimprimir(id){
                 try{
                     const r = await fetch('{{ route('admin.pagos.facturas.show', ['id'=>'__ID__']) }}'.replace('__ID__', id),{headers:{'Accept':'application/json'}});
@@ -548,11 +591,7 @@
                         this.form.metodo = p.metodo || '';
                         this.form.cobro = p.cobro || '';
                         this.recalcular();
-                        this.historialOpen=false;
-                        const sheet = document.querySelector('.print-sheet');
-                        if(sheet){ sheet.style.transform = 'none'; }
-                        await this.$nextTick();
-                        setTimeout(()=>window.print(),150);
+                        await this.doPrintOnce();
                     }
                 }catch(_){}
             },
@@ -586,6 +625,7 @@
                     if(r.ok && j?.ok){
                         this.ref.numero = j.referencia;
                         this.ref.id = j.id;
+                        await this.fetchPagoAnterior();
                     }
                 }catch(_){}
             },
@@ -621,10 +661,7 @@
                         this.ref.id = j.id;
                     }
                 }catch(_){}
-                const sheet = document.querySelector('.print-sheet');
-                if(sheet){ sheet.style.transform = 'none'; }
-                await this.$nextTick();
-                setTimeout(()=>window.print(),0);
+                await this.doPrintOnce();
             },
             async buscar(){
                 this.error='';
@@ -636,6 +673,7 @@
                     this.datos.nombre = j.data.nombre_cliente || '';
                     this.datos.mensualidad = Number(j.data.tarifa)||0;
                     this.recalcular();
+                    await this.fetchPagoAnterior();
                 }catch(e){
                     this.error='Error de conexión';
                 }
