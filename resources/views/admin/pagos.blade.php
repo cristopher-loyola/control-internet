@@ -309,7 +309,7 @@
             pagoAnteriorFecha:'',
             datos:{ nombre:'', mensualidad:0 },
             totales:{ total:0, letra:'' },
-            ref:{ numero:null, id:null },
+            ref:{ numero:null, id:null, created_at:null },
             saveConfirmOpen:false,
             isPrinting:false,
             historial:[],
@@ -334,9 +334,9 @@
             resizing:false, resizeKey:null, resizeStart:{x:0,w:0}, _resizeB:null, _resizeTouchB:null,
             moneda(v){ return new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'}).format(v||0) },
             mesEnCurso(){ return new Date().toLocaleDateString('es-MX',{month:'long'}).charAt(0).toUpperCase() + new Date().toLocaleDateString('es-MX',{month:'long'}).slice(1) },
-            mesEnCursoCompleto(){ const d=new Date(); return d.toLocaleDateString('es-MX',{month:'long'})+' de '+d.getFullYear() },
-            fecha(){ return new Date().toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) },
-            hora(){ return new Date().toLocaleTimeString('es-MX') },
+            mesEnCursoCompleto(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleDateString('es-MX',{month:'long'})+' de '+d.getFullYear() },
+            fecha(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) },
+            hora(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleTimeString('es-MX') },
             fechaLocal(d){ try{ if(!d) return ''; const dt=new Date(d); return dt.toLocaleDateString('es-MX',{year:'numeric',month:'long',day:'numeric'});}catch(_){ return String(d) } },
             toggleEditor(){
                 this.editMode = !this.editMode;
@@ -425,6 +425,7 @@
                                 const d = j.data;
                                 this.ref.numero = d.reference_number;
                                 this.ref.id = d.id;
+                                this.ref.created_at = d.created_at || null;
                                 this.form.numero = d.numero_servicio || '';
                                 const p = d.payload || {};
                                 this.datos.nombre = p.nombre || '';
@@ -582,6 +583,7 @@
                         const d = j.data;
                         this.ref.numero = d.reference_number;
                         this.ref.id = d.id;
+                        this.ref.created_at = d.created_at || null;
                         this.form.numero = d.numero_servicio || '';
                         const p = d.payload || {};
                         this.datos.nombre = p.nombre || '';
@@ -625,6 +627,7 @@
                     if(r.ok && j?.ok){
                         this.ref.numero = j.referencia;
                         this.ref.id = j.id;
+                        this.ref.created_at = new Date().toISOString();
                         await this.fetchPagoAnterior();
                     }
                 }catch(_){}
@@ -659,6 +662,7 @@
                     if(r.ok && j?.ok){
                         this.ref.numero = j.referencia;
                         this.ref.id = j.id;
+                        this.ref.created_at = new Date().toISOString();
                     }
                 }catch(_){}
                 await this.doPrintOnce();
