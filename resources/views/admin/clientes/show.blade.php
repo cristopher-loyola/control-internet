@@ -115,18 +115,41 @@
     <x-modal name="admin-clientes-show-edit" :show="$errors->clienteEdit->isNotEmpty()" maxWidth="lg" focusable>
         <form method="POST" action="{{ route('admin.clientes.edit') }}" class="p-6"
               x-data="{
+                editMegasReadonly: false,
+                assignMegas(costo, tecnologia) {
+                    let c = costo;
+                    if (c && typeof c === 'string') c = parseFloat(c);
+                    c = c ? Math.round(c) : null;
+                    const t = (tecnologia || '').toUpperCase();
+                    const validC = [300, 400, 500, 600];
+                    const validT = ['FOD', 'FOI', 'INA'];
+                    if (!validC.includes(c) || !validT.includes(t)) return null;
+                    const matrix = {
+                        300: { FOD: 30, FOI: 20, INA: 12 },
+                        400: { FOD: 50, FOI: 30, INA: 20 },
+                        500: { FOD: 70, FOI: 40, INA: 30 },
+                        600: { FOD: 100, FOI: 50, INA: 40 },
+                    };
+                    return matrix[c][t];
+                },
+                updateMegasEdit() {
+                    const costo = this.$refs.editTarifa?.value;
+                    const tec = this.$refs.editTecnologia?.value;
+                    const m = this.assignMegas(costo, tec);
+                    if (m !== null && this.$refs.editMegas) {
+                        this.$refs.editMegas.value = m;
+                        this.editMegasReadonly = true;
+                    } else {
+                        this.editMegasReadonly = false;
+                    }
+                },
                 updateEstado() {
                     const estatus = this.$refs.editEstatusServicio?.value;
                     const estadoSelect = this.$refs.editEstado;
-                    
                     if (!estatus || !estadoSelect) return;
-
-                    // 1: Pagado, 4: Pendiente de pago -> 1: Activado
                     if (['1', '4'].includes(estatus)) {
                         estadoSelect.value = '1';
-                    } 
-                    // 2: Suspendido, 3: Cancelado -> 2: Desactivado
-                    else if (['2', '3'].includes(estatus)) {
+                    } else if (['2', '3'].includes(estatus)) {
                         estadoSelect.value = '2';
                     }
                 }
@@ -178,7 +201,7 @@
                 </div>
                 <div>
                     <x-input-label for="edit_tecnologia" value="Tecnología" />
-                    <select id="edit_tecnologia" name="tecnologia" class="form-select mt-1 w-full">
+                    <select id="edit_tecnologia" name="tecnologia" class="form-select mt-1 w-full" x-ref="editTecnologia" x-on:change="updateMegasEdit()">
                         <option value="">Selecciona una opción</option>
                         <option value="ina" {{ $cliente->tecnologia === 'ina' ? 'selected' : '' }}>INA (Inalámbrico)</option>
                         <option value="foi" {{ $cliente->tecnologia === 'foi' ? 'selected' : '' }}>FOI (Fibra óptica indirecta)</option>
@@ -187,7 +210,7 @@
                 </div>
                 <div>
                     <x-input-label for="edit_tarifa" value="Costo de paquete" />
-                    <select id="edit_tarifa" name="tarifa" class="form-select mt-1 w-full">
+                    <select id="edit_tarifa" name="tarifa" class="form-select mt-1 w-full" x-ref="editTarifa" x-on:change="updateMegasEdit()">
                         <option value="">Selecciona una opción</option>
                         <option value="300.00" {{ (float)$cliente->tarifa === 300.00 ? 'selected' : '' }}>$300</option>
                         <option value="400.00" {{ (float)$cliente->tarifa === 400.00 ? 'selected' : '' }}>$400</option>
@@ -197,7 +220,7 @@
                 </div>
                 <div>
                     <x-input-label for="edit_megas" value="Megas" />
-                    <x-text-input id="edit_megas" name="megas" type="number" class="mt-1 block w-full" value="{{ $cliente->megas }}" />
+                    <x-text-input id="edit_megas" name="megas" type="number" class="mt-1 block w-full" x-ref="editMegas" x-bind:readonly="editMegasReadonly" value="{{ $cliente->megas }}" />
                 </div>
                 <div>
                     <x-input-label for="edit_estado" value="Estado" />

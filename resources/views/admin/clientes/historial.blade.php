@@ -10,8 +10,8 @@
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-gray-100">
                     <div class="mb-4 flex items-center justify-between">
-                        <a href="{{ route('admin.clientes.index') }}" class="text-sm text-blue-600 dark:text-blue-400 hover:underline">
-                            ← Volver a la lista
+                        <a href="{{ route('admin.clientes.index') }}" class="btn btn-primary">
+                             Volver a la lista
                         </a>
                         @if ($actual)
                             <span class="text-xs px-2 py-1 rounded bg-emerald-600 text-white">Actualmente asignado a: {{ $actual->nombre_cliente }}</span>

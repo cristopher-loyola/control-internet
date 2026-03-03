@@ -57,7 +57,7 @@ class MegasAssigner
 
         // Matriz de asignación
         $matrix = [
-            300 => ['FOD' => 30, 'FOI' => 20, 'INA' => 10],
+            300 => ['FOD' => 30, 'FOI' => 20, 'INA' => 12],
             400 => ['FOD' => 50, 'FOI' => 30, 'INA' => 20],
             500 => ['FOD' => 70, 'FOI' => 40, 'INA' => 30],
             600 => ['FOD' => 100, 'FOI' => 50, 'INA' => 40],
