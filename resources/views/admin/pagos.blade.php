@@ -22,24 +22,31 @@
                             </div>
                             <div class="col-span-2">
                                 <label for="numero" class="text-xs uppercase text-gray-500 dark:text-gray-400">Ingresa el ID</label>
-                                <input id="numero" type="number" class="form-input mt-1 w-full" x-model.trim="form.numero" :disabled="readOnlyMode" @change="!readOnlyMode && buscar()" @keydown.enter.prevent="!readOnlyMode && buscar()">
+                                <div class="relative">
+                                   
+                                    <input id="numero" type="number" class="form-input pl-10 mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" x-model.trim="form.numero" :disabled="readOnlyMode" @change="!readOnlyMode && buscar()" @keydown.enter.prevent="!readOnlyMode && buscar()">
+                                </div>
                                 <p class="text-xs text-red-500 mt-1" x-text="error" x-show="error"></p>
                             </div>
                             <div class="col-span-2 grid grid-cols-2 gap-3">
-                                <div>
+                                      <div>
                                     <label class="text-xs uppercase text-gray-500 dark:text-gray-400">Recargo</label>
                                     <select class="form-select mt-1 w-full" x-model="form.recargo" :disabled="readOnlyMode" @change="!readOnlyMode && recalcular()">
                                         <option value="no">No</option>
                                         <option value="si">Sí</option>
                                     </select>
                                 </div>
+                                    <select class="hidden" x-model="form.recargo"><option value="no">No</option><option value="si">Sí</option></select>
+                                </div>
                                 <div>
                                     <label class="text-xs uppercase text-gray-500 dark:text-gray-400">Pago anterior</label>
-                                    <input type="number" step="0.01" class="form-input mt-1 w-full" x-model.number="form.pago_anterior" :disabled="readOnlyMode" @input="!readOnlyMode && recalcular()">
+                                    <div class="relative mt-1">
+                                        <input type="number" step="1" class="form-input pl-7 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="0.00" x-model.number="form.pago_anterior" :disabled="readOnlyMode" @input="!readOnlyMode && recalcular()">
+                                    </div>
                                 </div>
                                 <div>
                                     <label class="text-xs uppercase text-gray-500 dark:text-gray-400">Método de pago</label>
-                                    <select class="form-select mt-1 w-full" x-model="form.metodo" :disabled="readOnlyMode">
+                                    <select class="form-select mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" x-model="form.metodo" :disabled="readOnlyMode">
                                         <option value="">Selecciona</option>
                                         <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
                                         <option value="Cheque">Cheque</option>
@@ -49,11 +56,14 @@
                                 </div>
                                 <div>
                                     <label class="text-xs uppercase text-gray-500 dark:text-gray-400">Quién cobró</label>
-                                    <input type="text" class="form-input mt-1 w-full" x-model="form.cobro" :disabled="readOnlyMode">
+                                    <div class="relative mt-1">
+                                        <input type="text" class="form-input pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"  x-model="form.cobro" :disabled="readOnlyMode">
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="flex items-end justify-end md:justify-start gap-2 not-print">
+                        <br>
+                        <div class="flex items-center justify-center gap-2 not-print">
                             <a class="btn btn-secondary" href="{{ route('admin.pagos.historial') }}">Historial</a>
                             <!-- <button class="btn btn-secondary" @click="toggleEditor()"
                                 x-text="editMode ? 'Cerrar editor de plantilla' : 'Editar plantilla'"></button>
@@ -63,6 +73,7 @@
                             <button class="btn btn-danger" @click="openConfirm()">Imprimir Recibo</button>
                         </div>
                     </div>
+                    <br>
 
                     <div class="mt-6 print-sheet" x-ref="sheet" x-show="layoutReady" x-cloak>
                         <div x-show="saveConfirmOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 not-print">
@@ -240,7 +251,7 @@
             .divider-line{display:none!important}
             .print-sheet::after{content:'';position:absolute;left:0;right:0;top:calc(50% - 0.3mm);height:0.6mm;background:#111;z-index:50}
         }
-        .print-sheet{position:relative;width:210mm;max-width:none;margin:0;transform:none;height:297mm;background:#fff}
+        .print-sheet{position:relative;width:210mm;max-width:none;margin:0 auto;transform:none;height:297mm;background:#fff}       
         .sheet-abs{position:absolute;inset:0;z-index:20;pointer-events:none}
         .receipt{position:relative;height:calc((297mm - 0.6mm)/2);border:1px solid #d1d5db;border-radius:8px;padding:6mm;background:#fff;overflow:hidden}
         .divider-line{height:0.6mm;background:#111;margin:0}

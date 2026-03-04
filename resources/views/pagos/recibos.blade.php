@@ -63,7 +63,7 @@
                             </div>
                         </div>
                         <br>
-                        <div class="flex items-end justify-end md:justify-start gap-2 not-print">
+                        <div class="flex items-center justify-center gap-2 not-print">       
                             <a class="btn btn-secondary" href="{{ route('pagos.recibos.historial') }}">Historial</a>
                             <!-- <button class="btn btn-secondary" @click="toggleEditor()"
                                 x-text="editMode ? 'Cerrar editor de plantilla' : 'Editar plantilla'"></button>
@@ -73,6 +73,7 @@
                             <button class="btn btn-danger" @click="openConfirm()">Imprimir Recibo</button>
                         </div>
                     </div>
+                    <br>
 
                     <div class="mt-6 print-sheet" x-ref="sheet" x-show="layoutReady" x-cloak>
                         <div x-show="saveConfirmOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 not-print">
@@ -249,7 +250,7 @@
             .divider-line{display:none!important}
             .print-sheet::after{content:'';position:absolute;left:0;right:0;top:calc(50% - 0.3mm);height:0.6mm;background:#111;z-index:50}
         }
-        .print-sheet{position:relative;width:210mm;max-width:none;margin:0;transform:none;height:297mm;background:#fff}
+        .print-sheet{position:relative;width:210mm;max-width:none;margin:0 auto;transform:none;height:297mm;background:#fff}       
         .sheet-abs{position:absolute;inset:0;z-index:20;pointer-events:none}
         .receipt{position:relative;height:calc((297mm - 0.6mm)/2);border:1px solid #d1d5db;border-radius:8px;padding:6mm;background:#fff;overflow:hidden}
         .divider-line{height:0.6mm;background:#111;margin:0}

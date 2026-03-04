@@ -397,21 +397,21 @@ class AdminController extends Controller
                 echo "\xEF\xBB\xBF";
                 echo '<html><head><meta charset="utf-8">';
                 echo '<style>
-table{ border-collapse:collapse; }
-th,td{ border:1px solid #888; padding:6px 8px; font-family:Arial, Helvetica, sans-serif; font-size:11pt; }
-thead th{ background:#2e7d32; color:#fff; }
-.text{ mso-number-format:"\@"; }
-.date{ mso-number-format:"dd/mm/yyyy\\ hh:mm"; }
-.money{ mso-number-format:"\\$#,##0.00"; text-align:right; }
-.total-row td{ background:#1e3a8a; color:#fff; font-weight:700; }
-                </style></head><body>';
-                echo '<table>';
-                echo '<colgroup>
-<col style="width:90px"><col style="width:160px"><col style="width:110px"><col style="width:260px"><col style="width:110px"><col style="width:140px"><col style="width:150px">
-</colgroup>';
-                echo '<thead><tr>
-<th>Folio</th><th>Fecha</th><th>Monto</th><th>Cliente</th><th>Número</th><th>Estado</th><th>Motivo</th><th>Usuario</th>
-</tr></thead><tbody>';
+                table{ border-collapse:collapse; }
+                th,td{ border:1px solid #888; padding:6px 8px; font-family:Arial, Helvetica, sans-serif; font-size:11pt; }
+                thead th{ background:#2e7d32; color:#fff; }
+                .text{ mso-number-format:"\@"; }
+                .date{ mso-number-format:"dd/mm/yyyy\\ hh:mm"; }
+                .money{ mso-number-format:"\\$#,##0.00"; text-align:right; }
+                .total-row td{ background:#1e3a8a; color:#fff; font-weight:700; }
+                                </style></head><body>';
+                                echo '<table>';
+                                echo '<colgroup>
+                <col style="width:90px"><col style="width:160px"><col style="width:110px"><col style="width:260px"><col style="width:110px"><col style="width:140px"><col style="width:150px">
+                </colgroup>';
+                                echo '<thead><tr>
+                <th>Folio</th><th>Fecha</th><th>Monto</th><th>Cliente</th><th>Número</th><th>Estado</th><th>Motivo</th><th>Usuario</th>
+                </tr></thead><tbody>';
                 foreach ($items as $f) {
                     $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
                     $cliente = is_array($payload) ? ($payload['nombre'] ?? '') : '';
