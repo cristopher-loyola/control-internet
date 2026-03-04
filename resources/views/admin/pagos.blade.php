@@ -9,6 +9,11 @@
         <div class="max-w-6xl mx-auto sm:px-4 lg:px-8">
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-gray-100">
+                    <template x-if="readOnlyMode">
+                        <div class="mb-3 px-3 py-2 rounded bg-amber-500/20 text-amber-900 border border-amber-400 text-sm not-print">
+                            Vista en modo solo lectura: los campos están deshabilitados.
+                        </div>
+                    </template>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 not-print">
                         <div class="md:col-span-2 grid grid-cols-2 gap-3">
                             <div class="col-span-2">
@@ -17,24 +22,24 @@
                             </div>
                             <div class="col-span-2">
                                 <label for="numero" class="text-xs uppercase text-gray-500 dark:text-gray-400">Ingresa el ID</label>
-                                <input id="numero" type="number" class="form-input mt-1 w-full" x-model.trim="form.numero" @change="buscar()" @keydown.enter.prevent="buscar()">
+                                <input id="numero" type="number" class="form-input mt-1 w-full" x-model.trim="form.numero" :disabled="readOnlyMode" @change="!readOnlyMode && buscar()" @keydown.enter.prevent="!readOnlyMode && buscar()">
                                 <p class="text-xs text-red-500 mt-1" x-text="error" x-show="error"></p>
                             </div>
                             <div class="col-span-2 grid grid-cols-2 gap-3">
                                 <div>
                                     <label class="text-xs uppercase text-gray-500 dark:text-gray-400">Recargo</label>
-                                    <select class="form-select mt-1 w-full" x-model="form.recargo" @change="recalcular()">
+                                    <select class="form-select mt-1 w-full" x-model="form.recargo" :disabled="readOnlyMode" @change="!readOnlyMode && recalcular()">
                                         <option value="no">No</option>
                                         <option value="si">Sí</option>
                                     </select>
                                 </div>
                                 <div>
                                     <label class="text-xs uppercase text-gray-500 dark:text-gray-400">Pago anterior</label>
-                                    <input type="number" step="0.01" class="form-input mt-1 w-full" x-model.number="form.pago_anterior" @input="recalcular()">
+                                    <input type="number" step="0.01" class="form-input mt-1 w-full" x-model.number="form.pago_anterior" :disabled="readOnlyMode" @input="!readOnlyMode && recalcular()">
                                 </div>
                                 <div>
                                     <label class="text-xs uppercase text-gray-500 dark:text-gray-400">Método de pago</label>
-                                    <select class="form-select mt-1 w-full" x-model="form.metodo">
+                                    <select class="form-select mt-1 w-full" x-model="form.metodo" :disabled="readOnlyMode">
                                         <option value="">Selecciona</option>
                                         <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
                                         <option value="Cheque">Cheque</option>
@@ -44,7 +49,7 @@
                                 </div>
                                 <div>
                                     <label class="text-xs uppercase text-gray-500 dark:text-gray-400">Quién cobró</label>
-                                    <input type="text" class="form-input mt-1 w-full" x-model="form.cobro">
+                                    <input type="text" class="form-input mt-1 w-full" x-model="form.cobro" :disabled="readOnlyMode">
                                 </div>
                             </div>
                         </div>
@@ -54,6 +59,7 @@
                                 x-text="editMode ? 'Cerrar editor de plantilla' : 'Editar plantilla'"></button>
                             <button class="btn btn-secondary" @click="resetLayout()">Restablecer</button> -->
                             <!-- <button class="btn btn-secondary" @click="saveAsDefault()">Guardar como predeterminado</button> -->
+                            <button class="btn btn-primary" @click="printThermal()">Imprimir térmica</button>
                             <button class="btn btn-danger" @click="openConfirm()">Exportar a PDF</button>
                         </div>
                     </div>
@@ -305,6 +311,7 @@
             return baseDefaults;
         })();
         return {
+            readOnlyMode: false,
             form:{ numero:'', recargo:'no', pago_anterior:0, metodo:'', cobro:'' },
             pagoAnteriorFecha:'',
             datos:{ nombre:'', mensualidad:0 },
@@ -416,6 +423,8 @@
                 try{
                     const params = new URLSearchParams(window.location.search);
                     const folio = Number(params.get('folio') || '');
+                    this.readOnlyMode = (params.get('readonly') || '') === '1';
+                    const asTicket = (params.get('ticket') || '') === '1';
                     if(folio && folio>0){
                         (async ()=>{
                             try{
@@ -435,7 +444,13 @@
                                 this.form.metodo = p.metodo || '';
                                 this.form.cobro = p.cobro || '';
                                 this.recalcular();
-                                await this.doPrintOnce();
+                                if(asTicket){
+                                    // Pequeña espera para asegurar layoutReady y cómputos
+                                    await new Promise(r=>setTimeout(r,50));
+                                    this.printThermal();
+                                }else{
+                                    await this.doPrintOnce();
+                                }
                             }catch(_){}
                         })();
                     }
@@ -567,8 +582,12 @@
             openConfirm(){ this.saveConfirmOpen = true },
             async confirmSaveYes(){
                 this.saveConfirmOpen = false;
-                await this.emitirFactura();
-                await this.doPrintOnce();
+                if (this.ref && this.ref.id) {
+                    await this.doPrintOnce();
+                } else {
+                    await this.emitirFactura();
+                    await this.doPrintOnce();
+                }
             },
             confirmSaveNo(){
                 if(this.printTimerId){ clearTimeout(this.printTimerId); this.printTimerId=null; }
@@ -666,6 +685,69 @@
                     }
                 }catch(_){}
                 await this.doPrintOnce();
+            },
+            printThermal(){
+                const w = window.open('', '_blank', 'width=400,height=700');
+                if(!w) return;
+                const logo = '{{ asset('images/logo.png') }}';
+                const nombre = this.datos.nombre || '—';
+                const id = this.form.numero || '—';
+                const mes = this.mesEnCursoCompleto();
+                const otros = '—';
+                const importe = this.moneda(0);
+                const recargo = this.form.recargo === 'si' ? 'SI' : 'NO';
+                const totalNum = this.moneda(this.totales.total);
+                const totalLetra = this.totales.letra || '';
+                const metodo = this.form.metodo || '—';
+                const cobro = this.form.cobro || '—';
+                const fecha = this.fecha();
+                const hora = this.hora();
+                const folio = this.refNumberPad();
+                const html = `
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Recibo</title>
+<style>
+@page{ size:80mm auto; margin:0 }
+html,body{ margin:0; padding:0 }
+.ticket{ width:80mm; max-width:80mm; padding:8px 10px; font-family: Arial, sans-serif; font-size:12px; color:#111 }
+.logo{ text-align:center; margin-bottom:6px }
+.logo img{ max-width:70mm; height:auto }
+.center{ text-align:center }
+.title{ font-weight:700; font-size:14px; margin:6px 0 }
+.line{ display:flex; justify-content:space-between; gap:8px; margin:2px 0 }
+.line .l{ font-weight:600 }
+.sep{ border-top:1px dotted #555; margin:6px 0 }
+.folio{ font-weight:700; font-size:12px; margin-bottom:4px }
+</style>
+</head>
+<body onload="window.print(); setTimeout(()=>window.close(), 300)">
+<div class="ticket">
+  <div class="logo"><img src="${logo}" onerror="this.style.display='none'"></div>
+  ${folio ? `<div class="folio">Folio: ${folio}</div>` : ''}
+  <div class="title center">Recibo de pago</div>
+  <div class="line"><div class="l">ID</div><div>${id}</div></div>
+  <div class="line"><div class="l">Nombre</div><div>${nombre}</div></div>
+  <div class="line"><div class="l">Mes</div><div>${mes}</div></div>
+  <div class="line"><div class="l">Otros</div><div>${otros}</div></div>
+  <div class="line"><div class="l">Importe</div><div>${importe}</div></div>
+  <div class="line"><div class="l">Recargo</div><div>${recargo}</div></div>
+  <div class="sep"></div>
+  <div class="line"><div class="l">Total (número)</div><div>${totalNum}</div></div>
+  <div class="line"><div class="l">Total (letra)</div><div style="max-width:42mm;text-align:right">${totalLetra}</div></div>
+  <div class="sep"></div>
+  <div class="line"><div class="l">Método de pago</div><div>${metodo}</div></div>
+  <div class="line"><div class="l">Quién cobró</div><div>${cobro}</div></div>
+  <div class="line"><div class="l">Fecha</div><div>${fecha}</div></div>
+  <div class="line"><div class="l">Hora</div><div>${hora}</div></div>
+</div>
+</body>
+</html>`;
+                w.document.open();
+                w.document.write(html);
+                w.document.close();
             },
             async buscar(){
                 this.error='';

@@ -49,6 +49,18 @@
                             <dd class="text-sm">{{ $cliente->telefono ?? '—' }}</dd>
                         </div>
                         <div>
+                            <dt class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Zona</dt>
+                            <dd class="text-sm">{{ $cliente->zona ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">IP</dt>
+                            <dd class="text-sm">{{ $cliente->ip ?? '—' }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">MAC</dt>
+                            <dd class="text-sm">{{ $cliente->mac ?? '—' }}</dd>
+                        </div>
+                        <div>
                             <dt class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Uso</dt>
                             <dd class="text-sm">{{ $cliente->uso ?? '—' }}</dd>
                         </div>

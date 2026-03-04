@@ -360,12 +360,13 @@ class PagosController extends Controller
             });
         }
         $items = $query->get();
-        if ($format === 'csv' || $format === 'excel') {
+        if ($format === 'csv') {
             $headers = [
                 'Content-Type' => 'text/csv; charset=UTF-8',
-                'Content-Disposition' => 'attachment; filename=\"historial_recibos.csv\"',
+                'Content-Disposition' => 'attachment; filename="historial_recibos.csv"',
             ];
             $callback = function () use ($items) {
+                echo "\xEF\xBB\xBF"; // BOM UTF-8
                 $out = fopen('php://output', 'w');
                 fputcsv($out, ['Folio', 'Fecha', 'Monto', 'Cliente', 'Número', 'Estado', 'Usuario']);
                 $userNames = \App\Models\User::whereIn('id', $items->pluck('created_by')->filter()->unique())->pluck('name', 'id');
@@ -373,8 +374,8 @@ class PagosController extends Controller
                     $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
                     $cliente = is_array($payload) ? ($payload['nombre'] ?? '') : '';
                     fputcsv($out, [
-                        $f->reference_number,
-                        optional($f->created_at)->format('Y-m-d H:i'),
+                        str_pad((string)$f->reference_number, 8, '0', STR_PAD_LEFT),
+                        optional($f->created_at)->format('d/m/Y H:i'),
                         number_format((float)$f->total, 2, '.', ''),
                         $cliente,
                         $f->numero_servicio,
@@ -383,6 +384,53 @@ class PagosController extends Controller
                     ]);
                 }
                 fclose($out);
+            };
+            return response()->stream($callback, 200, $headers);
+        } elseif (in_array($format, ['excel', 'xls', 'xlsx'], true)) {
+            $headers = [
+                'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+                'Content-Disposition' => 'attachment; filename="historial_recibos.xls"',
+                'Cache-Control' => 'max-age=0',
+            ];
+            $callback = function () use ($items) {
+                $userNames = \App\Models\User::whereIn('id', $items->pluck('created_by')->filter()->unique())->pluck('name', 'id');
+                echo "\xEF\xBB\xBF";
+                echo '<html><head><meta charset="utf-8">';
+                echo '<style>
+table{ border-collapse:collapse; }
+th,td{ border:1px solid #888; padding:6px 8px; font-family:Arial, Helvetica, sans-serif; font-size:11pt; }
+thead th{ background:#2e7d32; color:#fff; }
+.text{ mso-number-format:"\@"; }
+.date{ mso-number-format:"dd/mm/yyyy\\ hh:mm"; }
+.money{ mso-number-format:"\\$#,##0.00"; text-align:right; }
+                </style></head><body>';
+                echo '<table>';
+                echo '<colgroup>
+<col style="width:90px"><col style="width:160px"><col style="width:110px"><col style="width:260px"><col style="width:110px"><col style="width:110px"><col style="width:150px">
+</colgroup>';
+                echo '<thead><tr>
+<th>Folio</th><th>Fecha</th><th>Monto</th><th>Cliente</th><th>Número</th><th>Estado</th><th>Usuario</th>
+</tr></thead><tbody>';
+                foreach ($items as $f) {
+                    $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+                    $cliente = is_array($payload) ? ($payload['nombre'] ?? '') : '';
+                    $folio = str_pad((string)$f->reference_number, 8, '0', STR_PAD_LEFT);
+                    $fecha = optional($f->created_at)->format('d/m/Y H:i');
+                    $monto = number_format((float)$f->total, 2, '.', '');
+                    $numero = $f->numero_servicio;
+                    $estado = $f->deleted_at ? 'Cancelado' : 'Vigente';
+                    $usuario = $userNames[$f->created_by] ?? '';
+                    echo '<tr>';
+                    echo '<td class="text">'.htmlspecialchars($folio).'</td>';
+                    echo '<td class="date">'.htmlspecialchars($fecha).'</td>';
+                    echo '<td class="money">'.htmlspecialchars($monto).'</td>';
+                    echo '<td>'.htmlspecialchars($cliente).'</td>';
+                    echo '<td class="text">'.htmlspecialchars((string)$numero).'</td>';
+                    echo '<td>'.htmlspecialchars($estado).'</td>';
+                    echo '<td>'.htmlspecialchars($usuario).'</td>';
+                    echo '</tr>';
+                }
+                echo '</tbody></table></body></html>';
             };
             return response()->stream($callback, 200, $headers);
         }

@@ -345,12 +345,13 @@ class AdminController extends Controller
             });
         }
         $items = $query->get();
-        if ($format === 'csv' || $format === 'excel') {
+        if ($format === 'csv') {
             $headers = [
                 'Content-Type' => 'text/csv; charset=UTF-8',
                 'Content-Disposition' => 'attachment; filename="historial_recibos.csv"',
             ];
             $callback = function () use ($items) {
+                echo "\xEF\xBB\xBF"; // BOM UTF-8
                 $out = fopen('php://output', 'w');
                 fputcsv($out, ['Folio', 'Fecha', 'Monto', 'Cliente', 'Número', 'Estado', 'Usuario']);
                 $userNames = \App\Models\User::whereIn('id', $items->pluck('created_by')->filter()->unique())->pluck('name', 'id');
@@ -358,8 +359,8 @@ class AdminController extends Controller
                     $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
                     $cliente = is_array($payload) ? ($payload['nombre'] ?? '') : '';
                     fputcsv($out, [
-                        $f->reference_number,
-                        optional($f->created_at)->format('Y-m-d H:i'),
+                        str_pad((string)$f->reference_number, 8, '0', STR_PAD_LEFT),
+                        optional($f->created_at)->format('d/m/Y H:i'),
                         number_format((float)$f->total, 2, '.', ''),
                         $cliente,
                         $f->numero_servicio,
@@ -368,6 +369,53 @@ class AdminController extends Controller
                     ]);
                 }
                 fclose($out);
+            };
+            return response()->stream($callback, 200, $headers);
+        } elseif (in_array($format, ['excel', 'xls', 'xlsx'], true)) {
+            $headers = [
+                'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+                'Content-Disposition' => 'attachment; filename="historial_recibos.xls"',
+                'Cache-Control' => 'max-age=0',
+            ];
+            $callback = function () use ($items) {
+                $userNames = \App\Models\User::whereIn('id', $items->pluck('created_by')->filter()->unique())->pluck('name', 'id');
+                echo "\xEF\xBB\xBF";
+                echo '<html><head><meta charset="utf-8">';
+                echo '<style>
+table{ border-collapse:collapse; }
+th,td{ border:1px solid #888; padding:6px 8px; font-family:Arial, Helvetica, sans-serif; font-size:11pt; }
+thead th{ background:#2e7d32; color:#fff; }
+.text{ mso-number-format:"\@"; }
+.date{ mso-number-format:"dd/mm/yyyy\\ hh:mm"; }
+.money{ mso-number-format:"\\$#,##0.00"; }
+                </style></head><body>';
+                echo '<table>';
+                echo '<colgroup>
+<col style="width:90px"><col style="width:160px"><col style="width:110px"><col style="width:260px"><col style="width:110px"><col style="width:110px"><col style="width:150px">
+</colgroup>';
+                echo '<thead><tr>
+<th>Folio</th><th>Fecha</th><th>Monto</th><th>Cliente</th><th>Número</th><th>Estado</th><th>Usuario</th>
+</tr></thead><tbody>';
+                foreach ($items as $f) {
+                    $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+                    $cliente = is_array($payload) ? ($payload['nombre'] ?? '') : '';
+                    $folio = str_pad((string)$f->reference_number, 8, '0', STR_PAD_LEFT);
+                    $fecha = optional($f->created_at)->format('d/m/Y H:i');
+                    $monto = number_format((float)$f->total, 2, '.', '');
+                    $numero = $f->numero_servicio;
+                    $estado = $f->deleted_at ? 'Cancelado' : 'Vigente';
+                    $usuario = $userNames[$f->created_by] ?? '';
+                    echo '<tr>';
+                    echo '<td class="text">'.htmlspecialchars($folio).'</td>';
+                    echo '<td class="date">'.htmlspecialchars($fecha).'</td>';
+                    echo '<td class="money">'.htmlspecialchars($monto).'</td>';
+                    echo '<td>'.htmlspecialchars($cliente).'</td>';
+                    echo '<td class="text">'.htmlspecialchars((string)$numero).'</td>';
+                    echo '<td>'.htmlspecialchars($estado).'</td>';
+                    echo '<td>'.htmlspecialchars($usuario).'</td>';
+                    echo '</tr>';
+                }
+                echo '</tbody></table></body></html>';
             };
             return response()->stream($callback, 200, $headers);
         }
@@ -895,6 +943,11 @@ class AdminController extends Controller
                     $numeroKeys = ['numero_servicio','numero','num_cliente','no_cliente','n_cliente','nro','nro_cliente','numero_de_servicio','no_de_servicio'];
                     $nombreKeys = ['nombre_cliente','nombre','cliente','nombre_del_cliente','nombre_de_cliente'];
                     $telKeys = ['telefono','tel','numero_telefono','numero_de_telefono','celular','cel'];
+                    $paqKeys = ['paquete','plan','paquete_plan'];
+                    $tarifaKeys = ['tarifa','costo','mensualidad','precio'];
+                    $zonaKeys = ['zona','sector','zona_servicio'];
+                    $ipKeys = ['ip','ip_servicio','direccion_ip'];
+                    $macKeys = ['mac','mac_address','direccion_mac'];
                     $get = function ($arr, $keys) {
                         foreach ($keys as $k) {
                             if (array_key_exists($k, $arr) && $arr[$k] !== '' && $arr[$k] !== null) {
@@ -906,6 +959,11 @@ class AdminController extends Controller
                     $numero = $get($item, $numeroKeys);
                     $nombre = $get($item, $nombreKeys);
                     $telefono = $get($item, $telKeys);
+                    $paquete = $get($item, $paqKeys);
+                    $tarifaRaw = $get($item, $tarifaKeys);
+                    $zonaVal = $get($item, $zonaKeys);
+                    $ipVal = $get($item, $ipKeys);
+                    $macVal = $get($item, $macKeys);
 
                     if ($numero === null || $nombre === null) {
                         $report['skipped']++;
@@ -947,9 +1005,84 @@ class AdminController extends Controller
                         $report['errors'][] = "Línea $lineNumber: teléfono demasiado largo (máximo 20 caracteres)";
                         continue;
                     }
+                    $paqValue = null;
+                    if ($paquete !== null) {
+                        $p = trim((string) $paquete);
+                        if ($p !== '') {
+                            if (mb_strlen($p, 'UTF-8') > 100) {
+                                $report['skipped']++;
+                                $report['errors'][] = "Línea $lineNumber: paquete demasiado largo (máximo 100 caracteres)";
+                                continue;
+                            }
+                            $paqValue = $p;
+                        }
+                    }
+                    $zonaValue = null;
+                    if ($zonaVal !== null) {
+                        $z = trim((string) $zonaVal);
+                        if ($z !== '') {
+                            if (mb_strlen($z, 'UTF-8') > 100) {
+                                $report['skipped']++;
+                                $report['errors'][] = "Línea $lineNumber: zona demasiado larga (máximo 100 caracteres)";
+                                continue;
+                            }
+                            $zonaValue = $z;
+                        }
+                    }
+                    $tarifaValue = null;
+                    if ($tarifaRaw !== null) {
+                        $tr = trim((string) $tarifaRaw);
+                        if ($tr !== '') {
+                            $norm = str_replace(['$', ' ', ','], ['', '', '.'], $tr);
+                            if (is_numeric($norm)) {
+                                $t = round((float) $norm, 2);
+                                if ($t < 0) {
+                                    $report['skipped']++;
+                                    $report['errors'][] = "Línea $lineNumber: tarifa inválida (negativa)";
+                                    continue;
+                                }
+                                $tarifaValue = $t;
+                            } else {
+                                $report['skipped']++;
+                                $report['errors'][] = "Línea $lineNumber: tarifa inválida";
+                                continue;
+                            }
+                        }
+                    }
+                    $ipValue = null;
+                    if ($ipVal !== null) {
+                        $i = trim((string) $ipVal);
+                        if ($i !== '') {
+                            if (mb_strlen($i, 'UTF-8') > 45) {
+                                $report['skipped']++;
+                                $report['errors'][] = "Línea $lineNumber: IP demasiado larga (máximo 45 caracteres)";
+                                continue;
+                            }
+                            $ipValue = $i;
+                        }
+                    }
+                    $macValue = null;
+                    if ($macVal !== null) {
+                        $m = strtoupper(trim((string) $macVal));
+                        $m = str_replace(['-',' '], ':', $m);
+                        $m = preg_replace('/:+/', ':', $m);
+                        if ($m !== '') {
+                            if (mb_strlen($m, 'UTF-8') > 20) {
+                                $report['skipped']++;
+                                $report['errors'][] = "Línea $lineNumber: MAC demasiado larga (máximo 20 caracteres)";
+                                continue;
+                            }
+                            $macValue = $m;
+                        }
+                    }
                     $payload = [
                         'nombre_cliente' => $nombreVal,
                         'telefono' => $telValue,
+                        'paquete' => $paqValue,
+                        'tarifa' => $tarifaValue,
+                        'zona' => $zonaValue,
+                        'ip' => $ipValue,
+                        'mac' => $macValue,
                     ];
 
                     $existing = Usuario::where('numero_servicio', $numero)->first();
@@ -968,6 +1101,14 @@ class AdminController extends Controller
                     $msgLower = strtolower($msg);
                     if (str_contains($msgLower, 'data too long for column') && str_contains($msgLower, 'telefono')) {
                         $msg = 'teléfono demasiado largo (máximo 20 caracteres)';
+                    } elseif (str_contains($msgLower, 'data too long for column') && str_contains($msgLower, 'paquete')) {
+                        $msg = 'paquete demasiado largo (máximo 100 caracteres)';
+                    } elseif (str_contains($msgLower, 'data too long for column') && str_contains($msgLower, 'zona')) {
+                        $msg = 'zona demasiado larga (máximo 100 caracteres)';
+                    } elseif (str_contains($msgLower, 'data too long for column') && str_contains($msgLower, 'ip')) {
+                        $msg = 'IP demasiado larga (máximo 45 caracteres)';
+                    } elseif (str_contains($msgLower, 'data too long for column') && str_contains($msgLower, 'mac')) {
+                        $msg = 'MAC demasiado larga (máximo 20 caracteres)';
                     } elseif (str_contains($msgLower, 'incorrect string value')) {
                         $msg = 'caracteres no válidos (codificación) en algún campo';
                     } elseif (str_contains($msgLower, 'duplicate entry') && str_contains($msgLower, 'numero_servicio')) {

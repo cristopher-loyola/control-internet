@@ -440,7 +440,7 @@
         <form method="POST" action="{{ route('admin.clientes.import') }}" enctype="multipart/form-data" class="p-6">
             @csrf
             <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Importar clientes</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Sube un archivo CSV exportado desde Excel con estas columnas (mínimas): numero_servicio, nombre_cliente, telefono. Los demás campos quedarán en blanco.</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Sube un archivo CSV exportado desde Excel. Requeridos: numero_servicio y nombre_cliente. Opcionales: telefono, tarifa, paquete, zona, ip, mac.</p>
             <div>
                 <input type="file" name="file" accept=".csv,text/csv" class="block w-full text-sm">
                 @if ($errors->has('file'))

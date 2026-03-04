@@ -4,14 +4,23 @@
     <meta charset="utf-8">
     <title>Historial de recibos</title>
     <style>
-        body{font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,'Apple Color Emoji','Segoe UI Emoji';font-size:12px;color:#111}
+        :root{--header-bg:#2e7d32;--header-fg:#fff;--border:#888}
+        html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+        body{font-family:Arial, Helvetica, sans-serif;font-size:12px;color:#111;margin:0;padding:10px}
+        h2{margin:0 0 8px 0}
         table{border-collapse:collapse;width:100%}
-        th,td{border:1px solid #ddd;padding:6px 8px;text-align:left}
-        th{background:#f3f4f6}
+        colgroup col:nth-child(1){width:90px}
+        colgroup col:nth-child(2){width:160px}
+        colgroup col:nth-child(3){width:110px}
+        colgroup col:nth-child(4){width:260px}
+        colgroup col:nth-child(5){width:110px}
+        colgroup col:nth-child(6){width:110px}
+        thead th{background:var(--header-bg);color:var(--header-fg)}
+        th,td{border:1px solid var(--border);padding:6px 8px;text-align:left;vertical-align:middle}
+        .money{text-align:right}
+        .mono{font-family:Consolas, 'Courier New', monospace}
         .cancelado{background:#fee2e2}
-        @media print{
-            .no-print{display:none}
-        }
+        @media print{.no-print{display:none}}
     </style>
     <script>
         (async function(){
@@ -50,6 +59,9 @@
         @if($cliente) <span style="margin-left:12px"><strong>Cliente/Número:</strong> {{ $cliente }}</span> @endif
     </div>
     <table>
+        <colgroup>
+            <col><col><col><col><col><col>
+        </colgroup>
         <thead>
             <tr>
                 <th>Folio</th>
@@ -67,11 +79,11 @@
                     $nombre = is_array($payload) ? ($payload['nombre'] ?? '') : '';
                 @endphp
                 <tr class="{{ $f->deleted_at ? 'cancelado' : '' }}">
-                    <td>{{ str_pad((string)$f->reference_number, 8, '0', STR_PAD_LEFT) }}</td>
+                    <td class="mono">{{ str_pad((string)$f->reference_number, 8, '0', STR_PAD_LEFT) }}</td>
                     <td>{{ optional($f->created_at)->format('d/m/Y H:i') }}</td>
-                    <td>${{ number_format((float)$f->total, 2) }}</td>
+                    <td class="money">${{ number_format((float)$f->total, 2) }}</td>
                     <td>{{ $nombre }}</td>
-                    <td>{{ $f->numero_servicio }}</td>
+                    <td class="mono">{{ $f->numero_servicio }}</td>
                     <td>{{ $f->deleted_at ? 'Cancelado' : 'Vigente' }}</td>
                 </tr>
             @endforeach

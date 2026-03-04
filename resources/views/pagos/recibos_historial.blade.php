@@ -28,7 +28,7 @@
                             </div>
                             <div class="flex items-center gap-2 mt-5">
                                 <button type="submit" class="btn btn-primary">Filtrar</button>
-                                <a href="{{ route('pagos.recibos.historial.export', array_merge(request()->query(), ['format'=>'csv'])) }}" class="btn btn-success">Exportar Excel</a>
+                                <a href="{{ route('pagos.recibos.historial.export', array_merge(request()->query(), ['format'=>'excel'])) }}" class="btn btn-success">Exportar Excel</a>
                                 <a href="{{ route('pagos.recibos.historial.export', array_merge(request()->query(), ['format'=>'pdf'])) }}" target="_blank" class="btn btn-danger">Exportar PDF</a>
                             </div>
                         </form>
@@ -64,8 +64,9 @@
                                         <td class="px-4 py-2 whitespace-nowrap text-sm">{{ $r->user_name ?? '—' }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-right">
                                             @if(!$r->deleted_at)
-                                                <a href="{{ route('pagos.recibos') }}?folio={{ $r->reference_number }}" class="btn btn-info btn-sm">Re-imprimir</a>
-                                                <button type="button" class="btn btn-danger btn-sm" x-on:click.prevent="cancelId={{ $r->id }}; motivo=''; $dispatch('open-modal', 'pagos-recibos-cancelar')">Cancelar</button>
+                                                <!-- <a href="{{ route('pagos.recibos') }}?folio={{ $r->reference_number }}&readonly=1" class="btn btn-info btn-sm">Re-imprimir</a> -->
+                                                <a href="{{ route('pagos.recibos') }}?folio={{ $r->reference_number }}&ticket=1&readonly=1" class="btn btn-primary btn-sm ms-1">Ticket</a>
+                                                <button type="button" class="btn btn-danger btn-sm ms-1" x-on:click.prevent="cancelId={{ $r->id }}; motivo=''; $dispatch('open-modal', 'pagos-recibos-cancelar')">Cancelar</button>
                                             @else
                                                 <span class="text-xs text-gray-500">—</span>
                                             @endif

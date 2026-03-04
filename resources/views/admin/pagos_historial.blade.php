@@ -28,7 +28,7 @@
                             </div>
                             <div class="flex items-center gap-2 mt-5">
                                 <button type="submit" class="btn btn-primary">Filtrar</button>
-                                <a href="{{ route('admin.pagos.historial.export', array_merge(request()->query(), ['format'=>'csv'])) }}" class="btn btn-success">Exportar Excel</a>
+                                <a href="{{ route('admin.pagos.historial.export', array_merge(request()->query(), ['format'=>'excel'])) }}" class="btn btn-success">Exportar Excel</a>
                                 <a href="{{ route('admin.pagos.historial.export', array_merge(request()->query(), ['format'=>'pdf'])) }}" target="_blank" class="btn btn-danger">Exportar PDF</a>
                             </div>
                         </form>
@@ -69,9 +69,10 @@
                                         </td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm">{{ $r->user_name ?? '—' }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-right">
-                                            <a href="{{ route('admin.pagos.index') }}?folio={{ $r->reference_number }}" class="btn btn-info btn-sm">Re-imprimir</a>
                                             @if(!$r->deleted_at)
-                                                <button type="button" class="btn btn-danger btn-sm" x-on:click.prevent="cancelId={{ $r->id }}; motivo=''; $dispatch('open-modal','admin-pagos-cancelar')">Cancelar</button>
+                                                <!-- <a href="{{ route('admin.pagos.index') }}?folio={{ $r->reference_number }}&readonly=1" class="btn btn-info btn-sm">Re-imprimir</a> -->
+                                                <a href="{{ route('admin.pagos.index') }}?folio={{ $r->reference_number }}&ticket=1&readonly=1" class="btn btn-primary btn-sm ms-1">Ticket</a>
+                                                <button type="button" class="btn btn-danger btn-sm ms-1" x-on:click.prevent="cancelId={{ $r->id }}; motivo=''; $dispatch('open-modal','admin-pagos-cancelar')">Cancelar</button>
                                             @else
                                                 <span class="text-xs text-gray-500">—</span>
                                             @endif
@@ -105,4 +106,3 @@
         </x-modal>
     </div>
 </x-app-layout>
-
