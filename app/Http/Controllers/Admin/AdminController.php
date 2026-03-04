@@ -345,19 +345,31 @@ class AdminController extends Controller
             });
         }
         $items = $query->get();
+        $totalRecaudado = $items->filter(fn($f) => $f->deleted_at === null)->sum('total');
+        // Prefetch motivos de cancelación por (numero_servicio|periodo)
+        $reasonsRaw = \Illuminate\Support\Facades\DB::table('payment_attempts')
+            ->select('numero_servicio','periodo','reason','status')
+            ->where('status', 'canceled')
+            ->whereIn('numero_servicio', $items->pluck('numero_servicio')->filter()->unique()->all())
+            ->get();
+        $reasons = [];
+        foreach ($reasonsRaw as $r) {
+            $reasons[$r->numero_servicio.'|'.$r->periodo] = (string) $r->reason;
+        }
         if ($format === 'csv') {
             $headers = [
                 'Content-Type' => 'text/csv; charset=UTF-8',
                 'Content-Disposition' => 'attachment; filename="historial_recibos.csv"',
             ];
-            $callback = function () use ($items) {
+            $callback = function () use ($items, $reasons, $totalRecaudado) {
                 echo "\xEF\xBB\xBF"; // BOM UTF-8
                 $out = fopen('php://output', 'w');
-                fputcsv($out, ['Folio', 'Fecha', 'Monto', 'Cliente', 'Número', 'Estado', 'Usuario']);
+                fputcsv($out, ['Folio', 'Fecha', 'Monto', 'Cliente', 'Número', 'Estado', 'Motivo', 'Usuario']);
                 $userNames = \App\Models\User::whereIn('id', $items->pluck('created_by')->filter()->unique())->pluck('name', 'id');
                 foreach ($items as $f) {
                     $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
                     $cliente = is_array($payload) ? ($payload['nombre'] ?? '') : '';
+                    $motivo = $reasons[($f->numero_servicio ?? '').'|'.($f->periodo ?? '')] ?? '';
                     fputcsv($out, [
                         str_pad((string)$f->reference_number, 8, '0', STR_PAD_LEFT),
                         optional($f->created_at)->format('d/m/Y H:i'),
@@ -365,9 +377,12 @@ class AdminController extends Controller
                         $cliente,
                         $f->numero_servicio,
                         $f->deleted_at ? 'Cancelado' : 'Vigente',
+                        $motivo,
                         $userNames[$f->created_by] ?? '',
                     ]);
                 }
+                // Fila de total (solo recaudado)
+                fputcsv($out, ['', '', number_format((float)$totalRecaudado, 2, '.', ''), 'TOTAL', '', '', '', '']);
                 fclose($out);
             };
             return response()->stream($callback, 200, $headers);
@@ -377,7 +392,7 @@ class AdminController extends Controller
                 'Content-Disposition' => 'attachment; filename="historial_recibos.xls"',
                 'Cache-Control' => 'max-age=0',
             ];
-            $callback = function () use ($items) {
+            $callback = function () use ($items, $reasons, $totalRecaudado) {
                 $userNames = \App\Models\User::whereIn('id', $items->pluck('created_by')->filter()->unique())->pluck('name', 'id');
                 echo "\xEF\xBB\xBF";
                 echo '<html><head><meta charset="utf-8">';
@@ -387,14 +402,15 @@ th,td{ border:1px solid #888; padding:6px 8px; font-family:Arial, Helvetica, san
 thead th{ background:#2e7d32; color:#fff; }
 .text{ mso-number-format:"\@"; }
 .date{ mso-number-format:"dd/mm/yyyy\\ hh:mm"; }
-.money{ mso-number-format:"\\$#,##0.00"; }
+.money{ mso-number-format:"\\$#,##0.00"; text-align:right; }
+.total-row td{ background:#1e3a8a; color:#fff; font-weight:700; }
                 </style></head><body>';
                 echo '<table>';
                 echo '<colgroup>
-<col style="width:90px"><col style="width:160px"><col style="width:110px"><col style="width:260px"><col style="width:110px"><col style="width:110px"><col style="width:150px">
+<col style="width:90px"><col style="width:160px"><col style="width:110px"><col style="width:260px"><col style="width:110px"><col style="width:140px"><col style="width:150px">
 </colgroup>';
                 echo '<thead><tr>
-<th>Folio</th><th>Fecha</th><th>Monto</th><th>Cliente</th><th>Número</th><th>Estado</th><th>Usuario</th>
+<th>Folio</th><th>Fecha</th><th>Monto</th><th>Cliente</th><th>Número</th><th>Estado</th><th>Motivo</th><th>Usuario</th>
 </tr></thead><tbody>';
                 foreach ($items as $f) {
                     $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
@@ -404,18 +420,28 @@ thead th{ background:#2e7d32; color:#fff; }
                     $monto = number_format((float)$f->total, 2, '.', '');
                     $numero = $f->numero_servicio;
                     $estado = $f->deleted_at ? 'Cancelado' : 'Vigente';
+                    $motivo = $reasons[($f->numero_servicio ?? '').'|'.($f->periodo ?? '')] ?? '';
+                    $rowStyle = $f->deleted_at ? ' style="background:#fee2e2"' : '';
                     $usuario = $userNames[$f->created_by] ?? '';
-                    echo '<tr>';
+                    echo '<tr'.$rowStyle.'>';
                     echo '<td class="text">'.htmlspecialchars($folio).'</td>';
                     echo '<td class="date">'.htmlspecialchars($fecha).'</td>';
                     echo '<td class="money">'.htmlspecialchars($monto).'</td>';
                     echo '<td>'.htmlspecialchars($cliente).'</td>';
                     echo '<td class="text">'.htmlspecialchars((string)$numero).'</td>';
                     echo '<td>'.htmlspecialchars($estado).'</td>';
+                    echo '<td>'.htmlspecialchars($motivo).'</td>';
                     echo '<td>'.htmlspecialchars($usuario).'</td>';
                     echo '</tr>';
                 }
-                echo '</tbody></table></body></html>';
+                echo '</tbody>';
+                // Fila de total (solo recaudado)
+                echo '<tfoot><tr class="total-row">';
+                echo '<td class="text"></td><td class="text">TOTAL</td>';
+                echo '<td class="money">'.htmlspecialchars(number_format((float)$totalRecaudado, 2, '.', '')).'</td>';
+                echo '<td colspan="5"></td>';
+                echo '</tr></tfoot>';
+                echo '</table></body></html>';
             };
             return response()->stream($callback, 200, $headers);
         }
@@ -424,6 +450,8 @@ thead th{ background:#2e7d32; color:#fff; }
             'from' => $from,
             'to' => $to,
             'cliente' => $cliente,
+            'reasons' => $reasons,
+            'total' => $totalRecaudado,
         ]);
     }
 

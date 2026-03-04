@@ -62,14 +62,15 @@
                                 </div>
                             </div>
                         </div>
+                        <br>
                         <div class="flex items-end justify-end md:justify-start gap-2 not-print">
                             <a class="btn btn-secondary" href="{{ route('pagos.recibos.historial') }}">Historial</a>
                             <!-- <button class="btn btn-secondary" @click="toggleEditor()"
                                 x-text="editMode ? 'Cerrar editor de plantilla' : 'Editar plantilla'"></button>
                             <button class="btn btn-secondary" @click="resetLayout()">Restablecer</button> -->
                             <!-- <button class="btn btn-secondary" @click="saveAsDefault()">Guardar como predeterminado</button> -->
-                            <button class="btn btn-primary" @click="printThermal()">Imprimir térmica</button>
-                            <button class="btn btn-danger" @click="openConfirm()">Exportar a PDF</button>
+                            <button class="btn btn-primary" @click="printThermal()">Imprimir Ticket</button>
+                            <button class="btn btn-danger" @click="openConfirm()">Imprimir Recibo</button>
                         </div>
                     </div>
 
@@ -669,10 +670,14 @@
                 }catch(_){}
                 await this.doPrintOnce();
             },
-            printThermal(){
+            async printThermal(){
+                if(!this.ref || !this.ref.id){
+                    await this.emitirFactura();
+                }
                 const w = window.open('', '_blank', 'width=400,height=700');
                 if(!w) return;
                 const logo = '{{ asset('images/logo.png') }}';
+                const banner = '{{ asset('images/recibo-alerta.png') }}';
                 const nombre = this.datos.nombre || '—';
                 const id = this.form.numero || '—';
                 const mes = this.mesEnCursoCompleto();
@@ -698,6 +703,8 @@ html,body{ margin:0; padding:0 }
 .ticket{ width:80mm; max-width:80mm; padding:8px 10px; font-family: Arial, sans-serif; font-size:12px; color:#111 }
 .logo{ text-align:center; margin-bottom:6px }
 .logo img{ max-width:70mm; height:auto }
+.banner{ text-align:center; margin-top:8px }
+.banner img{ max-width:70mm; height:auto }
 .center{ text-align:center }
 .title{ font-weight:700; font-size:14px; margin:6px 0 }
 .line{ display:flex; justify-content:space-between; gap:8px; margin:2px 0 }
@@ -725,6 +732,7 @@ html,body{ margin:0; padding:0 }
   <div class="line"><div class="l">Quién cobró</div><div>${cobro}</div></div>
   <div class="line"><div class="l">Fecha</div><div>${fecha}</div></div>
   <div class="line"><div class="l">Hora</div><div>${hora}</div></div>
+  <div class="banner"><img src="${banner}" onerror="this.style.display='none'"></div>
 </div>
 </body>
 </html>`;

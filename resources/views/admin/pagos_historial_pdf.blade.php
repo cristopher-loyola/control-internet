@@ -15,11 +15,13 @@
         colgroup col:nth-child(4){width:260px}
         colgroup col:nth-child(5){width:110px}
         colgroup col:nth-child(6){width:110px}
+        colgroup col:nth-child(7){width:160px}
         thead th{background:var(--header-bg);color:var(--header-fg)}
         th,td{border:1px solid var(--border);padding:6px 8px;text-align:left;vertical-align:middle}
         .money{text-align:right}
         .mono{font-family:Consolas, 'Courier New', monospace}
         .cancelado{background:#fee2e2}
+        .totalbar{margin-top:8px; padding:6px 10px; background:#1e3a8a; color:#fff; font-weight:700; display:inline-block; border-radius:4px}
         @media print{.no-print{display:none}}
     </style>
     <script>
@@ -70,6 +72,7 @@
                 <th>Cliente</th>
                 <th>Número</th>
                 <th>Estado</th>
+                <th>Motivo</th>
             </tr>
         </thead>
         <tbody>
@@ -77,6 +80,8 @@
                 @php
                     $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
                     $nombre = is_array($payload) ? ($payload['nombre'] ?? '') : '';
+                    $k = ($f->numero_servicio ?? '').'|'.($f->periodo ?? '');
+                    $motivo = $reasons[$k] ?? '';
                 @endphp
                 <tr class="{{ $f->deleted_at ? 'cancelado' : '' }}">
                     <td class="mono">{{ str_pad((string)$f->reference_number, 8, '0', STR_PAD_LEFT) }}</td>
@@ -85,9 +90,11 @@
                     <td>{{ $nombre }}</td>
                     <td class="mono">{{ $f->numero_servicio }}</td>
                     <td>{{ $f->deleted_at ? 'Cancelado' : 'Vigente' }}</td>
+                    <td>{{ $motivo }}</td>
                 </tr>
             @endforeach
         </tbody>
     </table>
+    <div class="totalbar">Total: ${{ number_format((float) ($total ?? 0), 2) }}</div>
 </body>
 </html>
