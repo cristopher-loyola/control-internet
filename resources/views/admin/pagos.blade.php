@@ -14,65 +14,63 @@
                             Vista en modo solo lectura: los campos están deshabilitados.
                         </div>
                     </template>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 not-print">
-                        <div class="md:col-span-2 grid grid-cols-2 gap-3">
-                            <div class="col-span-2">
-                                <label class="text-xs uppercase text-gray-500 dark:text-gray-400">Buscar por</label>
-                                <div class="text-sm font-semibold">ID</div>
-                            </div>
-                            <div class="col-span-2">
-                                <label for="numero" class="text-xs uppercase text-gray-500 dark:text-gray-400">Ingresa el ID</label>
-                                <div class="relative">
-                                   
-                                    <input id="numero" type="number" class="form-input pl-10 mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" x-model.trim="form.numero" :disabled="readOnlyMode" @change="!readOnlyMode && buscar()" @keydown.enter.prevent="!readOnlyMode && buscar()">
-                                </div>
-                                <p class="text-xs text-red-500 mt-1" x-text="error" x-show="error"></p>
-                            </div>
-                            <div class="col-span-2 grid grid-cols-2 gap-3">
-                                      <div>
-                                    <label class="text-xs uppercase text-gray-500 dark:text-gray-400">Recargo</label>
-                                    <select class="form-select mt-1 w-full" x-model="form.recargo" :disabled="readOnlyMode" @change="!readOnlyMode && recalcular()">
-                                        <option value="no">No</option>
-                                        <option value="si">Sí</option>
-                                    </select>
-                                </div>
-                                    <select class="hidden" x-model="form.recargo"><option value="no">No</option><option value="si">Sí</option></select>
-                                </div>
-                                <div>
-                                    <label class="text-xs uppercase text-gray-500 dark:text-gray-400">Pago anterior</label>
-                                    <div class="relative mt-1">
-                                        <input type="number" step="1" class="form-input pl-7 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="0.00" x-model.number="form.pago_anterior" :disabled="readOnlyMode" @input="!readOnlyMode && recalcular()">
-                                    </div>
-                                </div>
-                                <div>
-                                    <label class="text-xs uppercase text-gray-500 dark:text-gray-400">Método de pago</label>
-                                    <select class="form-select mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" x-model="form.metodo" :disabled="readOnlyMode">
-                                        <option value="">Selecciona</option>
-                                        <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
-                                        <option value="Cheque">Cheque</option>
-                                        <option value="Deposito a cuenta">Deposito a cuenta</option>
-                                        <option value="Efectivo">Efectivo</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="text-xs uppercase text-gray-500 dark:text-gray-400">Quién cobró</label>
-                                    <div class="relative mt-1">
-                                        <input type="text" class="form-input pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"  x-model="form.cobro" :disabled="readOnlyMode">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <br>
-                        <div class="flex items-center justify-center gap-2 not-print">
-                            <a class="btn btn-secondary" href="{{ route('admin.pagos.historial') }}">Historial</a>
-                            <!-- <button class="btn btn-secondary" @click="toggleEditor()"
-                                x-text="editMode ? 'Cerrar editor de plantilla' : 'Editar plantilla'"></button>
-                            <button class="btn btn-secondary" @click="resetLayout()">Restablecer</button> -->
-                            <!-- <button class="btn btn-secondary" @click="saveAsDefault()">Guardar como predeterminado</button> -->
-                            <button class="btn btn-primary" @click="printThermal()">Imprimir Ticket</button>
-                            <button class="btn btn-danger" @click="openConfirm()">Imprimir Recibo</button>
-                        </div>
-                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 not-print">
+    <div class="md:col-span-2 bg-gray-50 dark:bg-gray-700 rounded-xl p-5 shadow-inner">
+        <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 dark:text-gray-300 mb-4"> Buscar cliente</h3>
+        <div class="grid grid-cols-2 gap-4">
+            <div class="col-span-2">
+                <label for="numero" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">ID del cliente</label>
+                <input id="numero" type="number" placeholder="Ingresa el ID..."
+                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm text-base focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                    x-model.trim="form.numero" :disabled="readOnlyMode"
+                    @change="!readOnlyMode && buscar()" @keydown.enter.prevent="!readOnlyMode && buscar()">
+                <p class="text-xs text-red-500 mt-1" x-text="error" x-show="error"></p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Recargo</label>
+                <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                    x-model="form.recargo" :disabled="readOnlyMode" @change="!readOnlyMode && recalcular()">
+                    <option value="no">No</option>
+                    <option value="si">Sí</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pago anterior</label>
+                <input type="number" step="1" placeholder="0.00"
+                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                    x-model.number="form.pago_anterior" :disabled="readOnlyMode" @input="!readOnlyMode && recalcular()">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Método de pago</label>
+                <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                    x-model="form.metodo" :disabled="readOnlyMode">
+                    <option value="">Selecciona...</option>
+                    <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="Deposito a cuenta">Depósito a cuenta</option>
+                    <option value="Efectivo">Efectivo</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Quién cobró</label>
+                <input type="text" placeholder="Nombre del cobrador"
+                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                    x-model="form.cobro" :disabled="readOnlyMode">
+            </div>
+        </div>
+    </div>
+
+    <div class="flex flex-col items-center justify-center gap-3 bg-gray-50 dark:bg-gray-700 rounded-xl p-5 shadow-inner">
+        <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 dark:text-gray-300">Acciones</h3>
+        <a class="btn btn-secondary w-full text-center" href="{{ route('admin.pagos.historial') }}">📋 Historial</a>
+        <button class="btn btn-primary w-full" @click="printThermal()">🧾 Imprimir Ticket</button>
+        <button class="btn btn-danger w-full" @click="openConfirm()">🖨️ Imprimir Recibo</button>
+    </div>
+</div>
                     <br>
 
                     <div class="mt-6 print-sheet" x-ref="sheet" x-show="layoutReady" x-cloak>
