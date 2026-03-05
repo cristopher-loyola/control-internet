@@ -93,7 +93,7 @@
                         <option value="">Filtrar por rango/clave</option>
                         <option value="ina" {{ request('tec') === 'ina' ? 'selected' : '' }}>INA (1000–4200)</option>
                         <option value="foi" {{ request('tec') === 'foi' ? 'selected' : '' }}>FOI (4800–5400, 5500–5999)</option>
-                        <option value="fod" {{ request('tec') === 'fod' ? 'selected' : '' }}>FOD (5401–5499, 6000–7414)</option>
+                        <option value="fod" {{ request('tec') === 'fod' ? 'selected' : '' }}>FOD (5401–5499, 6000–{{ $fodMax ?? 7414 }})</option>
                     </select>
                     <button type="submit" class="btn btn-primary btn-sm">
                         Buscar

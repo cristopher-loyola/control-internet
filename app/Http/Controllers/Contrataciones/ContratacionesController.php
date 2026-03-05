@@ -21,6 +21,7 @@ class ContratacionesController extends Controller
         $q = trim((string) $request->input('q'));
         $tec = strtolower(trim((string) $request->input('tec', '')));
         $query = Usuario::with(['estado', 'estatusServicio']);
+        $fodMax = (int) (Usuario::max('numero_servicio') ?? 7414);
 
         if ($q !== '') {
             $query->where(function ($sub) use ($q) {
@@ -41,7 +42,7 @@ class ContratacionesController extends Controller
                                   ->orWhereBetween('numero_servicio', [5500, 5999]);
                             } elseif ($upper === 'FOD') {
                                 $r->whereBetween('numero_servicio', [5401, 5499])
-                                  ->orWhereBetween('numero_servicio', [6000, 7414]);
+                                  ->orWhere('numero_servicio', '>=', 6000);
                             }
                         });
                     }
@@ -58,13 +59,13 @@ class ContratacionesController extends Controller
                       ->orWhereBetween('numero_servicio', [5500, 5999]);
                 } elseif ($tec === 'fod') {
                     $r->whereBetween('numero_servicio', [5401, 5499])
-                      ->orWhereBetween('numero_servicio', [6000, 7414]);
+                      ->orWhere('numero_servicio', '>=', 6000);
                 }
             });
         }
 
         $clientes = $query->orderBy('numero_servicio', 'asc')->get();
-        return view('contrataciones.clientes.index', compact('clientes', 'q', 'tec'));
+        return view('contrataciones.clientes.index', compact('clientes', 'q', 'tec', 'fodMax'));
     }
 
     public function clientesStore(Request $request)
@@ -115,19 +116,31 @@ class ContratacionesController extends Controller
             }
         }
 
+        $textOrDash = function ($v) {
+            $s = is_null($v) ? null : trim((string) $v);
+            return ($s === null || $s === '') ? '-' : $s;
+        };
+        $tecByNumero = function ($n) {
+            $num = (int) $n;
+            if ($num >= 6000 || ($num >= 5401 && $num <= 5499)) return 'fod';
+            if (($num >= 4800 && $num <= 5400) || ($num >= 5500 && $num <= 5999)) return 'foi';
+            if ($num >= 1000 && $num <= 4200) return 'ina';
+            return null;
+        };
+
         Usuario::create([
             'numero_servicio' => $request->numero_servicio,
             'nombre_cliente' => $request->nombre_cliente,
-            'domicilio' => $request->domicilio,
-            'telefono' => $request->telefono,
+            'domicilio' => $textOrDash($request->domicilio),
+            'telefono' => $textOrDash($request->telefono),
             'paquete' => $request->uso ? ($request->uso . ($request->tecnologia ? " {$request->tecnologia}" : '') . (($megasAsignados ?? $request->megas) ? " " . ($megasAsignados ?? $request->megas) . "Mbps" : '')) : null,
             'estado_id' => null,
             'estatus_servicio_id' => null,
             'servicio_id' => null,
-            'comunidad' => $request->comunidad ?? null,
-            'uso' => $request->uso ?? null,
-            'tecnologia' => $request->tecnologia ?? null,
-            'dispositivo' => $request->dispositivo ?? null,
+            'comunidad' => $textOrDash($request->comunidad),
+            'uso' => $textOrDash($request->uso),
+            'tecnologia' => $request->filled('tecnologia') ? $textOrDash($request->tecnologia) : ($tecByNumero($request->numero_servicio) ?? '-'),
+            'dispositivo' => $textOrDash($request->dispositivo),
             'megas' => $megasAsignados ?? $request->megas ?? null,
             'tarifa' => $request->tarifa ?? null,
             'fecha_contratacion' => $request->fecha_contratacion ?? null,
@@ -270,16 +283,28 @@ class ContratacionesController extends Controller
             'servicio_id' => $usuario->servicio_id,
             'fecha_contratacion' => $usuario->fecha_contratacion,
         ]);
+        $textOrDash = function ($v) {
+            $s = is_null($v) ? null : trim((string) $v);
+            return ($s === null || $s === '') ? '-' : $s;
+        };
+        $tecByNumero = function ($n) {
+            $num = (int) $n;
+            if ($num >= 6000 || ($num >= 5401 && $num <= 5499)) return 'fod';
+            if (($num >= 4800 && $num <= 5400) || ($num >= 5500 && $num <= 5999)) return 'foi';
+            if ($num >= 1000 && $num <= 4200) return 'ina';
+            return null;
+        };
+
         $usuario->update([
             'numero_servicio' => $request->numero_servicio,
             'nombre_cliente' => $request->nombre_cliente,
-            'domicilio' => $request->domicilio,
-            'telefono' => $request->telefono,
+            'domicilio' => $textOrDash($request->domicilio),
+            'telefono' => $textOrDash($request->telefono),
             'paquete' => $request->uso ? ($request->uso . ($request->tecnologia ? " {$request->tecnologia}" : '') . (($megasAsignados ?? $request->megas) ? " " . ($megasAsignados ?? $request->megas) . "Mbps" : '')) : null,
-            'comunidad' => $request->comunidad ?? null,
-            'uso' => $request->uso ?? null,
-            'tecnologia' => $request->tecnologia ?? null,
-            'dispositivo' => $request->dispositivo ?? null,
+            'comunidad' => $textOrDash($request->comunidad),
+            'uso' => $textOrDash($request->uso),
+            'tecnologia' => $request->filled('tecnologia') ? $textOrDash($request->tecnologia) : ($tecByNumero($request->numero_servicio) ?? '-'),
+            'dispositivo' => $textOrDash($request->dispositivo),
             'megas' => $megasAsignados ?? $request->megas ?? null,
             'tarifa' => $request->tarifa ?? null,
             'estado_id' => $request->estado_id ?? null,

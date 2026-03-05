@@ -469,35 +469,87 @@
             },
             async ensurePrintableReady(){
                 const sheet = document.querySelector('.print-sheet');
-                if(sheet){ sheet.style.transform = 'none'; }
+                if(sheet){
+                    sheet.style.transform = 'none';
+                    sheet.style.display = 'block';
+                    sheet.style.visibility = 'visible';
+                }
                 const isVisible = (el)=>{
                     if(!el) return false;
                     const st = getComputedStyle(el);
                     return st.display!=='none' && st.visibility!=='hidden' && el.offsetWidth>0 && el.offsetHeight>0;
                 };
                 let tries = 0;
-                while((!this.layoutReady || !isVisible(sheet)) && tries < 50){
+                while((!this.layoutReady || !isVisible(sheet)) && tries < 200){
                     tries++;
-                    await new Promise(r=>setTimeout(r,20));
+                    await new Promise(r=>setTimeout(r,25));
                 }
                 if(!this.layoutReady || !isVisible(sheet)){
-                    throw new Error('print-sheet no está listo/visible');
+                    // último intento: forzar visibilidad
+                    if(sheet){
+                        sheet.style.display = 'block';
+                        sheet.style.visibility = 'visible';
+                    }
+                    await new Promise(r=>setTimeout(r,50));
+                    if(!sheet || !isVisible(sheet)){
+                        throw new Error('print-sheet no está listo/visible');
+                    }
                 }
                 await this.$nextTick();
                 await this.waitForImages();
                 if(document.fonts && document.fonts.ready){
                     try{ await document.fonts.ready }catch(_){}
                 }
-                await new Promise(r=>setTimeout(r,50));
+                await new Promise(r=>setTimeout(r,120));
             },
             async doPrintOnce(){
                 if(this.isPrinting) return;
                 this.isPrinting = true;
-                const handler = ()=>{ this.isPrinting=false; window.removeEventListener('afterprint', handler); };
-                window.addEventListener('afterprint', handler, {once:true});
                 try{
                     await this.ensurePrintableReady();
-                    setTimeout(()=>window.print(),0);
+                    const sheet = document.querySelector('.print-sheet');
+                    const w = window.open('', '_blank', 'width=900,height=700');
+                    if(!w){ this.isPrinting=false; return; }
+                    // Copiar estilos actuales (incluye Tailwind inyectado por Vite y estilos inline)
+                    const styleNodes = Array.from(document.querySelectorAll('style,link[rel="stylesheet"]'));
+                    const headFrag = styleNodes.map(node=>{
+                        if(node.tagName.toLowerCase()==='style'){
+                            return `<style>${node.textContent||''}</style>`;
+                        }else{
+                            const href = node.getAttribute('href');
+                            if(href){ return `<link rel="stylesheet" href="${href}">`; }
+                            return '';
+                        }
+                    }).join('\n');
+                    // HTML a imprimir: clon literal de la hoja
+                    const html = `
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+${headFrag}
+<style>
+@page{size:A4;margin:0}
+html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;padding:0;background:#fff}
+.print-sheet{position:relative;width:210mm;height:297mm;margin:0 auto;transform:none}
+</style>
+</head>
+<body>${sheet ? sheet.outerHTML : ''}</body>
+</html>`;
+                    w.document.open(); w.document.write(html); w.document.close();
+                    // Esperar imágenes y fuentes en el popup
+                    const waitReady = async ()=>{
+                        const imgs = Array.from(w.document.images);
+                        await Promise.all(imgs.map(img=>img.complete?Promise.resolve():new Promise(res=>{
+                            img.addEventListener('load',res,{once:true});
+                            img.addEventListener('error',res,{once:true});
+                        })));
+                        if(w.document.fonts && w.document.fonts.ready){
+                            try{ await w.document.fonts.ready }catch(_){}
+                        }
+                    };
+                    try{ await waitReady(); }catch(_){}
+                    setTimeout(()=>{ try{ w.focus(); w.print(); } finally { setTimeout(()=>{ try{ w.close(); }catch(_){} }, 250); this.isPrinting=false; } }, 80);
                 }catch(e){
                     this.isPrinting=false;
                     this.error = 'No se pudo preparar la impresión. Intenta de nuevo.';
