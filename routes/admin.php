@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\DashboardController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:admin'])
@@ -8,6 +9,14 @@ Route::middleware(['auth', 'role:admin'])
     ->name('admin.')
     ->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('index');
+        Route::get('/corte', [DashboardController::class, 'corteView'])->name('corte.view');
+        Route::get('/dashboard/metrics', [DashboardController::class, 'metrics'])->name('dashboard.metrics');
+        Route::get('/dashboard/corte', [DashboardController::class, 'corteCaja'])->name('dashboard.corte');
+        Route::get('/dashboard/export', [DashboardController::class, 'exportResumen'])->name('dashboard.export');
+        Route::get('/dashboard/cancelados', [DashboardController::class, 'canceladosIndex'])->name('dashboard.cancelados');
+        Route::get('/dashboard/desactivados', [DashboardController::class, 'desactivadosIndex'])->name('dashboard.desactivados');
+        Route::get('/dashboard/morosos', [DashboardController::class, 'morososIndex'])->name('dashboard.morosos');
+        Route::get('/dashboard/morosos/export', [DashboardController::class, 'morososExport'])->name('dashboard.morosos.export');
         Route::get('/pagos', [AdminController::class, 'pagos'])->name('pagos.index');
         Route::get('/pagos/lookup', [AdminController::class, 'pagosLookup'])->name('pagos.lookup');
         Route::post('/pagos/layout', [AdminController::class, 'pagosLayoutStore'])->name('pagos.layout.store');

@@ -274,6 +274,16 @@
         .resize-handle{position:absolute;right:-6px;bottom:-6px;width:14px;height:14px;background:#fff;border:1px solid #666;border-radius:2px;box-shadow:0 0 0 2px rgba(255,255,255,.6);cursor:se-resize}
         @page{size:A4;margin:0}
         html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+        /* Responsive (pantallas pequeñas) */
+        @media (max-width: 640px){
+            .max-w-6xl{ max-width: 100%; }
+            .print-sheet{ width: 100vw; height: auto; aspect-ratio: 210 / 297; margin: 0; }
+            .receipt{ height: auto; padding: 12px; border-radius: 6px; }
+            .divider-line{ height: 1px; margin: 12px 0; }
+            .sheet-abs{ display: none; }
+            .receipt-grid{ font-size: 0.95rem; line-height: 1.2; }
+            .id-band{ margin: 8px 0; }
+        }
     </style>
 
     <script>
@@ -561,13 +571,39 @@
                     if(r.ok && j?.ok){
                         this.form.pago_anterior = Number(j.data.monto)||0;
                         this.pagoAnteriorFecha = this.fechaLocal(j.data.fecha || j.data.created_at);
+                        const now = new Date();
+                        const day = now.getDate();
+                        let paidThisMonth = false;
+                        try {
+                            const paidDate = j.data.created_at ? new Date(j.data.created_at) : (j.data.fecha ? new Date(j.data.fecha) : null);
+                            if (paidDate) {
+                                paidThisMonth = (paidDate.getFullYear() === now.getFullYear() && paidDate.getMonth() === now.getMonth());
+                            }
+                        } catch(_) {}
+                        if (day >= 8 && !paidThisMonth) {
+                            this.form.recargo = 'si';
+                        } else if (day < 8) {
+                            this.form.recargo = 'no';
+                        }
                     }else{
                         this.form.pago_anterior = 0;
                         this.pagoAnteriorFecha = '';
+                        const now = new Date();
+                        if (now.getDate() >= 8) {
+                            this.form.recargo = 'si';
+                        } else {
+                            this.form.recargo = 'no';
+                        }
                     }
                 }catch(_){
                     this.form.pago_anterior = 0;
                     this.pagoAnteriorFecha = '';
+                    const now = new Date();
+                    if (now.getDate() >= 8) {
+                        this.form.recargo = 'si';
+                    } else {
+                        this.form.recargo = 'no';
+                    }
                 }
                 this.recalcular();
             },

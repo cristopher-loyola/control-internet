@@ -34,6 +34,8 @@
     $pagosActive = request()->routeIs('admin.pagos.*');
     $recibosActive = request()->routeIs('pagos.recibos*');
     // historial link removido de navbar a petición del usuario
+    $corteRoute = $role === 'admin' ? route('admin.corte.view') : null;
+    $corteActive = request()->routeIs('admin.corte.*');
 
     $dashboardActive = (
         request()->routeIs('admin.*') ||
@@ -91,6 +93,11 @@
                     @if ($recibosRoute)
                         <x-nav-link :href="$recibosRoute" :active="$recibosActive">
                             {{ __('Recibos') }}
+                        </x-nav-link>
+                    @endif
+                    @if ($corteRoute)
+                        <x-nav-link :href="$corteRoute" :active="$corteActive">
+                            Corte
                         </x-nav-link>
                     @endif
                 </div>
@@ -166,6 +173,11 @@
             @if ($recibosRoute)
                 <x-responsive-nav-link :href="$recibosRoute" :active="$recibosActive">
                     {{ __('Recibos') }}
+                </x-responsive-nav-link>
+            @endif
+            @if ($corteRoute)
+                <x-responsive-nav-link :href="$corteRoute" :active="$corteActive">
+                    Corte
                 </x-responsive-nav-link>
             @endif
         </div>
