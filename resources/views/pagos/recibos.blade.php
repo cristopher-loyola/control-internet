@@ -252,6 +252,8 @@
                                 <div>Importe</div><div x-text="moneda(0)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
+                                <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
+                                <div x-show="form.prepay==='si'">Meses adelantados</div><div x-show="form.prepay==='si'" x-text="form.prepay_months || '-'"></div>
                                 <div>Su pago anterior</div><div x-text="moneda(form.pago_anterior || 0)"></div>
                                 <div>Fecha de pago anterior</div><div x-text="pagoAnteriorFecha || '—'"></div>
                                 <div>Total a pagar en número</div><div x-text="moneda(totales.total)"></div>
@@ -271,32 +273,22 @@
     <style>
         @media print{
             nav, header, .not-print{display:none!important}
-            html,body,main{background:#fff!important;margin:0!important;padding:0!important;width:210mm!important;height:297mm!important;overflow:hidden!important}
-            div.py-6{padding:0!important;margin:0!important;background:transparent!important}
-            .py-6,.py-12,.p-6,.mt-6{padding:0!important;margin:0!important}
-            .max-w-6xl{padding:0!important;margin:0!important;max-width:none!important}
-            .bg-white,.dark\:bg-gray-800{padding:0!important;margin:0!important;background:transparent!important}
-            .shadow-sm,.sm\:rounded-lg,.overflow-hidden{box-shadow:none!important;border-radius:0!important;overflow:visible!important;padding:0!important;margin:0!important}
-            .print-sheet{position:fixed!important;top:0!important;left:0!important;width:210mm!important;height:297mm!important;padding:0!important;margin:0!important;overflow:hidden!important;background:#fff!important}
+            main, body{background:#fff!important;margin:0!important;padding:0!important;width:210mm;height:297mm;overflow:hidden}
+            .print-sheet{padding:0!important;margin:0!important;page-break-inside:avoid;break-inside:avoid;break-after:avoid}
             .py-6,.py-12{padding:0!important}
             .p-6{padding:0!important}
             .shadow-sm,.sm\:rounded-lg,.overflow-hidden{box-shadow:none!important;border-radius:0!important;overflow:visible!important}
             .receipt{border:0!important;border-radius:0!important}
             .divider-line{display:none!important}
             .print-sheet::after{content:'';position:absolute;left:0;right:0;top:calc(50% - 0.3mm);height:0.6mm;background:#111;z-index:50}
-            .p-6 > *:not(.print-sheet){display:none!important}
-            .bg-white{box-shadow:none!important;border:none!important;outline:none!important}
-            body > *:not(script):not(style){visibility:hidden!important}
-            .print-sheet,.print-sheet *{visibility:visible!important}
         }
         .print-sheet{position:relative;width:210mm;max-width:none;margin:0 auto;transform:none;height:297mm;background:#fff}       
         .sheet-abs{position:absolute;inset:0;z-index:20;pointer-events:none}
-        .receipt{position:relative;height:calc((297mm - 0.6mm)/2);border:1px solid #d1d5db;border-radius:8px;padding:4.5mm;background:#fff;overflow:hidden}
+        .receipt{position:relative;height:calc((297mm - 0.6mm)/2);border:1px solid #d1d5db;border-radius:8px;padding:6mm;background:#fff;overflow:hidden}
         .divider-line{height:0.6mm;background:#111;margin:0}
-        .client-receipt{padding-top:2mm}
-        .ref-number{position:absolute;top:1.5mm;left:6mm;font-weight:700;font-size:12px;color:#111;z-index:30}
-        .receipt-head{margin:0;height:0;padding:0}
-        .id-band{background:#fde047;border:1px solid #eab308;border-radius:4px;padding:4px 8px;display:inline-flex;gap:10px;margin:6px 0;width:fit-content;max-width:60%}
+        .client-receipt{padding-top:8mm}
+        .ref-number{position:absolute;top:2mm;left:6mm;font-weight:700;font-size:12px;color:#111;z-index:30}
+        .id-band{background:#fde047;border:1px solid #eab308;border-radius:4px;padding:4px 8px;display:inline-flex;gap:10px;margin:10px 0;width:fit-content;max-width:60%}
         .receipt-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;font-size:0.95rem}
         .receipt-head img{max-height:120px;object-fit:contain}
         .logo-center{display:inline-block;max-width:680px;width:90%}
@@ -312,7 +304,7 @@
             .print-sheet{ width: 100vw; height: auto; aspect-ratio: 210 / 297; margin: 0; }
             .receipt{ height: auto; padding: 12px; border-radius: 6px; }
             .divider-line{ height: 1px; margin: 12px 0; }
-            .sheet-abs{ display: none; }
+            .sheet-abs{ display: none; } /* Oculta overlays en móvil; la impresión no se afecta */
             .receipt-grid{ font-size: 0.95rem; line-height: 1.2; }
             .id-band{ margin: 8px 0; }
         }

@@ -117,7 +117,6 @@
                         <template x-if="editMode">
                             <div class="text-xs text-gray-500 mb-2 not-print">Arrastra las imágenes para acomodarlas. Se guardará tu plantilla.</div>
                         </template>
-                        <!-- Capa de imágenes única para toda la hoja -->
                         <div class="sheet-abs">
                             @php $logoImg = public_path('images/logo.png'); @endphp
                             @if (file_exists($logoImg))
@@ -245,7 +244,7 @@
                                 <span class="font-bold">ID</span>
                                 <span class="font-bold" x-text="form.numero || '—'"></span>
                             </div>
-                            <div class="receipt-grid">
+                           <div class="receipt-grid">
                                 <div>Nombre</div><div x-text="datos.nombre || '—'"></div>
                                 <div>Mes</div><div x-text="mesEnCursoCompleto()"></div>
                                 <div>Mensualidad de Internet</div><div x-text="moneda(datos.mensualidad)"></div>
@@ -253,6 +252,8 @@
                                 <div>Importe</div><div x-text="moneda(0)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
+                                <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
+                                <div x-show="form.prepay==='si'">Meses adelantados</div><div x-show="form.prepay==='si'" x-text="form.prepay_months || '-'"></div>
                                 <div>Su pago anterior</div><div x-text="moneda(form.pago_anterior || 0)"></div>
                                 <div>Fecha de pago anterior</div><div x-text="pagoAnteriorFecha || '—'"></div>
                                 <div>Total a pagar en número</div><div x-text="moneda(totales.total)"></div>
