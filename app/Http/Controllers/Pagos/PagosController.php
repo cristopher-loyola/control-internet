@@ -22,6 +22,23 @@ class PagosController extends Controller
         return view('pagos.recibos');
     }
 
+    public function prepaySettings(Request $request)
+    {
+        $rows = \App\Models\PrepaySetting::all()->pluck('enabled', 'paquete')->toArray();
+        $defaults = [300=>true, 400=>true, 500=>true, 600=>true];
+        $enabled = array_merge($defaults, $rows);
+        $matrix = [
+            6  => ['percent' => 10, 'totals' => [300=>1620, 400=>2160, 500=>2700, 600=>3240]],
+            7  => ['percent' => 11, 'totals' => [300=>1869, 400=>2492, 500=>3115, 600=>3738]],
+            8  => ['percent' => 12, 'totals' => [300=>2112, 400=>2816, 500=>3520, 600=>4224]],
+            9  => ['percent' => 13, 'totals' => [300=>2349, 400=>3132, 500=>3915, 600=>4698]],
+            10 => ['percent' => 14, 'totals' => [300=>2580, 400=>3440, 500=>4300, 600=>5160]],
+            11 => ['percent' => 15, 'totals' => [300=>2805, 400=>3740, 500=>4675, 600=>5610]],
+            12 => ['percent' => 16, 'totals' => [300=>3024, 400=>4032, 500=>5040, 600=>6048]],
+        ];
+        return response()->json(['ok'=>true,'enabled'=>$enabled,'matrix'=>$matrix]);
+    }
+
     public function recibosPagoAnterior(Request $request)
     {
         $numero = (string) $request->query('numero');

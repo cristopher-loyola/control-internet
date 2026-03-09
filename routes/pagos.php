@@ -22,6 +22,8 @@ Route::middleware(['auth', 'role:pagos'])
         Route::get('/recibos/historial/export', [PagosController::class, 'recibosHistorialExport'])->name('recibos.historial.export');
         Route::post('/recibos/facturas/{id}/cancel', [PagosController::class, 'recibosFacturaCancel'])->name('recibos.facturas.cancel');
 
+        // Configuración de pago anticipado (consumido por la UI de pagos)
+        Route::get('/prepay-settings', [PagosController::class, 'prepaySettings'])->name('prepay.settings');
         Route::get('/create', [PagosController::class, 'create'])->name('create');
         Route::post('/', [PagosController::class, 'store'])->name('store');
         Route::get('/{id}', [PagosController::class, 'show'])->name('show');

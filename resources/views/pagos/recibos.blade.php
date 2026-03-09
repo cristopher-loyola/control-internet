@@ -55,6 +55,36 @@
                 </select>
             </div>
 
+            <div class="col-span-2 grid grid-cols-3 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pago por adelantado</label>
+                    <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
+                        x-model="form.prepay" :disabled="readOnlyMode" @change="recalcular()">
+                        <option value="no">No</option>
+                        <option value="si">Sí</option>
+                    </select>
+                </div>
+                <div x-show="form.prepay==='si'" x-cloak>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Meses (6–12)</label>
+                    <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
+                        x-model.number="form.prepay_months" :disabled="readOnlyMode || form.prepay!=='si'" @change="recalcular()">
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="9">9</option>
+                        <option value="10">10</option>
+                        <option value="11">11</option>
+                        <option value="12">12</option>
+                    </select>
+                </div>
+                <div x-show="form.prepay==='si'" x-cloak>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Total adelanto</label>
+                    <input type="text" readonly class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
+                        :value="moneda(totales.prepay_total || 0)">
+                    <p class="text-[11px]" :class="prepayError ? 'text-red-600' : 'text-gray-500'" x-text="prepayLegend"></p>
+                </div>
+            </div>
+
             <div>
                 <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Quién cobró</label>
                 <input type="text" placeholder="Nombre del cobrador"
@@ -189,6 +219,8 @@
                                 <div>Importe</div><div x-text="moneda(0)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
+                                <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
+                                <div x-show="form.prepay==='si'">Meses adelantados</div><div x-show="form.prepay==='si'" x-text="form.prepay_months || '-'"></div>
                                 <div>Su pago anterior</div><div x-text="moneda(form.pago_anterior || 0)"></div>
                                 <div>Fecha de pago anterior</div><div x-text="pagoAnteriorFecha || '—'"></div>
                                 <div>Total a pagar en número</div><div x-text="moneda(totales.total)"></div>
@@ -340,10 +372,19 @@
         })();
         return {
             readOnlyMode: false,
-            form:{ numero:'', recargo:'no', pago_anterior:0, metodo:'', cobro:'' },
+            form:{ numero:'', recargo:'no', pago_anterior:0, metodo:'', cobro:'', prepay:'no', prepay_months:6 },
             pagoAnteriorFecha:'',
             datos:{ nombre:'', mensualidad:0 },
-            totales:{ total:0, letra:'' },
+            totales:{ total:0, letra:'', prepay_total:0 },
+            prepayConfig:{ enabled:{}, matrix:{} },
+            prepayError:'',
+            get prepayLegend(){
+                if(this.form.prepay!=='si') return '';
+                const m = this.form.prepay_months||6;
+                const info = this.prepayConfig.matrix?.[m];
+                if(!info) return '';
+                return `Descuento ${info.percent}%`;
+            },
             ref:{ numero:null, id:null, created_at:null },
             saveConfirmOpen:false,
             isPrinting:false,
@@ -422,6 +463,12 @@
             saveLayout(){ localStorage.setItem('reciboLayout', JSON.stringify(this.layout)); },
             async init(){
                 await this.loadServerLayout();
+                // cargar config de pago adelantado
+                try{
+                    const r = await fetch('{{ route('pagos.prepay.settings') }}', { headers:{'Accept':'application/json'} });
+                    const j = await r.json();
+                    if(j?.ok){ this.prepayConfig = j; }
+                }catch(_){}
                 try{
                     const params = new URLSearchParams(window.location.search);
                     const folio = Number(params.get('folio') || '');
@@ -553,10 +600,27 @@
                 this.dragging=null; this.dragRef=null; this.saveLayout();
             },
             recalcular(){
-                const rec = this.form.recargo==='si'?50:0;
-                const total = (Number(this.datos.mensualidad)||0) + rec;
-                this.totales.total = total;
-                this.totales.letra = toWords(total);
+                const mensualidad = Number(this.datos.mensualidad)||0;
+                if(this.form.prepay === 'si'){
+                    const months = Number(this.form.prepay_months||6);
+                    const info = this.prepayConfig?.matrix?.[months];
+                    const pkg = mensualidad;
+                    const totals = info?.totals || {};
+                    const expected = totals[String(pkg)] ?? totals[pkg];
+                    if(expected !== undefined){
+                        this.totales.prepay_total = Number(expected);
+                    }else{
+                        const percent = Number(info?.percent||0);
+                        const base = mensualidad * months;
+                        this.totales.prepay_total = Math.round((base * (1 - percent/100)) * 100) / 100;
+                    }
+                    this.totales.total = this.totales.prepay_total;
+                }else{
+                    const rec = this.form.recargo==='si'?50:0;
+                    const total = mensualidad + rec;
+                    this.totales.total = total;
+                }
+                this.totales.letra = toWords(this.totales.total);
             },
             refNumberPad(){
                 const n = this.ref.numero;
@@ -661,6 +725,9 @@
                                 nombre: this.datos.nombre,
                                 mensualidad: this.datos.mensualidad,
                                 recargo: this.form.recargo,
+                                prepay: this.form.prepay,
+                                prepay_months: this.form.prepay==='si'? this.form.prepay_months : null,
+                                prepay_total: this.form.prepay==='si'? this.totales.total : null,
                                 pago_anterior: this.form.pago_anterior,
                                 metodo: this.form.metodo,
                                 cobro: this.form.cobro,
@@ -793,13 +860,22 @@ html,body{ margin:0; padding:0 }
                     const j = await r.json();
                     if(!j.ok){ this.error = j.message || 'No encontrado'; this.datos={nombre:'',mensualidad:0}; this.recalcular(); return }
                     this.datos.nombre = j.data.nombre_cliente || '';
-                    this.datos.mensualidad = Number(j.data.tarifa)||0;
+                    const rawTarifa = j.data.tarifa ?? '';
+                    const numTarifa = Number(String(rawTarifa).replace(/[^\d.]/g, '')) || 0;
+                    const pkg = Number(String(j.data.paquete ?? '').replace(/[^\d]/g,'')) || 0;
+                    this.datos.mensualidad = numTarifa || pkg || 0;
                     this.recalcular();
                     await this.fetchPagoAnterior();
                 }catch(e){
                     this.error='Error de conexión';
                 }
-            }
+            },
+            prepayEnabledFor(val){
+                const v = Number(val||0);
+                if(!this.prepayConfig?.enabled) return false;
+                const ok = this.prepayConfig.enabled[String(v)] ?? this.prepayConfig.enabled[v];
+                return !!ok;
+            },
         }
     }
     </script>

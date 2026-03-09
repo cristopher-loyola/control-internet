@@ -17,6 +17,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/dashboard/desactivados', [DashboardController::class, 'desactivadosIndex'])->name('dashboard.desactivados');
         Route::get('/dashboard/morosos', [DashboardController::class, 'morososIndex'])->name('dashboard.morosos');
         Route::get('/dashboard/morosos/export', [DashboardController::class, 'morososExport'])->name('dashboard.morosos.export');
+        Route::get('/dashboard/prepay-settings', [DashboardController::class, 'prepaySettings'])->name('dashboard.prepay.settings');
         Route::get('/pagos', [AdminController::class, 'pagos'])->name('pagos.index');
         Route::get('/pagos/lookup', [AdminController::class, 'pagosLookup'])->name('pagos.lookup');
         Route::post('/pagos/layout', [AdminController::class, 'pagosLayoutStore'])->name('pagos.layout.store');
