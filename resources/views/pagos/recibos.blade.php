@@ -781,7 +781,7 @@
                 const w = window.open('', '_blank', 'width=400,height=700');
                 if(!w) return;
                 const logo = '{{ asset('images/logo.png') }}';
-                const banner = '{{ asset('images/recibo-alerta.png') }}';
+                const banner = '{{ asset('images/reportes.png') }}';
                 const nombre = this.datos.nombre || '—';
                 const id = this.form.numero || '—';
                 const mes = this.mesEnCursoCompleto();
