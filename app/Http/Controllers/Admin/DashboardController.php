@@ -276,6 +276,32 @@ class DashboardController extends Controller
         $morososData = $this->computeMorosos($range['from']->format('Y-m'));
         $morososPreview = array_slice($morososData['items'], 0, 8);
 
+        // Clientes con pagos adelantados
+        $prepayClients = Factura::whereNull('deleted_at')
+            ->where(function($q) {
+                $q->where('payload->prepay', 'si')
+                  ->orWhere('payload->prepay', true);
+            })
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($f) {
+                $p = $f->payload;
+                $months = (int)($p['prepay_months'] ?? 0);
+                $from = $f->created_at ? Carbon::parse($f->created_at) : now();
+                $to = $from->copy()->addMonths($months);
+                return [
+                    'numero' => (string)($f->numero_servicio ?? '—'),
+                    'nombre' => (string)($p['nombre'] ?? '—'),
+                    'desde' => $from->format('d/m/Y'),
+                    'hasta' => $to->format('d/m/Y'),
+                    'monto' => (float)$f->total,
+                    'created_at' => $from->toDateTimeString()
+                ];
+            })
+            ->unique('numero')
+            ->values()
+            ->take(10);
+
         return response()->json([
             'ok' => true,
             'period' => $period,
@@ -296,6 +322,7 @@ class DashboardController extends Controller
             'clientes_activos_label' => 'Activado',
             'morosos' => $morososPreview,
             'morosos_count' => $morososData['count'],
+            'prepay_clients' => $prepayClients,
         ]);
     }
 

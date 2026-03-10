@@ -124,26 +124,72 @@
 
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="bg-white dark:bg-gray-800 rounded shadow p-4">
-                    <div class="font-semibold mb-2">Cancelaciones de suscripción</div>
-                    <div class="flex items-center justify-between">
-                        <div class="text-3xl font-bold" x-text="metrics.cancelados_count ?? 0"></div>
-                        <a href="{{ route('admin.dashboard.cancelados') }}" class="btn btn-primary">Ver todos</a>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {{-- Pagos adelantados --}}
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-5 flex flex-col gap-4">
+                    <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
+                        <div>
+                            <div class="text-xs font-semibold uppercase tracking-widest text-indigo-500">Exclusivo</div>
+                            <div class="text-lg font-bold text-gray-800 dark:text-white mt-0.5">Pagos por adelantado</div>
+                        </div>
+                        <div class="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
                     </div>
-                    <div class="text-sm text-gray-500 mt-1">En el período seleccionado</div>
-                    <div class="overflow-x-auto mt-3">
+                    <div class="overflow-x-auto">
                         <table class="min-w-full text-sm">
-                            <thead><tr class="text-left text-gray-600"><th class="py-1">Número</th><th class="py-1">Nombre</th><th class="py-1">Fecha</th></tr></thead>
-                            <tbody>
-                                <template x-for="c in metrics.cancelados" :key="c.id">
-                                    <tr class="border-t border-gray-200">
-                                        <td class="py-1" x-text="c.numero_servicio"></td>
-                                        <td class="py-1" x-text="c.nombre_cliente"></td>
-                                        <td class="py-1" x-text="(c.updated_at ?? '').replace('T',' ').slice(0,16)"></td>
+                            <thead>
+                                <tr class="text-left text-gray-400 border-b border-gray-100 dark:border-gray-700">
+                                    <th class="pb-2 font-medium">Cliente</th>
+                                    <th class="pb-2 font-medium text-center">Desde</th>
+                                    <th class="pb-2 font-medium text-center">Hasta</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
+                                <template x-for="p in (metrics.prepay_clients || [])" :key="p.numero">
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                                        <td class="py-3">
+                                            <div class="font-bold text-gray-800 dark:text-white" x-text="p.numero"></div>
+                                            <div class="text-xs text-gray-500 truncate max-w-[150px]" x-text="p.nombre"></div>
+                                        </td>
+                                        <td class="py-3 text-center">
+                                            <span class="px-2 py-0.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 text-[11px] font-bold" x-text="p.desde"></span>
+                                        </td>
+                                        <td class="py-3 text-center">
+                                            <span class="px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-[11px] font-bold" x-text="p.hasta"></span>
+                                        </td>
                                     </tr>
                                 </template>
-                                <tr x-show="!metrics.cancelados || metrics.cancelados.length === 0"><td colspan="3" class="py-2 text-gray-500">Sin cancelaciones</td></tr>
+                                <tr x-show="!metrics.prepay_clients || metrics.prepay_clients.length === 0">
+                                    <td colspan="3" class="py-10 text-center text-gray-400 italic">No hay pagos adelantados registrados</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {{-- Cancelaciones de suscripción --}}
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-5 flex flex-col gap-4">
+                    <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
+                        <div>
+                            <div class="text-lg font-bold text-gray-800 dark:text-white mt-0.5">Cancelaciones</div>
+                        </div>
+                        <a href="{{ route('admin.dashboard.cancelados') }}" class="btn btn-primary btn-sm">Ver todos</a>
+                    </div>
+                    <div class="text-3xl font-bold text-gray-800 dark:text-white" x-text="metrics.cancelados_count ?? 0"></div>
+                    <div class="text-xs text-gray-500 mt-1">En el período seleccionado</div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-sm">
+                            <thead><tr class="text-left text-gray-400 border-b border-gray-100 dark:border-gray-700"><th class="pb-2 font-medium">Número</th><th class="pb-2 font-medium">Nombre</th><th class="pb-2 font-medium">Fecha</th></tr></thead>
+                            <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
+                                <template x-for="c in metrics.cancelados" :key="c.id">
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                                        <td class="py-2" x-text="c.numero_servicio"></td>
+                                        <td class="py-2" x-text="c.nombre_cliente"></td>
+                                        <td class="py-2 text-gray-500" x-text="(c.updated_at ?? '').replace('T',' ').slice(0,10)"></td>
+                                    </tr>
+                                </template>
+                                <tr x-show="!metrics.cancelados || metrics.cancelados.length === 0"><td colspan="3" class="py-5 text-center text-gray-400 italic">Sin cancelaciones</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -213,7 +259,7 @@
             weekTo: null,
             monthVal: null,
             validWeek: true,
-            metrics: { metodos: [], clientes_nuevos: {day:0,week:0,month:0}, inventario_bajo: [], ventas_series: {labels:[], values:[]} },
+            metrics: { metodos: [], clientes_nuevos: {day:0,week:0,month:0}, inventario_bajo: [], ventas_series: {labels:[], values:[]}, prepay_clients: [] },
             chartMetodos: null,
             chartClientes: null,
             metodoColors: ['#16a34a','#0ea5e9','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16'],

@@ -225,7 +225,7 @@
                                 <template x-if="adeudo && adeudo.meses>0">
 <div x-text="`Adeuda desde ${new Date(adeudo.desde_label).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })} y en total a pagar: ${moneda(totales.total)}`"></div>                                </template>
                                 <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
-                                <div x-show="form.prepay==='si'">Meses adelantados</div><div x-show="form.prepay==='si'" x-text="form.prepay_months || '-'"></div>
+                                <div x-show="form.prepay==='si'">Meses adelantados</div><div x-show="form.prepay==='si'" x-text="`${form.prepay_months} (hasta ${mesFinalCobertura(form.prepay_months)})` || '-'"></div>
                                 <div>Su pago anterior</div><div x-text="moneda(form.pago_anterior || 0)"></div>
                                 <div>Fecha de pago anterior</div><div x-text="pagoAnteriorFecha || '—'"></div>
                                 <div>Total a pagar en número</div><div x-text="moneda(totales.total)"></div>
@@ -263,7 +263,7 @@
                                 <template x-if="adeudo && adeudo.meses>0">
 <div x-text="`Adeuda desde ${new Date(adeudo.desde_label).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })} y en total a pagar: ${moneda(totales.total)}`"></div>                                </template>
                                 <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
-                                <div x-show="form.prepay==='si'">Meses adelantados</div><div x-show="form.prepay==='si'" x-text="form.prepay_months || '-'"></div>
+                                <div x-show="form.prepay==='si'">Meses adelantados</div><div x-show="form.prepay==='si'" x-text="`${form.prepay_months} (hasta ${mesFinalCobertura(form.prepay_months)})` || '-'"></div>
                                 <div>Su pago anterior</div><div x-text="moneda(form.pago_anterior || 0)"></div>
                                 <div>Fecha de pago anterior</div><div x-text="pagoAnteriorFecha || '—'"></div>
                                 <div>Total a pagar en número</div><div x-text="moneda(totales.total)"></div>
@@ -415,6 +415,14 @@
             mesEnCursoCompleto(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleDateString('es-MX',{month:'long'})+' de '+d.getFullYear() },
             fecha(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) },
             hora(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleTimeString('es-MX') },
+            mesFinalCobertura(meses){
+                if(!meses) return '';
+                const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date();
+                d.setMonth(d.getMonth() + Number(meses));
+                const mes = d.toLocaleDateString('es-MX', { month: 'long' });
+                const year = d.getFullYear();
+                return `${mes} de ${year}`;
+            },
             fechaLocal(d){ try{ if(!d) return ''; const dt=new Date(d); return dt.toLocaleDateString('es-MX',{year:'numeric',month:'long',day:'numeric'});}catch(_){ return String(d) } },
             toggleEditor(){
                 this.editMode = !this.editMode;
@@ -858,6 +866,8 @@
                 const fecha = this.fecha();
                 const hora = this.hora();
                 const folio = this.refNumberPad();
+                const prepayLabel = this.form.prepay === 'si' ? 'SÍ' : 'NO';
+                const prepayLine = this.form.prepay === 'si' ? `<div class="line"><div class="l">Meses adelantados</div><div>${this.form.prepay_months} (hasta ${this.mesFinalCobertura(this.form.prepay_months)})</div></div><div class="sep"></div>` : '';
                 const adeudosLine = (this.adeudo && this.adeudo.meses>0) ? `<div class="line"><div class="l">Adeudos</div><div>adeudos - adeuda desde ${this.adeudo.desde_label} y en total a pagar: ${this.moneda(this.totales.total)}</div></div><div class="sep"></div>` : '';
                 const html = `
 <!doctype html>
@@ -892,7 +902,9 @@ html,body{ margin:0; padding:0 }
   <div class="line"><div class="l">Otros</div><div>${otros}</div></div>
   <div class="line"><div class="l">Importe</div><div>${importe}</div></div>
   <div class="line"><div class="l">Recargo</div><div>${recargo}</div></div>
+  <div class="line"><div class="l">Pago por adelantado</div><div>${prepayLabel}</div></div>
   <div class="sep"></div>
+  ${prepayLine}
   ${adeudosLine}
   <div class="line"><div class="l">Total (número)</div><div>${totalNum}</div></div>
   <div class="line"><div class="l">Total (letra)</div><div style="max-width:42mm;text-align:right">${totalLetra}</div></div>
