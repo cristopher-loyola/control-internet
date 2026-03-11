@@ -151,19 +151,13 @@
                         @media (prefers-reduced-motion:reduce){.skel::after{animation:none}}
                     </style>
                     @if (session('status') === 'cliente-creado')
-                        <div class="mb-4 p-3 rounded bg-emerald-600 text-white text-sm">
-                            Cliente creado correctamente.
-                        </div>
+                        <div x-data x-init="Swal.fire({ icon: 'success', title: '¡Éxito!', text: 'Cliente creado correctamente.' })"></div>
                     @endif
                     @if (session('status') === 'cliente-actualizado')
-                        <div class="mb-4 p-3 rounded bg-emerald-600 text-white text-sm">
-                            Cliente actualizado correctamente.
-                        </div>
+                        <div x-data x-init="Swal.fire({ icon: 'success', title: '¡Éxito!', text: 'Cliente actualizado correctamente.' })"></div>
                     @endif
                     @if (session('status') === 'cliente-eliminado')
-                        <div class="mb-4 p-3 rounded bg-red-600 text-white text-sm">
-                            Cliente eliminado correctamente.
-                        </div>
+                        <div x-data x-init="Swal.fire({ icon: 'success', title: '¡Éxito!', text: 'Cliente eliminado correctamente.' })"></div>
                     @endif
 
                     <div class="overflow-x-auto" style="scrollbar-gutter: stable both-edges;">

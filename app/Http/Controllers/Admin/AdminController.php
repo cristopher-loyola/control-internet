@@ -127,12 +127,12 @@ class AdminController extends Controller
             ];
             $fingerprint = hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
 
-            $existing = \App\Models\Factura::withTrashed()
-                ->where(function($q) use ($fingerprint, $request){
+            $existing = \App\Models\Factura::where(function($q) use ($fingerprint, $request){
                     $q->where('fingerprint', $fingerprint);
                 })
-                ->orWhere(function($q) use ($request){
+                ->orWhere(function($q) use ($request, $periodo){
                     $q->where('numero_servicio', $request->input('numero_servicio'))
+                        ->where('periodo', $periodo)
                         ->where('total', $request->input('total', 0))
                         ->whereRaw('payload = ?', [json_encode($request->input('payload', []))]);
                 })
@@ -210,7 +210,9 @@ class AdminController extends Controller
                 $factura->fingerprint = $fingerprint;
                 $factura->save();
             } catch (\Illuminate\Database\QueryException $e) {
-                $c = \App\Models\Factura::withTrashed()->where('fingerprint', $fingerprint)->first();
+                // Si falla por fingerprint duplicado (carrera), buscamos el que ganó
+                // Pero solo si NO está cancelado. Si está cancelado, dejamos que falle
+                $c = \App\Models\Factura::where('fingerprint', $fingerprint)->first();
                 if ($c) {
                     return response()->json([
                         'ok' => true,
@@ -484,6 +486,12 @@ class AdminController extends Controller
         $f = \App\Models\Factura::withTrashed()->findOrFail($id);
         if ($f->deleted_at) {
             return back()->with('status', 'La factura ya estaba cancelada.');
+        }
+        // Liberamos el fingerprint para permitir un nuevo pago tras la cancelación
+        // Nos aseguramos de que el nuevo fingerprint no exceda los 64 caracteres
+        if ($f->fingerprint) {
+            $f->fingerprint = substr($f->fingerprint, 0, 40) . '_can_' . now()->timestamp;
+            $f->save();
         }
         $f->delete();
         \Illuminate\Support\Facades\DB::table('payment_attempts')->insert([

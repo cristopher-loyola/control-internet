@@ -157,12 +157,12 @@ class PagosController extends Controller
             ];
             $fingerprint = hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
 
-            $existing = Factura::withTrashed()
-                ->where(function($q) use ($fingerprint, $request){
+            $existing = Factura::where(function($q) use ($fingerprint, $request){
                     $q->where('fingerprint', $fingerprint);
                 })
-                ->orWhere(function($q) use ($request){
+                ->orWhere(function($q) use ($request, $periodo){
                     $q->where('numero_servicio', $request->input('numero_servicio'))
+                        ->where('periodo', $periodo)
                         ->where('total', $request->input('total', 0))
                         ->whereRaw('payload = ?', [json_encode($request->input('payload', []))]);
                 })
@@ -242,7 +242,11 @@ class PagosController extends Controller
                 $factura->save();
             } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
                 // Si falla por fingerprint duplicado (carrera), buscamos el que ganó
-                $c = Factura::withTrashed()->where('fingerprint', $fingerprint)->first();
+                // Pero solo si NO está cancelado. Si está cancelado, dejamos que falle
+                // para que el usuario reciba un error o se gestione de otra forma.
+                // En la práctica, ya renombramos los cancelados, así que esto solo
+                // debería ocurrir en condiciones de carrera de inserción real.
+                $c = Factura::where('fingerprint', $fingerprint)->first();
                 if ($c) {
                     return response()->json([
                         'ok' => true,
@@ -511,6 +515,12 @@ thead th{ background:#2e7d32; color:#fff; }
         $f = Factura::withTrashed()->findOrFail($id);
         if ($f->deleted_at) {
             return back()->with('status', 'La factura ya estaba cancelada.');
+        }
+        // Liberamos el fingerprint para permitir un nuevo pago tras la cancelación
+        // Nos aseguramos de que el nuevo fingerprint no exceda los 64 caracteres
+        if ($f->fingerprint) {
+            $f->fingerprint = substr($f->fingerprint, 0, 40) . '_can_' . now()->timestamp;
+            $f->save();
         }
         $f->delete();
         \Illuminate\Support\Facades\DB::table('payment_attempts')->insert([

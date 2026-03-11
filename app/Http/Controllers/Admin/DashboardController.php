@@ -178,6 +178,49 @@ class DashboardController extends Controller
         $dompdf->render();
         return response($dompdf->output(), 200, $headers);
     }
+
+    public function prepayClientsIndex(Request $request)
+    {
+        $clients = Factura::whereNull('deleted_at')
+            ->where(function($q) {
+                $q->where('payload->prepay', 'si')
+                  ->orWhere('payload->prepay', true);
+            })
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($f) {
+                $p = $f->payload;
+                $months = (int)($p['prepay_months'] ?? 0);
+                $from = $f->created_at ? Carbon::parse($f->created_at) : now();
+                $to = $from->copy()->addMonths($months);
+                return (object)[
+                    'numero' => (string)($f->numero_servicio ?? '—'),
+                    'nombre' => (string)($p['nombre'] ?? '—'),
+                    'desde' => $from->format('d/m/Y'),
+                    'hasta' => $to->format('d/m/Y'),
+                    'monto' => (float)$f->total,
+                    'created_at' => $f->created_at,
+                    'meses' => $months,
+                ];
+            })
+            ->unique('numero')
+            ->values();
+
+        // Manual pagination if needed, but for now we'll just show them all or use simple collection pagination
+        $perPage = 50;
+        $page = $request->get('page', 1);
+        $paginatedItems = new \Illuminate\Pagination\LengthAwarePaginator(
+            $clients->forPage($page, $perPage),
+            $clients->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return view('admin.pagos_adelantados', [
+            'clients' => $paginatedItems
+        ]);
+    }
     public function metrics(Request $request)
     {
         $request->validate([

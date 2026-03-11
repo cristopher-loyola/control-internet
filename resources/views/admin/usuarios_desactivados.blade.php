@@ -33,7 +33,7 @@
                                 <td class="py-2">{{ optional($u->estado)->nombre }}</td>
                                 <td class="py-2">{{ optional($u->updated_at)->format('Y-m-d H:i') }}</td>
                                 <td class="py-2">
-                                    <form method="POST" action="{{ route('admin.clientes.destroy', $u->id) }}" onsubmit="return confirm('¿Eliminar definitivamente al usuario {{ $u->nombre_cliente }}?');">
+                                    <form method="POST" action="{{ route('admin.clientes.destroy', $u->id) }}" onsubmit="event.preventDefault(); Swal.fire({ title: '¿Estás seguro?', text: '¡No podrás revertir esto!', icon: 'warning', showCancelButton: true, confirmButtonColor: '#3085d6', cancelButtonColor: '#d33', confirmButtonText: 'Sí, ¡elimínalo!', cancelButtonText: 'Cancelar' }).then((result) => { if (result.isConfirmed) { this.submit(); } });">
                                         @csrf
                                         @method('DELETE')
                                         <button class="px-2 py-1 rounded bg-red-600 text-white text-xs hover:bg-red-700">Eliminar</button>

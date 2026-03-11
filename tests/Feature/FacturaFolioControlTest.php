@@ -49,7 +49,7 @@ class FacturaFolioControlTest extends TestCase
         $this->assertSame($first, $second);
     }
 
-    public function test_reuses_original_folio_after_soft_delete(): void
+    public function test_generates_new_folio_after_cancellation(): void
     {
         $this->actingAdmin();
 
@@ -60,7 +60,11 @@ class FacturaFolioControlTest extends TestCase
         ])->assertOk()->json('referencia');
 
         $f = Factura::where('reference_number', $ref)->firstOrFail();
-        $f->delete();
+        
+        // Cancelar a través del controlador para asegurar que se libera el fingerprint
+        $this->post(route('admin.pagos.facturas.cancel', $f->id), [
+            'motivo' => 'Error de prueba'
+        ])->assertRedirect();
 
         $ref2 = $this->postJson(route('admin.pagos.facturas.store'), [
             'numero_servicio' => '9999',
@@ -68,7 +72,7 @@ class FacturaFolioControlTest extends TestCase
             'payload' => $this->payload(),
         ])->assertOk()->json('referencia');
 
-        $this->assertSame($ref, $ref2);
+        $this->assertNotEquals($ref, $ref2);
     }
 
     public function test_generates_new_folio_when_data_changes(): void
