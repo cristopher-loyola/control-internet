@@ -526,28 +526,59 @@ class DashboardController extends Controller
 
         $rows = [];
         $totalSum = 0.0;
+        $metodosData = [];
         foreach ($ventas as $v) {
-            $nombre = is_array($v->payload) ? ($v->payload['nombre'] ?? '') : '';
+            $p = is_array($v->payload) ? $v->payload : (is_string($v->payload) ? @json_decode($v->payload, true) : []);
+            $nombre = $p['nombre'] ?? '';
+            $metodo = $p['metodo'] ?? 'desconocido';
             $monto = round((float)$v->total, 2);
             $totalSum += $monto;
             $rows[] = ['Venta', optional($v->created_at)->format('Y-m-d H:i'), number_format($monto, 2, '.', ''), $nombre, (string)$v->numero_servicio];
+
+            if (!isset($metodosData[$metodo])) {
+                $metodosData[$metodo] = ['cantidad' => 0, 'monto' => 0.0];
+            }
+            $metodosData[$metodo]['cantidad']++;
+            $metodosData[$metodo]['monto'] += $monto;
         }
-        // Se exportan solo ventas
+
+        $metodosRows = [];
+        foreach ($metodosData as $m => $data) {
+            $pct = $totalSum > 0 ? round(($data['monto'] / $totalSum) * 100, 2) : 0;
+            $metodosRows[] = [
+                $m,
+                $data['cantidad'],
+                number_format($data['monto'], 2, '.', ''),
+                $pct . '%'
+            ];
+        }
 
         if ($format === 'csv') {
             $headers = [
                 'Content-Type' => 'text/csv; charset=UTF-8',
                 'Content-Disposition' => 'attachment; filename="'.$fileBase.'.csv"',
             ];
-            $callback = function () use ($rows, $title, $totalSum) {
+            $callback = function () use ($rows, $title, $totalSum, $metodosRows) {
                 echo "\xEF\xBB\xBF";
                 $out = fopen('php://output', 'w');
                 fputcsv($out, [$title]);
-                fputcsv($out, ['Tipo', 'Fecha', 'Monto', 'Nombre/Proveedor', 'Detalle']);
+                fputcsv($out, []);
+                fputcsv($out, ['DETALLE DE VENTAS']);
+                fputcsv($out, ['Tipo', 'Fecha', 'Monto', 'Nombre', 'Detalle']);
                 foreach ($rows as $r) {
                     fputcsv($out, $r);
                 }
                 fputcsv($out, ['', '', number_format($totalSum, 2, '.', ''), 'TOTAL', '']);
+                
+                if (!empty($metodosRows)) {
+                    fputcsv($out, []);
+                    fputcsv($out, ['DESGLOSE POR MÉTODO DE PAGO']);
+                    fputcsv($out, ['Método', 'Cantidad', 'Monto', 'Porcentaje']);
+                    foreach ($metodosRows as $mr) {
+                        fputcsv($out, $mr);
+                    }
+                }
+                
                 fclose($out);
             };
             return response()->stream($callback, 200, $headers);
@@ -558,23 +589,72 @@ class DashboardController extends Controller
                 'Content-Disposition' => 'attachment; filename="'.$fileBase.'.xls"',
                 'Cache-Control' => 'max-age=0',
             ];
-            $callback = function () use ($rows, $title, $totalSum) {
+            $callback = function () use ($rows, $title, $totalSum, $metodosRows) {
                 echo "\xEF\xBB\xBF";
                 echo '<html><head><meta charset="utf-8"><style>
-                table{ border-collapse:collapse; width:100%; }
-                th,td{ border:1px solid #444; padding:6px 8px; font-family:Arial, Helvetica, sans-serif; font-size:11pt; }
-                thead th{ background:#16a34a; color:#fff; }
-                .money{ mso-number-format:"\\$#,##0.00"; text-align:right; }
-                .total-row td{ background:#0f766e; color:#fff; font-weight:700; }
+                table{ border-collapse:collapse; margin-bottom: 20px; }
+                th,td{ border:1px solid #000; padding:4px 6px; font-family:Arial, Helvetica, sans-serif; font-size:10pt; }
+                .hdr{ background:#16a34a; color:#fff; font-weight:bold; text-align:center; }
+                .money{ mso-number-format:"\#\,\#\#0\.00"; text-align:right; }
+                .total-row{ background:#0f766e; color:#fff; font-weight:bold; }
+                .empty-cell{ border:1px solid #000; }
                 </style></head><body>';
                 echo '<h3>'.htmlspecialchars($title).'</h3>';
-                echo '<table><thead><tr><th>Tipo</th><th>Fecha</th><th>Monto</th><th>Nombre/Proveedor</th><th>Detalle</th></tr></thead><tbody>';
-                foreach ($rows as $r) {
-                    echo '<tr><td>'.htmlspecialchars($r[0]).'</td><td>'.htmlspecialchars($r[1]).'</td><td class="money">'.htmlspecialchars($r[2]).'</td><td>'.htmlspecialchars($r[3]).'</td><td>'.htmlspecialchars($r[4]).'</td></tr>';
+                
+                echo '<table>';
+                // Encabezados principales
+                echo '<thead>';
+                echo '<tr>';
+                echo '<th colspan="5" class="hdr">DETALLE DE VENTAS</th>';
+                echo '<th colspan="4" class="hdr">DESGLOSE POR MÉTODO DE PAGO</th>';
+                echo '</tr>';
+                echo '<tr>';
+                echo '<th class="hdr">Tipo</th><th class="hdr">Fecha</th><th class="hdr">Monto</th><th class="hdr">Nombre</th><th class="hdr">Detalle</th>';
+                echo '<th class="hdr">Método</th><th class="hdr">Cantidad</th><th class="hdr">Monto</th><th class="hdr">Porcentaje</th>';
+                echo '</tr>';
+                echo '</thead>';
+
+                echo '<tbody>';
+                $detalleCount = count($rows);
+                $metodoCount = count($metodosRows);
+                $maxRows = max($detalleCount + 1, $metodoCount); // +1 para la fila de TOTAL
+
+                for ($i = 0; $i < $maxRows; $i++) {
+                    echo '<tr>';
+                    
+                    // Lado Izquierdo: Detalle de Ventas
+                    if ($i < $detalleCount) {
+                        $r = $rows[$i];
+                        echo '<td>'.htmlspecialchars($r[0]).'</td>';
+                        echo '<td>'.htmlspecialchars($r[1]).'</td>';
+                        echo '<td class="money">'.htmlspecialchars($r[2]).'</td>';
+                        echo '<td>'.htmlspecialchars($r[3]).'</td>';
+                        echo '<td>'.htmlspecialchars($r[4]).'</td>';
+                    } elseif ($i === $detalleCount) {
+                        echo '<td colspan="2" class="total-row">TOTAL</td>';
+                        echo '<td class="total-row money">'.htmlspecialchars(number_format($totalSum, 2, '.', '')).'</td>';
+                        echo '<td colspan="2" class="total-row"></td>';
+                    } else {
+                        echo '<td class="empty-cell"></td><td class="empty-cell"></td><td class="empty-cell"></td><td class="empty-cell"></td><td class="empty-cell"></td>';
+                    }
+
+                    // Lado Derecho: Desglose
+                    if ($i < $metodoCount) {
+                        $mr = $metodosRows[$i];
+                        echo '<td>'.htmlspecialchars($mr[0]).'</td>';
+                        echo '<td style="text-align:center">'.htmlspecialchars($mr[1]).'</td>';
+                        echo '<td class="money">'.htmlspecialchars($mr[2]).'</td>';
+                        echo '<td style="text-align:center">'.htmlspecialchars($mr[3]).'</td>';
+                    } else {
+                        echo '<td class="empty-cell"></td><td class="empty-cell"></td><td class="empty-cell"></td><td class="empty-cell"></td>';
+                    }
+
+                    echo '</tr>';
                 }
                 echo '</tbody>';
-                echo '<tfoot><tr class="total-row"><td></td><td>TOTAL</td><td class="money">'.htmlspecialchars(number_format($totalSum, 2, '.', '')).'</td><td colspan="2"></td></tr></tfoot>';
-                echo '</table></body></html>';
+                echo '</table>';
+
+                echo '</body></html>';
             };
             return response()->stream($callback, 200, $headers);
         }
@@ -593,11 +673,22 @@ class DashboardController extends Controller
         tfoot td{ background:#0f766e; color:#fff; font-weight:bold; }
         </style></head><body>';
         $html .= '<h3>'.htmlspecialchars($title).'</h3>';
-        $html .= '<table><thead><tr><th>Tipo</th><th>Fecha</th><th>Monto</th><th>Nombre/Proveedor</th><th>Detalle</th></tr></thead><tbody>';
+        $html .= '<h4>DETALLE DE VENTAS</h4>';
+        $html .= '<table><thead><tr><th>Tipo</th><th>Fecha</th><th>Monto</th><th>Nombre</th><th>Detalle</th></tr></thead><tbody>';
         foreach ($rows as $r) {
             $html .= '<tr><td>'.htmlspecialchars($r[0]).'</td><td>'.htmlspecialchars($r[1]).'</td><td class="money">$'.htmlspecialchars($r[2]).'</td><td>'.htmlspecialchars($r[3]).'</td><td>'.htmlspecialchars($r[4]).'</td></tr>';
         }
         $html .= '</tbody><tfoot><tr><td></td><td>TOTAL</td><td class="money">$'.htmlspecialchars(number_format($totalSum, 2, '.', '')).'</td><td colspan="2"></td></tr></tfoot></table>';
+
+        if (!empty($metodosRows)) {
+            $html .= '<br><h4>DESGLOSE POR MÉTODO DE PAGO</h4>';
+            $html .= '<table><thead><tr><th>Método</th><th>Cantidad</th><th>Monto</th><th>Porcentaje</th></tr></thead><tbody>';
+            foreach ($metodosRows as $mr) {
+                $html .= '<tr><td>'.htmlspecialchars($mr[0]).'</td><td style="text-align:center">'.htmlspecialchars($mr[1]).'</td><td class="money">$'.htmlspecialchars($mr[2]).'</td><td style="text-align:center">'.htmlspecialchars($mr[3]).'</td></tr>';
+            }
+            $html .= '</tbody></table>';
+        }
+
         $html .= '</body></html>';
 
         $dompdf = new Dompdf(['isRemoteEnabled' => true]);
