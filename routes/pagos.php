@@ -11,6 +11,15 @@ Route::middleware(['auth', 'role:pagos'])
         
         // Rutas módulo recibos
         Route::get('/recibos', [PagosController::class, 'recibos'])->name('recibos');
+        Route::get('/corte', [PagosController::class, 'corte'])->name('corte');
+        Route::get('/corte-data', [\App\Http\Controllers\Admin\DashboardController::class, 'corteCaja'])->name('corte.data');
+
+        // Ruta de clientes (solo lectura y edición para pagos, sin crear ni eliminar)
+        Route::get('/clientes', [PagosController::class, 'clientes'])->name('clientes.index');
+        Route::post('/clientes/editar', [PagosController::class, 'clientesEditStore'])->name('clientes.edit');
+        Route::get('/clientes/historial/buscar', [PagosController::class, 'clientesHistorialBuscar'])->name('clientes.historial.buscar');
+        Route::get('/clientes/{id}', [PagosController::class, 'clientesShow'])->name('clientes.show');
+        Route::get('/clientes/{numero}/historial', [PagosController::class, 'clientesHistorial'])->name('clientes.historial');
         Route::get('/recibos/lookup', [PagosController::class, 'recibosLookup'])->name('recibos.lookup');
         Route::get('/recibos/layout', [PagosController::class, 'recibosLayoutGet'])->name('recibos.layout.get');
         Route::get('/recibos/deuda', [PagosController::class, 'recibosDeuda'])->name('recibos.deuda');

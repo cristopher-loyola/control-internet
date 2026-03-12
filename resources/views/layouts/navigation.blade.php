@@ -27,12 +27,24 @@
         default => null,
     };
 
+    $cortePagosRoute = match ($role) {
+        'pagos' => route('pagos.corte'),
+        default => null,
+    };
+
+    $clientesPagosRoute = match ($role) {
+        'pagos' => route('pagos.clientes.index'),
+        default => null,
+    };
+
     $clientesActive =
         request()->routeIs('admin.clientes.*') ||
         request()->routeIs('contrataciones.clientes.*');
 
     $pagosActive = request()->routeIs('admin.pagos.*');
     $recibosActive = request()->routeIs('pagos.recibos*');
+    $cortePagosActive = request()->routeIs('pagos.corte*');
+    $clientesPagosActive = request()->routeIs('pagos.clientes.*');
     // historial link removido de navbar a petición del usuario
     $corteRoute = $role === 'admin' ? route('admin.corte.view') : null;
     $corteActive = request()->routeIs('admin.corte.*');
@@ -76,28 +88,65 @@
                 </div>
 
                 <!-- Navigation Links -->
-                <div class="hidden space-x-12 sm:-my-px sm:ms-12 sm:flex">
-                    <x-nav-link :href="$dashboardRoute" :active="$dashboardActive">
-                        {{ __('Dashboard') }}
+                <div class="hidden sm:-my-px sm:ms-12 sm:flex sm:items-center sm:gap-1">
+                    <x-nav-link :href="$dashboardRoute" :active="$dashboardActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $dashboardActive ? 'bg-white/10' : '' }}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                        </svg>
+                        <span class="text-sm font-medium">{{ __('Dashboard') }}</span>
                     </x-nav-link>
+                    <span class="h-4 w-px bg-white/20 mx-1"></span>
                     @if ($clientesRoute)
-                        <x-nav-link :href="$clientesRoute" :active="$clientesActive">
-                            {{ __('Clientes') }}
+                        <x-nav-link :href="$clientesRoute" :active="$clientesActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $clientesActive ? 'bg-white/10' : '' }}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                            <span class="text-sm font-medium">{{ __('Clientes') }}</span>
                         </x-nav-link>
+                        <span class="h-4 w-px bg-white/20 mx-1"></span>
                     @endif
                     @if ($pagosRoute)
-                        <x-nav-link :href="$pagosRoute" :active="$pagosActive">
-                            {{ __('Pagos') }}
+                        <x-nav-link :href="$pagosRoute" :active="$pagosActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $pagosActive ? 'bg-white/10' : '' }}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                            </svg>
+                            <span class="text-sm font-medium">{{ __('Pagos') }}</span>
                         </x-nav-link>
+                        <span class="h-4 w-px bg-white/20 mx-1"></span>
                     @endif
                     @if ($recibosRoute)
-                        <x-nav-link :href="$recibosRoute" :active="$recibosActive">
-                            {{ __('Recibos') }}
+                        <x-nav-link :href="$recibosRoute" :active="$recibosActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $recibosActive ? 'bg-white/10' : '' }}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <span class="text-sm font-medium">{{ __('Recibos') }}</span>
                         </x-nav-link>
+                        <span class="h-4 w-px bg-white/20 mx-1"></span>
+                    @endif
+                    @if ($cortePagosRoute)
+                        <x-nav-link :href="$cortePagosRoute" :active="$cortePagosActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $cortePagosActive ? 'bg-white/10' : '' }}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                            </svg>
+                            <span class="text-sm font-medium">Corte</span>
+                        </x-nav-link>
+                        <span class="h-4 w-px bg-white/20 mx-1"></span>
+                    @endif
+                    @if ($clientesPagosRoute)
+                        <x-nav-link :href="$clientesPagosRoute" :active="$clientesPagosActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $clientesPagosActive ? 'bg-white/10' : '' }}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                            <span class="text-sm font-medium">Clientes</span>
+                        </x-nav-link>
+                        <span class="h-4 w-px bg-white/20 mx-1"></span>
                     @endif
                     @if ($corteRoute)
-                        <x-nav-link :href="$corteRoute" :active="$corteActive">
-                            Corte
+                        <x-nav-link :href="$corteRoute" :active="$corteActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $corteActive ? 'bg-white/10' : '' }}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                            </svg>
+                            <span class="text-sm font-medium">Corte</span>
                         </x-nav-link>
                     @endif
                 </div>
@@ -157,26 +206,57 @@
     <!-- Responsive Navigation Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden">
         <div class="pt-2 pb-3 space-y-1">
-            <x-responsive-nav-link :href="$dashboardRoute" :active="$dashboardActive">
+            <x-responsive-nav-link :href="$dashboardRoute" :active="$dashboardActive" class="flex items-center gap-3 px-4 py-3">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                </svg>
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
             @if ($clientesRoute)
-                <x-responsive-nav-link :href="$clientesRoute" :active="$clientesActive">
+                <x-responsive-nav-link :href="$clientesRoute" :active="$clientesActive" class="flex items-center gap-3 px-4 py-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
                     {{ __('Clientes') }}
                 </x-responsive-nav-link>
             @endif
             @if ($pagosRoute)
-                <x-responsive-nav-link :href="$pagosRoute" :active="$pagosActive">
+                <x-responsive-nav-link :href="$pagosRoute" :active="$pagosActive" class="flex items-center gap-3 px-4 py-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
                     {{ __('Pagos') }}
                 </x-responsive-nav-link>
             @endif
             @if ($recibosRoute)
-                <x-responsive-nav-link :href="$recibosRoute" :active="$recibosActive">
+                <x-responsive-nav-link :href="$recibosRoute" :active="$recibosActive" class="flex items-center gap-3 px-4 py-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
                     {{ __('Recibos') }}
                 </x-responsive-nav-link>
             @endif
+            @if ($cortePagosRoute)
+                <x-responsive-nav-link :href="$cortePagosRoute" :active="$cortePagosActive" class="flex items-center gap-3 px-4 py-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                    </svg>
+                    Corte
+                </x-responsive-nav-link>
+            @endif
+            @if ($clientesPagosRoute)
+                <x-responsive-nav-link :href="$clientesPagosRoute" :active="$clientesPagosActive" class="flex items-center gap-3 px-4 py-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                    Clientes
+                </x-responsive-nav-link>
+            @endif
             @if ($corteRoute)
-                <x-responsive-nav-link :href="$corteRoute" :active="$corteActive">
+                <x-responsive-nav-link :href="$corteRoute" :active="$corteActive" class="flex items-center gap-3 px-4 py-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                    </svg>
                     Corte
                 </x-responsive-nav-link>
             @endif

@@ -23,6 +23,129 @@ class PagosController extends Controller
         return view('pagos.recibos');
     }
 
+    public function corte()
+    {
+        return view('pagos.corte');
+    }
+
+    public function clientes(Request $request)
+    {
+        $q = trim((string) $request->query('q', ''));
+        $clientes = \App\Models\Usuario::with(['estado', 'estatusServicio'])
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where(function ($sq) use ($q) {
+                    $sq->where('nombre_cliente', 'like', "%{$q}%")
+                        ->orWhere('numero_servicio', 'like', "%{$q}%")
+                        ->orWhere('telefono', 'like', "%{$q}%");
+                });
+            })
+            ->orderBy('numero_servicio', 'asc')
+            ->paginate(50)
+            ->appends($request->query());
+
+        return view('pagos.clientes.index', compact('clientes'));
+    }
+
+    public function clientesEditStore(Request $request)
+    {
+        $request->validate([
+            'id' => ['required', 'exists:usuarios,id'],
+            'numero_servicio' => ['required', 'numeric', 'unique:usuarios,numero_servicio,' . $request->id],
+            'nombre_cliente' => ['required', 'string', 'max:150'],
+            'domicilio' => ['nullable', 'string', 'max:255'],
+            'telefono' => ['nullable', 'string', 'max:20'],
+            'uso' => ['nullable', 'string', 'max:50'],
+            'megas' => ['nullable', 'integer', 'min:0'],
+            'tecnologia' => ['nullable', 'string', 'in:ina,foi,fod'],
+            'dispositivo' => ['nullable', 'string', 'in:permanencia voluntaria,como dato'],
+            'tarifa' => ['nullable', 'numeric', 'min:0'],
+            'estado_id' => ['nullable', 'exists:estados,id'],
+            'estatus_servicio_id' => ['nullable', 'exists:estatus_servicios,id'],
+        ], [], [
+            'numero_servicio' => 'número de cliente',
+            'nombre_cliente' => 'nombre',
+        ]);
+
+        $textOrDash = fn($v) => ($v === null || trim((string)$v) === '') ? '-' : trim((string)$v);
+        $tecByNumero = function ($n) {
+            $num = (int) $n;
+            if ($num >= 6000 || ($num >= 5401 && $num <= 5499)) return 'fod';
+            if (($num >= 4800 && $num <= 5400) || ($num >= 5500 && $num <= 5999)) return 'foi';
+            if ($num >= 1000 && $num <= 4200) return 'ina';
+            return null;
+        };
+
+        // Asignar megas automáticamente
+        $megasAsignados = null;
+        if ($request->filled('tarifa') && $request->filled('tecnologia')) {
+            $costo = (int) round((float) $request->tarifa);
+            $tec = strtoupper($request->tecnologia);
+            $matrix = [
+                300 => ['FOD' => 30, 'FOI' => 20, 'INA' => 12],
+                400 => ['FOD' => 50, 'FOI' => 30, 'INA' => 20],
+                500 => ['FOD' => 70, 'FOI' => 40, 'INA' => 30],
+                600 => ['FOD' => 100, 'FOI' => 50, 'INA' => 40],
+            ];
+            if (isset($matrix[$costo][$tec])) {
+                $megasAsignados = $matrix[$costo][$tec];
+            }
+        }
+
+        $usuario = Usuario::findOrFail($request->id);
+        $usuario->update([
+            'numero_servicio' => $request->numero_servicio,
+            'nombre_cliente' => $request->nombre_cliente,
+            'domicilio' => $textOrDash($request->domicilio),
+            'telefono' => $textOrDash($request->telefono),
+            'paquete' => $request->uso ? ($request->uso . ($request->tecnologia ? " {$request->tecnologia}" : '') . (($megasAsignados ?? $request->megas) ? " " . ($megasAsignados ?? $request->megas) . "Mbps" : '')) : null,
+            'comunidad' => $textOrDash($request->comunidad),
+            'uso' => $textOrDash($request->uso),
+            'tecnologia' => $request->filled('tecnologia') ? $textOrDash($request->tecnologia) : ($tecByNumero($request->numero_servicio) ?? '-'),
+            'dispositivo' => $textOrDash($request->dispositivo),
+            'megas' => $megasAsignados ?? $request->megas ?? null,
+            'tarifa' => $request->tarifa ?? null,
+            'estado_id' => $request->estado_id ?? null,
+            'estatus_servicio_id' => $request->estatus_servicio_id ?? null,
+        ]);
+
+        return redirect()->route('pagos.clientes.index')->with('status', 'cliente-actualizado');
+    }
+
+    public function clientesShow(int $id)
+    {
+        $cliente = Usuario::with(['estado', 'estatusServicio'])->findOrFail($id);
+        return view('pagos.clientes.show', compact('cliente'));
+    }
+
+    public function clientesHistorial($numero)
+    {
+        $numero = (int) $numero;
+        $historial = \App\Models\HistorialUsuario::with(['estado', 'estatusServicio'])
+            ->where('numero_servicio', $numero)
+            ->orderByDesc('captured_at')
+            ->get();
+        $actual = Usuario::with(['estado', 'estatusServicio'])->where('numero_servicio', $numero)->first();
+        return view('pagos.clientes.historial', compact('numero', 'historial', 'actual'));
+    }
+
+    public function clientesHistorialBuscar(Request $request)
+    {
+        $q = trim((string) $request->query('q', ''));
+        if ($q === '') {
+            return redirect()->route('pagos.clientes.index');
+        }
+
+        if (ctype_digit($q)) {
+            return redirect()->route('pagos.clientes.historial', ['numero' => (int) $q]);
+        }
+
+        $clientes = Usuario::where('nombre_cliente', 'like', '%' . $q . '%')
+            ->orderBy('nombre_cliente')
+            ->get(['id', 'numero_servicio', 'nombre_cliente', 'telefono']);
+
+        return view('pagos.clientes.index', compact('clientes'));
+    }
+
     public function prepaySettings(Request $request)
     {
         $rows = \App\Models\PrepaySetting::all()->pluck('enabled', 'paquete')->toArray();
