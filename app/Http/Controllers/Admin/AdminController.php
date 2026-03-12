@@ -123,7 +123,7 @@ class AdminController extends Controller
                 'mensualidad' => $payload['mensualidad'] ?? null,
                 'recargo' => $payload['recargo'] ?? null,
                 'pago_anterior' => $payload['pago_anterior'] ?? null,
-                'metodo' => $payload['metodo'] ?? null,
+                'metodo' => $payload['metodo'] ?? 'Efectivo',
             ];
             $fingerprint = hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
 

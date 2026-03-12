@@ -46,7 +46,7 @@
             <div>
                 <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Método de pago</label>
                 <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                    x-model="form.metodo" :disabled="readOnlyMode">
+                    x-model="form.metodo" :disabled="readOnlyMode" required>
                     <option value="">Selecciona...</option>
                     <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
                     <option value="Cheque">Cheque</option>
@@ -62,6 +62,14 @@
                         x-model="form.prepay" :disabled="readOnlyMode" @change="recalcular()">
                         <option value="no">No</option>
                         <option value="si">Sí</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Otro</label>
+                    <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
+                        x-model="form.otro" :disabled="readOnlyMode">
+                        <option value="no">No</option>
+                        <option value="cancelacion">Cancelación de servicio</option>
                     </select>
                 </div>
                 <div x-show="form.prepay==='si'" x-cloak>
@@ -97,8 +105,8 @@
     <div class="flex flex-col items-center justify-center gap-3 bg-gray-50 dark:bg-gray-700 rounded-xl p-5 shadow-inner">
         <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 dark:text-gray-300">Acciones</h3>
         <a class="btn btn-secondary w-full text-center" href="{{ route('pagos.recibos.historial') }}">📋 Historial</a>
-        <button class="btn btn-primary w-full" @click="printThermal()">🧾 Imprimir Ticket</button>
-        <button class="btn btn-danger w-full" @click="openConfirm()">🖨️ Imprimir Recibo</button>
+        <button class="btn btn-primary w-full" @click="metodoValido() && printThermal()">🧾 Imprimir Ticket</button>
+        <button class="btn btn-danger w-full" @click="metodoValido() && openConfirm()">🖨️ Imprimir Recibo</button>
     </div>
 </div>
                     <br>
@@ -110,6 +118,21 @@
                                 <div class="flex justify-end gap-2">
                                     <button class="btn btn-secondary" @click="confirmSaveNo()">No</button>
                                     <button class="btn btn-primary" @click="confirmSaveYes()">Sí</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div x-show="metodoModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 not-print">
+                            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-96">
+                                <div class="px-5 pt-5 pb-3 border-b border-gray-200 dark:border-gray-700">
+                                    <div class="text-sm font-semibold text-gray-800 dark:text-gray-100 uppercase tracking-wider">
+                                        Método de pago requerido
+                                    </div>
+                                </div>
+                                <div class="px-5 py-4 text-sm text-gray-700 dark:text-gray-200">
+                                    Por favor selecciona un método de pago antes de imprimir el ticket o el recibo.
+                                </div>
+                                <div class="px-5 pb-4 flex justify-end">
+                                    <button class="btn btn-primary" @click="metodoModalOpen = false">Entendido</button>
                                 </div>
                             </div>
                         </div>
@@ -215,7 +238,7 @@
                                 <div>Nombre</div><div x-text="datos.nombre || '—'"></div>
                                 <div>Mes</div><div x-text="mesEnCursoCompleto()"></div>
                                 <div>Mensualidad de Internet</div><div x-text="moneda(datos.mensualidad)"></div>
-                                <div>Otros</div><div>—</div>
+                                <div>Otros</div><div x-text="form.otro === 'cancelacion' ? 'Cancelación de servicio' : 'No'"></div>
                                 <div>Importe</div><div x-text="moneda(0)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
@@ -253,7 +276,7 @@
                                 <div>Nombre</div><div x-text="datos.nombre || '—'"></div>
                                 <div>Mes</div><div x-text="mesEnCursoCompleto()"></div>
                                 <div>Mensualidad de Internet</div><div x-text="moneda(datos.mensualidad)"></div>
-                                <div>Otros</div><div>—</div>
+                                <div>Otros</div><div x-text="form.otro === 'cancelacion' ? 'Cancelación de servicio' : 'No'"></div>
                                 <div>Importe</div><div x-text="moneda(0)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
@@ -374,7 +397,7 @@
         })();
         return {
             readOnlyMode: false,
-            form:{ numero:'', recargo:'no', pago_anterior:0, metodo:'', cobro:'', prepay:'no', prepay_months:6 },
+            form:{ numero:'', recargo:'no', pago_anterior:0, metodo:'', cobro:'', prepay:'no', prepay_months:6, otro:'no' },
             pagoAnteriorFecha:'',
             datos:{ nombre:'', mensualidad:0 },
             totales:{ total:0, letra:'', prepay_total:0 },
@@ -390,6 +413,7 @@
             },
             ref:{ numero:null, id:null, created_at:null },
             saveConfirmOpen:false,
+            metodoModalOpen:false,
             isPrinting:false,
             historial:[],
             printTimerId:null,
@@ -728,6 +752,14 @@
                 this.recalcular();
                 await this.fetchAdeudo();
             },
+            metodoValido(){
+                const m = String(this.form.metodo || '').trim();
+                if(!m){
+                    this.metodoModalOpen = true;
+                    return false;
+                }
+                return true;
+            },
             openConfirm(){ this.saveConfirmOpen = true },
             async confirmSaveYes(){
                 this.saveConfirmOpen = false;
@@ -759,6 +791,7 @@
                         this.form.pago_anterior = p.pago_anterior || 0;
                         this.form.metodo = p.metodo || '';
                         this.form.cobro = p.cobro || '';
+                        this.form.otro = p.otro || 'no';
                                 this.form.prepay = p.prepay || 'no';
                                 this.form.prepay_months = p.prepay_months || null;
                                 this.totales.total = Number(d.total) || 0;
@@ -791,6 +824,7 @@
                                 pago_anterior: this.form.pago_anterior,
                                 metodo: this.form.metodo,
                                 cobro: this.form.cobro,
+                                otro: this.form.otro,
                                 fecha: this.fecha(),
                                 hora: this.hora()
                             }

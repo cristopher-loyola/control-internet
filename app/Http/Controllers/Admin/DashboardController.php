@@ -246,8 +246,12 @@ class DashboardController extends Controller
             ->get(['total', 'payload'])
             ->map(function ($f) {
                 $p = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
-                $m = is_array($p) ? ($p['metodo'] ?? 'desconocido') : 'desconocido';
-                return ['metodo' => $m, 'total' => (float) $f->total];
+                $raw = is_array($p) ? ($p['metodo'] ?? '') : '';
+                $label = trim((string) $raw);
+                if ($label === '' || strtolower($label) === 'desconocido' || strtolower($label) === 'unknown') {
+                    $label = 'Efectivo';
+                }
+                return ['metodo' => $label, 'total' => (float) $f->total];
             })
             ->groupBy(fn($r) => $r['metodo'])
             ->map(function ($g, $k) {
@@ -530,7 +534,10 @@ class DashboardController extends Controller
         foreach ($ventas as $v) {
             $p = is_array($v->payload) ? $v->payload : (is_string($v->payload) ? @json_decode($v->payload, true) : []);
             $nombre = $p['nombre'] ?? '';
-            $metodo = $p['metodo'] ?? 'desconocido';
+            $metodo = $p['metodo'] ?? 'Efectivo';
+            if (empty($metodo) || strtolower($metodo) === 'desconocido') {
+                $metodo = 'Efectivo';
+            }
             $monto = round((float)$v->total, 2);
             $totalSum += $monto;
             $rows[] = ['Venta', optional($v->created_at)->format('Y-m-d H:i'), number_format($monto, 2, '.', ''), $nombre, (string)$v->numero_servicio];
@@ -542,11 +549,14 @@ class DashboardController extends Controller
             $metodosData[$metodo]['monto'] += $monto;
         }
 
+        // Normalizar tabla de métodos a un orden fijo y que termine en "Cheque"
         $metodosRows = [];
-        foreach ($metodosData as $m => $data) {
+        $metodosOrden = ['Efectivo', 'Deposito a cuenta', 'Tarjeta de Crédito', 'Cheque'];
+        foreach ($metodosOrden as $nombreMetodo) {
+            $data = $metodosData[$nombreMetodo] ?? ['cantidad' => 0, 'monto' => 0.0];
             $pct = $totalSum > 0 ? round(($data['monto'] / $totalSum) * 100, 2) : 0;
             $metodosRows[] = [
-                $m,
+                $nombreMetodo,
                 $data['cantidad'],
                 number_format($data['monto'], 2, '.', ''),
                 $pct . '%'
@@ -597,62 +607,65 @@ class DashboardController extends Controller
                 .hdr{ background:#16a34a; color:#fff; font-weight:bold; text-align:center; }
                 .money{ mso-number-format:"\#\,\#\#0\.00"; text-align:right; }
                 .total-row{ background:#0f766e; color:#fff; font-weight:bold; }
-                .empty-cell{ border:1px solid #000; }
+                .wrapper{ border-collapse:separate; border:none; margin-bottom:0; }
+                .wrapper td{ border:1px solid #000; padding:0 20px 0 0; vertical-align:top; }
                 </style></head><body>';
                 echo '<h3>'.htmlspecialchars($title).'</h3>';
-                
+
+                // Tabla envolvente para colocar ambas tablas lado a lado
+                echo '<table class="wrapper"><tr><td>';
+
+                // Primera tabla: Detalle de ventas (izquierda)
                 echo '<table>';
-                // Encabezados principales
                 echo '<thead>';
-                echo '<tr>';
-                echo '<th colspan="5" class="hdr">DETALLE DE VENTAS</th>';
-                echo '<th colspan="4" class="hdr">DESGLOSE POR MÉTODO DE PAGO</th>';
-                echo '</tr>';
+                echo '<tr><th colspan="5" class="hdr">DETALLE DE VENTAS</th></tr>';
                 echo '<tr>';
                 echo '<th class="hdr">Tipo</th><th class="hdr">Fecha</th><th class="hdr">Monto</th><th class="hdr">Nombre</th><th class="hdr">Detalle</th>';
-                echo '<th class="hdr">Método</th><th class="hdr">Cantidad</th><th class="hdr">Monto</th><th class="hdr">Porcentaje</th>';
                 echo '</tr>';
                 echo '</thead>';
-
                 echo '<tbody>';
-                $detalleCount = count($rows);
-                $metodoCount = count($metodosRows);
-                $maxRows = max($detalleCount + 1, $metodoCount); // +1 para la fila de TOTAL
-
-                for ($i = 0; $i < $maxRows; $i++) {
+                foreach ($rows as $r) {
                     echo '<tr>';
-                    
-                    // Lado Izquierdo: Detalle de Ventas
-                    if ($i < $detalleCount) {
-                        $r = $rows[$i];
-                        echo '<td>'.htmlspecialchars($r[0]).'</td>';
-                        echo '<td>'.htmlspecialchars($r[1]).'</td>';
-                        echo '<td class="money">'.htmlspecialchars($r[2]).'</td>';
-                        echo '<td>'.htmlspecialchars($r[3]).'</td>';
-                        echo '<td>'.htmlspecialchars($r[4]).'</td>';
-                    } elseif ($i === $detalleCount) {
-                        echo '<td colspan="2" class="total-row">TOTAL</td>';
-                        echo '<td class="total-row money">'.htmlspecialchars(number_format($totalSum, 2, '.', '')).'</td>';
-                        echo '<td colspan="2" class="total-row"></td>';
-                    } else {
-                        echo '<td class="empty-cell"></td><td class="empty-cell"></td><td class="empty-cell"></td><td class="empty-cell"></td><td class="empty-cell"></td>';
-                    }
+                    echo '<td>'.htmlspecialchars($r[0]).'</td>';
+                    echo '<td>'.htmlspecialchars($r[1]).'</td>';
+                    echo '<td class="money">'.htmlspecialchars($r[2]).'</td>';
+                    echo '<td>'.htmlspecialchars($r[3]).'</td>';
+                    echo '<td>'.htmlspecialchars($r[4]).'</td>';
+                    echo '</tr>';
+                }
+                echo '<tr class="total-row">';
+                echo '<td colspan="2">TOTAL</td>';
+                echo '<td class="money">'.htmlspecialchars(number_format($totalSum, 2, '.', '')).'</td>';
+                echo '<td colspan="2"></td>';
+                echo '</tr>';
+                echo '</tbody>';
+                echo '</table>';
 
-                    // Lado Derecho: Desglose
-                    if ($i < $metodoCount) {
-                        $mr = $metodosRows[$i];
+                echo '</td><td>';
+
+                // Segunda tabla: Desglose por método de pago (derecha)
+                if (!empty($metodosRows)) {
+                    echo '<table>';
+                    echo '<thead>';
+                    echo '<tr><th colspan="4" class="hdr">DESGLOSE POR MÉTODO DE PAGO</th></tr>';
+                    echo '<tr>';
+                    echo '<th class="hdr">Método</th><th class="hdr">Cantidad</th><th class="hdr">Monto</th><th class="hdr">Porcentaje</th>';
+                    echo '</tr>';
+                    echo '</thead>';
+                    echo '<tbody>';
+                    foreach ($metodosRows as $mr) {
+                        echo '<tr>';
                         echo '<td>'.htmlspecialchars($mr[0]).'</td>';
                         echo '<td style="text-align:center">'.htmlspecialchars($mr[1]).'</td>';
                         echo '<td class="money">'.htmlspecialchars($mr[2]).'</td>';
                         echo '<td style="text-align:center">'.htmlspecialchars($mr[3]).'</td>';
-                    } else {
-                        echo '<td class="empty-cell"></td><td class="empty-cell"></td><td class="empty-cell"></td><td class="empty-cell"></td>';
+                        echo '</tr>';
                     }
-
-                    echo '</tr>';
+                    echo '</tbody>';
+                    echo '</table>';
                 }
-                echo '</tbody>';
-                echo '</table>';
+
+                echo '</td></tr></table>';
 
                 echo '</body></html>';
             };

@@ -12,15 +12,6 @@
             <div class="flex items-center gap-3">
                 <input type="date" x-model="date" @change="load()"
                        class="rounded border-gray-300 text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
-                <button @click="load()"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-indigo-600 text-white text-sm hover:bg-indigo-700 disabled:opacity-60 transition-colors"
-                        :disabled="loading">
-                    <svg x-show="loading" class="animate-spin w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                        <path class="opacity-0" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                    </svg>
-                    Actualizar
-                </button>
                 <span class="text-xs text-gray-400" x-show="lastUpdate" x-text="'Actualizado a las ' + lastUpdate"></span>
             </div>
 
