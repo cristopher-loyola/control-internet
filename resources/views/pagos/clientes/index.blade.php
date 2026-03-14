@@ -147,7 +147,12 @@
                         </table>
                     </div>
                     @if($clientes->hasPages())
-                        <div class="mt-4">{{ $clientes->links() }}</div>
+                        <div class="mt-6 flex flex-col items-center gap-2">
+                            <div class="text-sm text-gray-600 dark:text-gray-400">
+                                Mostrando {{ $clientes->firstItem() }} a {{ $clientes->lastItem() }} de {{ $clientes->total() }} resultados
+                            </div>
+                            {{ $clientes->links('pagination::tailwind') }}
+                        </div>
                     @endif
             </div>
         </div>

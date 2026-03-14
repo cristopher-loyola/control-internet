@@ -30,7 +30,7 @@
             <div>
                 <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Recargo</label>
                 <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                    x-model="form.recargo" :disabled="readOnlyMode" @change="!readOnlyMode && recalcular()">
+                    x-model="form.recargo" :disabled="readOnlyMode" @change="inputChanged()">
                     <option value="no">No</option>
                     <option value="si">Sí</option>
                 </select>
@@ -40,13 +40,13 @@
                 <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pago anterior</label>
                 <input type="number" step="1" placeholder="0.00"
                     class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                    x-model.number="form.pago_anterior" :disabled="readOnlyMode" @input="!readOnlyMode && recalcular()">
+                    x-model.number="form.pago_anterior" :disabled="readOnlyMode" @input="inputChanged()">
             </div>
 
             <div>
                 <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Método de pago</label>
                 <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                    x-model="form.metodo" :disabled="readOnlyMode" required>
+                    x-model="form.metodo" :disabled="readOnlyMode" required @change="inputChanged()">
                     <option value="">Selecciona...</option>
                     <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
                     <option value="Cheque">Cheque</option>
@@ -59,7 +59,7 @@
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pago por adelantado</label>
                     <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
-                        x-model="form.prepay" :disabled="readOnlyMode" @change="recalcular()">
+                        x-model="form.prepay" :disabled="readOnlyMode" @change="inputChanged()">
                         <option value="no">No</option>
                         <option value="si">Sí</option>
                     </select>
@@ -67,7 +67,7 @@
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Otro</label>
                     <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
-                        x-model="form.otro" :disabled="readOnlyMode">
+                        x-model="form.otro" :disabled="readOnlyMode" @change="inputChanged()">
                         <option value="no">No</option>
                         <option value="cancelacion">Cancelación de servicio</option>
                     </select>
@@ -75,7 +75,7 @@
                 <div x-show="form.prepay==='si'" x-cloak>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Meses (6–12)</label>
                     <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
-                        x-model.number="form.prepay_months" :disabled="readOnlyMode || form.prepay!=='si'" @change="recalcular()">
+                        x-model.number="form.prepay_months" :disabled="readOnlyMode || form.prepay!=='si'" @change="inputChanged()">
                         <option value="6">6</option>
                         <option value="7">7</option>
                         <option value="8">8</option>
@@ -762,6 +762,11 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 this.totales.total = total;
                 this.totales.letra = toWords(this.totales.total);
             },
+            async inputChanged(){
+                if(this.readOnlyMode) return;
+                this.ref = { numero: null, id: null, created_at: null };
+                this.recalcular();
+            },
             async fetchAdeudo(){
                 this.adeudo = null;
                 const numero = String(this.form.numero||'').trim();
@@ -1064,6 +1069,18 @@ html,body{ margin:0; padding:0 }
             async buscar(){
                 this.error='';
                 if(!this.form.numero){ this.error='Ingresa el ID'; return }
+                
+                // Reset states for the new client search
+                this.ref = { numero: null, id: null, created_at: null };
+                this.adeudo = null;
+                this.pagoAnteriorFecha = '';
+                this.datos = { nombre: '', mensualidad: 0 };
+                this.form.recargo = 'no';
+                this.form.pago_anterior = 0;
+                this.form.metodo = '';
+                this.form.prepay = 'no';
+                this.form.otro = 'no';
+                
                 try{
                     const r = await fetch('{{ route('admin.pagos.lookup') }}?numero='+encodeURIComponent(this.form.numero));
                     const j = await r.json();
@@ -1079,7 +1096,7 @@ html,body{ margin:0; padding:0 }
                 }catch(e){
                     this.error='Error de conexión';
                 }
-            }
+            },
         }
     }
     </script>

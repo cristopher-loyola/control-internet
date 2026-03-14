@@ -584,7 +584,7 @@ class AdminController extends Controller
             });
         }
 
-        $clientes = $query->orderBy('numero_servicio', 'asc')->get();
+        $clientes = $query->orderBy('numero_servicio', 'asc')->paginate(50);
         return view('admin.clientes.index', compact('clientes', 'q', 'tec', 'fodMax'));
     }
 
