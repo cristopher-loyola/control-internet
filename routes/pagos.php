@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\CortesController;
 use App\Http\Controllers\Pagos\PagosController;
 use Illuminate\Support\Facades\Route;
 
@@ -13,6 +14,12 @@ Route::middleware(['auth', 'role:pagos'])
         Route::get('/recibos', [PagosController::class, 'recibos'])->name('recibos');
         Route::get('/corte', [PagosController::class, 'corte'])->name('corte');
         Route::get('/corte-data', [\App\Http\Controllers\Admin\DashboardController::class, 'corteCaja'])->name('corte.data');
+
+        // Módulo de Cortes (para perfil pagos)
+        Route::get('/cortes', [CortesController::class, 'index'])->name('cortes.index');
+        Route::post('/cortes/{id}/update', [CortesController::class, 'updateCorte'])->name('cortes.update');
+        Route::post('/cortes/cortadores', [CortesController::class, 'storeCortador'])->name('cortes.cortadores.store');
+        Route::delete('/cortes/cortadores/{id}', [CortesController::class, 'destroyCortador'])->name('cortes.cortadores.destroy');
 
         // Ruta de clientes (solo lectura y edición para pagos, sin crear ni eliminar)
         Route::get('/clientes', [PagosController::class, 'clientes'])->name('clientes.index');

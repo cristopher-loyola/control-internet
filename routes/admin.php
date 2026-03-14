@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\CortesController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth', 'role:admin'])
@@ -9,6 +10,13 @@ Route::middleware(['auth', 'role:admin'])
     ->name('admin.')
     ->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('index');
+        
+        // Módulo de Cortes
+        Route::get('/cortes', [CortesController::class, 'index'])->name('cortes.index');
+        Route::post('/cortes/{id}/update', [CortesController::class, 'updateCorte'])->name('cortes.update');
+        Route::post('/cortes/cortadores', [CortesController::class, 'storeCortador'])->name('cortes.cortadores.store');
+        Route::delete('/cortes/cortadores/{id}', [CortesController::class, 'destroyCortador'])->name('cortes.cortadores.destroy');
+
         Route::get('/corte', [DashboardController::class, 'corteView'])->name('corte.view');
         Route::get('/dashboard/metrics', [DashboardController::class, 'metrics'])->name('dashboard.metrics');
         Route::get('/dashboard/corte', [DashboardController::class, 'corteCaja'])->name('dashboard.corte');

@@ -105,8 +105,8 @@
     <div class="flex flex-col items-center justify-center gap-3 bg-gray-50 dark:bg-gray-700 rounded-xl p-5 shadow-inner">
         <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 dark:text-gray-300">Acciones</h3>
         <a class="btn btn-secondary w-full text-center" href="{{ route('pagos.recibos.historial') }}">📋 Historial</a>
-        <button class="btn btn-primary w-full" @click="metodoValido() && printThermal()">🧾 Imprimir Ticket</button>
-        <button class="btn btn-danger w-full" @click="metodoValido() && openConfirm()">🖨️ Imprimir Recibo</button>
+        <button class="btn btn-primary w-full" @click="metodoValido() && openConfirm('ticket')">🧾 Imprimir Ticket</button>
+        <button class="btn btn-danger w-full" @click="metodoValido() && openConfirm('receipt')">🖨️ Imprimir Recibo</button>
     </div>
 </div>
                     <br>
@@ -114,10 +114,15 @@
                     <div class="mt-6 print-sheet" x-ref="sheet" x-show="layoutReady" x-cloak>
                         <div x-show="saveConfirmOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 not-print">
                             <div class="bg-white dark:bg-gray-800 rounded shadow p-6 w-96">
-                                <div class="text-lg font-semibold mb-4">¿Guardar información?</div>
+                                <div class="text-lg font-semibold mb-4">¿Desea guardar la información antes de generar el <span x-text="printType === 'ticket' ? 'ticket' : 'recibo'"></span>?</div>
                                 <div class="flex justify-end gap-2">
-                                    <button class="btn btn-secondary" @click="confirmSaveNo()">No</button>
-                                    <button class="btn btn-primary" @click="confirmSaveYes()">Sí</button>
+                                    <button class="btn btn-secondary" @click="confirmSaveNo()" :disabled="isSaving">No</button>
+                                    <button class="btn btn-primary flex items-center gap-2" @click="confirmSaveYes()" :disabled="isSaving">
+                                        <template x-if="isSaving">
+                                            <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                                        </template>
+                                        Sí
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -413,6 +418,8 @@
             },
             ref:{ numero:null, id:null, created_at:null },
             saveConfirmOpen:false,
+            isSaving:false,
+            printType: 'receipt', // 'ticket' or 'receipt'
             metodoModalOpen:false,
             isPrinting:false,
             historial:[],
@@ -765,14 +772,28 @@
                 }
                 return true;
             },
-            openConfirm(){ this.saveConfirmOpen = true },
+            openConfirm(type = 'receipt'){ 
+                this.printType = type;
+                this.saveConfirmOpen = true;
+            },
             async confirmSaveYes(){
-                this.saveConfirmOpen = false;
-                if (this.ref && this.ref.id) {
-                    await this.doPrintOnce();
-                } else {
-                    await this.emitirFactura();
-                    await this.doPrintOnce();
+                if(this.isSaving) return;
+                this.isSaving = true;
+                try {
+                    if (!this.ref || !this.ref.id) {
+                        await this.emitirFactura();
+                    }
+                    
+                    if (this.printType === 'ticket') {
+                        await this.printThermal();
+                    } else {
+                        await this.doPrintOnce();
+                    }
+                } catch(e) {
+                    console.error(e);
+                } finally {
+                    this.isSaving = false;
+                    this.saveConfirmOpen = false;
                 }
             },
             confirmSaveNo(){

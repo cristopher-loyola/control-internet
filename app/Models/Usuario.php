@@ -33,6 +33,9 @@ class Usuario extends Model
         'servicio_id',
         'fecha_contratacion',
         'numero_servicio_anterior',
+        'cortador_id',
+        'estado_corte',
+        'fecha_corte',
     ];
 
     public function estado()
@@ -43,5 +46,10 @@ class Usuario extends Model
     public function estatusServicio()
     {
         return $this->belongsTo(EstatusServicio::class, 'estatus_servicio_id');
+    }
+
+    public function cortador()
+    {
+        return $this->belongsTo(Cortador::class, 'cortador_id');
     }
 }
