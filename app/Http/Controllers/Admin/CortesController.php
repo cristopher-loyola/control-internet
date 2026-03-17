@@ -93,11 +93,19 @@ class CortesController extends Controller
             'estado_corte' => 'nullable|string|in:Cortado,Offline,Ya cortado,NO_ESTABA',
         ]);
 
-        $usuario->update([
+        $updateData = [
             'cortador_id' => $request->cortador_id,
             'estado_corte' => $request->estado_corte,
             'fecha_corte' => now(),
-        ]);
+        ];
+
+        // Si se selecciona Cortado, Offline o Ya cortado, actualizar estatus a Suspendido/Desactivado
+        if (in_array($request->estado_corte, ['Cortado', 'Offline', 'Ya cortado'])) {
+            $updateData['estatus_servicio_id'] = 2; // Suspendido
+            $updateData['estado_id'] = 2;           // Desactivado
+        }
+
+        $usuario->update($updateData);
 
         return response()->json(['ok' => true]);
     }

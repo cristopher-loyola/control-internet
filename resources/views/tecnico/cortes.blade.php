@@ -45,7 +45,15 @@
                                     <div class="text-xs opacity-70">{{ $u->nombre_cliente }}</div>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-sm">{{ $u->zona ?? '-' }}</td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm">{{ $u->ip ?? '-' }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm">
+                                    @if($u->ip)
+                                        <a href="http://{{ $u->ip }}" target="_blank" class="text-indigo-600 hover:text-indigo-800 hover:underline dark:text-indigo-400 dark:hover:text-indigo-300">
+                                            {{ $u->ip }}
+                                        </a>
+                                    @else
+                                        -
+                                    @endif
+                                </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-sm">{{ $u->mac ?? '-' }}</td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <select @change="updateUser({{ $u->id }}, $event.target.value, 'cortador_id')"
