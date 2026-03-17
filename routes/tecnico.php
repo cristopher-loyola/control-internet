@@ -12,6 +12,7 @@ Route::middleware(['auth', 'role:tecnico'])
 
         // Módulo de Cortes (para perfil tecnico)
         Route::get('/cortes', [CortesController::class, 'index'])->name('cortes.index');
+        Route::get('/reactivaciones', [CortesController::class, 'reactivacionesIndex'])->name('reactivaciones.index');
         Route::post('/cortes/{id}/update', [CortesController::class, 'updateCorte'])->name('cortes.update');
         Route::post('/cortes/cortadores', [CortesController::class, 'storeCortador'])->name('cortes.cortadores.store');
         Route::delete('/cortes/cortadores/{id}', [CortesController::class, 'destroyCortador'])->name('cortes.cortadores.destroy');

@@ -90,24 +90,99 @@ class CortesController extends Controller
         
         $request->validate([
             'cortador_id' => 'nullable|exists:cortadores,id',
-            'estado_corte' => 'nullable|string|in:Cortado,Offline,Ya cortado,NO_ESTABA',
+            'estado_corte' => 'nullable|string|in:Cortado,Offline,Ya cortado,NO_ESTABA,Reactivado',
         ]);
 
-        $updateData = [
-            'cortador_id' => $request->cortador_id,
-            'estado_corte' => $request->estado_corte,
-            'fecha_corte' => now(),
-        ];
+        $updateData = [];
 
-        // Si se selecciona Cortado, Offline o Ya cortado, actualizar estatus a Suspendido/Desactivado
-        if (in_array($request->estado_corte, ['Cortado', 'Offline', 'Ya cortado'])) {
-            $updateData['estatus_servicio_id'] = 2; // Suspendido
-            $updateData['estado_id'] = 2;           // Desactivado
+        // Solo actualizar los campos que vienen en la petición
+        if ($request->has('cortador_id')) {
+            $updateData['cortador_id'] = $request->cortador_id;
         }
 
-        $usuario->update($updateData);
+        if ($request->has('estado_corte')) {
+            $updateData['estado_corte'] = $request->estado_corte;
+            
+            // Si el estado de corte está siendo establecido a un valor de corte real
+            if (in_array($request->estado_corte, ['Cortado', 'Offline', 'Ya cortado'])) {
+                $updateData['fecha_corte'] = now();
+                $updateData['estatus_servicio_id'] = 2; // Suspendido
+                $updateData['estado_id'] = 2;           // Desactivado
+            }
+
+            // Si se selecciona Reactivado, actualizar estatus a Pagado/Activado y limpiar estado_corte
+            if ($request->estado_corte === 'Reactivado') {
+                $updateData['estatus_servicio_id'] = 1; // Pagado
+                $updateData['estado_id'] = 1;           // Activado
+                $updateData['estado_corte'] = null;     // Limpiar para que desaparezca de la lista
+            }
+        }
+
+        if (!empty($updateData)) {
+            $usuario->update($updateData);
+        }
 
         return response()->json(['ok' => true]);
+    }
+
+    public function reactivacionesIndex(Request $request)
+    {
+        $q = trim((string) $request->query('q', ''));
+        $mesActual = now()->format('Y-m');
+        $hoy = now();
+
+        // 1. Usuarios con pago registrado en el mes actual
+        $usuariosPagadosMes = Factura::where('periodo', $mesActual)
+            ->pluck('numero_servicio')
+            ->toArray();
+
+        // 2. Usuarios con pago adelantado
+        $prepagosActivos = Factura::where('created_at', '>=', now()->subYear())
+            ->where('payload->prepay', 'si')
+            ->get();
+
+        $usuariosConPrepago = [];
+        foreach ($prepagosActivos as $f) {
+            $p = $f->payload;
+            $months = intval($p['prepay_months'] ?? 0);
+            if ($months > 0) {
+                $vence = $f->created_at->copy()->addMonths($months);
+                if ($vence->greaterThanOrEqualTo($hoy)) {
+                    $usuariosConPrepago[] = (string) $f->numero_servicio;
+                }
+            }
+        }
+
+        $todosPagados = array_unique(array_merge(
+            array_map('strval', $usuariosPagadosMes), 
+            $usuariosConPrepago
+        ));
+
+        // Filtrar usuarios que tienen estado_corte (fueron cortados) Y que ya pagaron
+        // Además, nos aseguramos de que tengan un cortador asignado (campos completos)
+        $usuarios = Usuario::with('cortador')
+            ->whereIn('numero_servicio', $todosPagados)
+            ->whereIn('estado_corte', ['Cortado', 'Offline', 'Ya cortado'])
+            ->whereNotNull('cortador_id')
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where(function ($sq) use ($q) {
+                    $sq->where('numero_servicio', 'like', "%{$q}%")
+                        ->orWhere('nombre_cliente', 'like', "%{$q}%")
+                        ->orWhere('zona', 'like', "%{$q}%");
+                });
+            })
+            ->orderBy('numero_servicio', 'asc')
+            ->paginate(50)
+            ->appends($request->query());
+
+        $cortadores = Cortador::orderBy('nombre')->get();
+
+        $prefix = $request->segment(1);
+        $view = 'admin.reactivaciones';
+        if ($prefix === 'pagos') $view = 'pagos.reactivaciones';
+        if ($prefix === 'tecnico') $view = 'tecnico.reactivaciones';
+
+        return view($view, compact('usuarios', 'cortadores', 'mesActual'));
     }
 
     // CRUD Cortadores

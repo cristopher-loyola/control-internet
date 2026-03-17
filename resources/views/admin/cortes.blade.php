@@ -57,8 +57,7 @@
                                 <td class="px-4 py-3 whitespace-nowrap text-sm">{{ $u->mac ?? '-' }}</td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <select @change="updateUser({{ $u->id }}, $event.target.value, 'cortador_id')"
-                                        class="form-select text-xs rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 w-full"
-                                        {{ $u->pagado_mes ? 'disabled' : '' }}>
+                                        class="form-select text-xs rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 w-full">
                                         <option value="">Selecciona...</option>
                                         @foreach ($cortadores as $c)
                                         <option value="{{ $c->id }}" {{ $u->cortador_id == $c->id ? 'selected' : '' }}>{{ $c->nombre }}</option>
@@ -67,8 +66,7 @@
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <select @change="updateUser({{ $u->id }}, $event.target.value, 'estado_corte')"
-                                        class="form-select text-xs rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 w-full"
-                                        {{ $u->pagado_mes ? 'disabled' : '' }}>
+                                        class="form-select text-xs rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 w-full">
                                         <option value="">Selecciona...</option>
                                         <option value="Cortado" {{ $u->estado_corte === 'Cortado' ? 'selected' : '' }}>Cortado</option>
                                         <option value="Offline" {{ $u->estado_corte === 'Offline' ? 'selected' : '' }}>Offline</option>

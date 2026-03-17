@@ -37,8 +37,18 @@
         default => null,
     };
 
+    $reactivacionesPagosRoute = match ($role) {
+        'pagos' => route('pagos.reactivaciones.index'),
+        default => null,
+    };
+
     $cortesTecnicoRoute = match ($role) {
         'tecnico' => route('tecnico.cortes.index'),
+        default => null,
+    };
+
+    $reactivacionesTecnicoRoute = match ($role) {
+        'tecnico' => route('tecnico.reactivaciones.index'),
         default => null,
     };
 
@@ -55,13 +65,17 @@
     $recibosActive = request()->routeIs('pagos.recibos*');
     $cortePagosActive = request()->routeIs('pagos.corte*');
     $cortesPagosActive = request()->routeIs('pagos.cortes*');
+    $reactivacionesPagosActive = request()->routeIs('pagos.reactivaciones*');
     $cortesTecnicoActive = request()->routeIs('tecnico.cortes*');
+    $reactivacionesTecnicoActive = request()->routeIs('tecnico.reactivaciones*');
     $clientesPagosActive = request()->routeIs('pagos.clientes.*');
     // historial link removido de navbar a petición del usuario
     $corteRoute = $role === 'admin' ? route('admin.corte.view') : null;
     $corteActive = request()->routeIs('admin.corte.*');
     $cortesVistaRoute = $role === 'admin' ? route('admin.cortes.index') : null;
     $cortesVistaActive = request()->routeIs('admin.cortes.*');
+    $reactivacionesVistaRoute = $role === 'admin' ? route('admin.reactivaciones.index') : null;
+    $reactivacionesVistaActive = request()->routeIs('admin.reactivaciones.*');
     $cortesRoute = $role === 'admin' ? route('admin.dashboard.corte') : null;
     $cortesActive = request()->routeIs('admin.dashboard.corte');
 
@@ -123,6 +137,15 @@
                         </x-nav-link>
                         <span class="h-4 w-px bg-white/20 mx-1"></span>
                     @endif
+                    @if ($reactivacionesTecnicoRoute)
+                        <x-nav-link :href="$reactivacionesTecnicoRoute" :active="$reactivacionesTecnicoActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $reactivacionesTecnicoActive ? 'bg-white/10' : '' }}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span class="text-sm font-medium">Reactivaciones</span>
+                        </x-nav-link>
+                        <span class="h-4 w-px bg-white/20 mx-1"></span>
+                    @endif
                     @if ($clientesPagosRoute)
                         <x-nav-link :href="$clientesPagosRoute" :active="$clientesPagosActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $clientesPagosActive ? 'bg-white/10' : '' }}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -159,6 +182,15 @@
                         </x-nav-link>
                         <span class="h-4 w-px bg-white/20 mx-1"></span>
                     @endif
+                    @if ($reactivacionesPagosRoute)
+                        <x-nav-link :href="$reactivacionesPagosRoute" :active="$reactivacionesPagosActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $reactivacionesPagosActive ? 'bg-white/10' : '' }}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span class="text-sm font-medium">Reactivaciones</span>
+                        </x-nav-link>
+                        <span class="h-4 w-px bg-white/20 mx-1"></span>
+                    @endif
                     @if ($clientesRoute)
                         <x-nav-link :href="$clientesRoute" :active="$clientesActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $clientesActive ? 'bg-white/10' : '' }}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -192,6 +224,15 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7 7m-7-7l-2.879 2.879M12 12L9.121 9.121m0 0L5 5m4.121 4.121L5 19m10.879-10.879L19 5m-4.121 4.121l-2.879-2.879M12 12l2.879-2.879"></path>
                             </svg>
                             <span class="text-sm font-medium">Cortes</span>
+                        </x-nav-link>
+                        <span class="h-4 w-px bg-white/20 mx-1"></span>
+                    @endif
+                    @if ($reactivacionesVistaRoute)
+                        <x-nav-link :href="$reactivacionesVistaRoute" :active="$reactivacionesVistaActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $reactivacionesVistaActive ? 'bg-white/10' : '' }}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span class="text-sm font-medium">Reactivaciones</span>
                         </x-nav-link>
                         <span class="h-4 w-px bg-white/20 mx-1"></span>
                     @endif
