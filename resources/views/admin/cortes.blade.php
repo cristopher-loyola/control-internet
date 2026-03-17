@@ -83,7 +83,7 @@
 
         <!-- Modal de Configuración de Cortadores -->
         <div x-show="openConfigModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 overflow-hidden">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-xs p-2 overflow-hidden">
                 <div class="flex justify-between items-center mb-4 border-b pb-2 dark:border-gray-700">
                     <h3 class="text-lg font-bold dark:text-white uppercase tracking-wide">Gestionar Cortadores</h3>
                     <button @click="openConfigModal = false" class="text-gray-500 hover:text-red-500 text-xl">&times;</button>
@@ -102,24 +102,20 @@
                     <template x-for="c in cortadores" :key="c.id">
                         <div class="flex justify-between items-center py-2 border-b last:border-0 dark:border-gray-700">
                             <span class="text-sm dark:text-white" x-text="c.nombre"></span>
-                            <button @click="removeCortador(c.id)" class="text-red-500 hover:text-red-700 text-sm font-bold uppercase">Eliminar</button>
+                            <button @click="removeCortador(c.id)" 
+                                class="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200" 
+                                title="Eliminar">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
                         </div>
                     </template>
                 </div>
             </div>
         </div>
 
-        <!-- Toast de Notificación -->
-        <div x-show="showToast" x-cloak
-            class="fixed bottom-5 right-5 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-[100]"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="opacity-0 transform translate-y-2"
-            x-transition:enter-end="opacity-100 transform translate-y-0"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="opacity-100 transform translate-y-0"
-            x-transition:leave-end="opacity-0 transform translate-y-2">
-            ✅ Cambios guardados
-        </div>
+        <!-- Toast de Notificación eliminado para usar SweetAlert2 -->
     </div>
 
     <script>
@@ -128,7 +124,6 @@
                 openConfigModal: false,
                 nuevoNombre: '',
                 cortadores: @json($cortadores),
-                showToast: false,
                 
                 async updateUser(id, value, field) {
                     try {
@@ -147,7 +142,7 @@
                         });
                         
                         if(r.ok) {
-                            this.triggerToast();
+                            this.triggerToast('✅ Cambios guardados');
                         }
                     } catch(e) {
                         console.error(e);
@@ -171,7 +166,8 @@
                         if(j.ok) {
                             this.cortadores.push(j.cortador);
                             this.nuevoNombre = '';
-                            this.triggerToast();
+                            this.triggerToast('✅ Cortador añadido');
+                            setTimeout(() => window.location.reload(), 1000);
                         }
                     } catch(e) {
                         console.error(e);
@@ -179,7 +175,21 @@
                 },
 
                 async removeCortador(id) {
-                    if(!confirm('¿Estás seguro de eliminar este cortador?')) return;
+                    const result = await Swal.fire({
+                        title: '¿Estás seguro?',
+                        text: "Se eliminará este cortador permanentemente",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#3085d6',
+                        confirmButtonText: 'Sí, eliminar',
+                        cancelButtonText: 'Cancelar',
+                        background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                        color: document.documentElement.classList.contains('dark') ? '#fff' : '#000'
+                    });
+
+                    if (!result.isConfirmed) return;
+
                     try {
                         const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
                         const r = await fetch(`{{ url('/admin/cortes/cortadores') }}/${id}`, {
@@ -190,16 +200,25 @@
                         });
                         if(r.ok) {
                             this.cortadores = this.cortadores.filter(c => c.id !== id);
-                            this.triggerToast();
+                            this.triggerToast('✅ Cortador eliminado');
                         }
                     } catch(e) {
                         console.error(e);
                     }
                 },
 
-                triggerToast() {
-                    this.showToast = true;
-                    setTimeout(() => this.showToast = false, 2000);
+                triggerToast(title) {
+                    Swal.fire({
+                        toast: true,
+                        position: 'bottom-end',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true,
+                        icon: 'success',
+                        title: title,
+                        background: document.documentElement.classList.contains('dark') ? '#1f2937' : '#fff',
+                        color: document.documentElement.classList.contains('dark') ? '#fff' : '#000'
+                    });
                 }
             }
         }

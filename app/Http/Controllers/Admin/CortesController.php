@@ -76,7 +76,12 @@ class CortesController extends Controller
         $cortadores = Cortador::orderBy('nombre')->get();
         $zonas = Usuario::whereNotNull('zona')->distinct()->pluck('zona');
 
-        return view('admin.cortes', compact('usuarios', 'cortadores', 'zonas', 'mesActual'));
+        $prefix = $request->segment(1);
+        $view = 'admin.cortes';
+        if ($prefix === 'pagos') $view = 'pagos.cortes';
+        if ($prefix === 'tecnico') $view = 'tecnico.cortes';
+
+        return view($view, compact('usuarios', 'cortadores', 'zonas', 'mesActual'));
     }
 
     public function updateCorte(Request $request, $id)
