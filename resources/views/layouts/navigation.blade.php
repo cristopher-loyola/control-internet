@@ -115,7 +115,7 @@
                         @if ($role === 'admin')
                             <img src="{{ asset('images/Clogo.png') }}" class="block h-9 w-auto object-contain" alt="Control Internet Logo" />
                         @elseif ($role === 'tecnico')
-                            <img src="{{ asset('images/Clogo5.png') }}" class="block h-9 w-auto object-contain" alt="Control Internet Logo" />
+                            <img src="{{ asset('images/Clogo6.png') }}" class="block h-9 w-auto object-contain" alt="Control Internet Logo" />
                         @elseif ($role === 'pagos')
                             <img src="{{ asset('images/Clogo4.png') }}" class="block h-9 w-auto object-contain" alt="Control Internet Logo" />
                         @elseif ($role === 'contrataciones')
