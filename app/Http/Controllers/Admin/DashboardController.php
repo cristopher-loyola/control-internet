@@ -788,4 +788,20 @@ class DashboardController extends Controller
         }
         return ['labels' => [], 'values' => []];
     }
+
+    public function allCancelados(Request $request)
+    {
+        $cancelNames = ['Cancelado','Baja','Eliminado','Inactivo'];
+        $cancelados = Usuario::whereHas('estatusServicio', function ($q) use ($cancelNames) {
+            $q->whereIn('nombre', $cancelNames);
+        })
+            ->orderBy('updated_at', 'desc')
+            ->get(['id','numero_servicio','nombre_cliente','updated_at']);
+        
+        return response()->json([
+            'ok' => true,
+            'cancelados_count' => $cancelados->count(),
+            'cancelados' => $cancelados
+        ]);
+    }
 }

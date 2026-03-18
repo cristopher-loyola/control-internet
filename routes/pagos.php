@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\CortesController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Pagos\PagosController;
 use Illuminate\Support\Facades\Route;
 
@@ -10,6 +11,15 @@ Route::middleware(['auth', 'role:pagos'])
     ->group(function () {
         Route::get('/', [PagosController::class, 'index'])->name('index');
         
+        // Dashboard metrics para pagos
+        Route::get('/dashboard/metrics', [DashboardController::class, 'metrics'])->name('dashboard.metrics');
+        Route::get('/dashboard/cancelados/all', [DashboardController::class, 'allCancelados'])->name('dashboard.cancelados.all');
+        Route::get('/dashboard/export', [DashboardController::class, 'exportResumen'])->name('dashboard.export');
+        Route::get('/dashboard/cancelados', [DashboardController::class, 'canceladosIndex'])->name('dashboard.cancelados');
+        Route::get('/dashboard/desactivados', [DashboardController::class, 'desactivadosIndex'])->name('dashboard.desactivados');
+        Route::get('/dashboard/morosos', [DashboardController::class, 'morososIndex'])->name('dashboard.morosos');
+        Route::get('/dashboard/pagos-adelantados', [DashboardController::class, 'prepayClientsIndex'])->name('dashboard.prepay.index');
+
         // Rutas módulo recibos
         Route::get('/recibos', [PagosController::class, 'recibos'])->name('recibos');
         Route::get('/corte', [PagosController::class, 'corte'])->name('corte');

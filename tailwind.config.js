@@ -13,6 +13,7 @@ export default {
         'bg-slate-900',
         'bg-red-900',
         'bg-emerald-900',
+        'bg-green-800',
         'bg-amber-900',
         'bg-[#D10000]',
         'bg-blue-600',

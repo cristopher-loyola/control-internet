@@ -167,7 +167,7 @@
                     </div>
                 </div>
 
-                {{-- Cancelaciones de suscripción --}}
+                {{-- Cancelaciones de suscripción - Total sin filtro de período --}}
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-5 flex flex-col gap-4">
                     <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
                         <div>
@@ -175,20 +175,20 @@
                         </div>
                         <a href="{{ route('admin.dashboard.cancelados') }}" class="btn btn-primary btn-sm">Ver todos</a>
                     </div>
-                    <div class="text-3xl font-bold text-gray-800 dark:text-white" x-text="metrics.cancelados_count ?? 0"></div>
-                    <div class="text-xs text-gray-500 mt-1">En el período seleccionado</div>
+                    <div class="text-3xl font-bold text-gray-800 dark:text-white" x-text="allCancelados.cancelados_count ?? 0"></div>
+                    <div class="text-xs text-gray-500 mt-1">Total de cancelaciones</div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full text-sm">
                             <thead><tr class="text-left text-gray-400 border-b border-gray-100 dark:border-gray-700"><th class="pb-2 font-medium">Número</th><th class="pb-2 font-medium">Nombre</th><th class="pb-2 font-medium">Fecha</th></tr></thead>
                             <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
-                                <template x-for="c in metrics.cancelados" :key="c.id">
+                                <template x-for="c in allCancelados.cancelados" :key="c.id">
                                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                                         <td class="py-2" x-text="c.numero_servicio"></td>
                                         <td class="py-2" x-text="c.nombre_cliente"></td>
                                         <td class="py-2 text-gray-500" x-text="(c.updated_at ?? '').replace('T',' ').slice(0,10)"></td>
                                     </tr>
                                 </template>
-                                <tr x-show="!metrics.cancelados || metrics.cancelados.length === 0"><td colspan="3" class="py-5 text-center text-gray-400 italic">Sin cancelaciones</td></tr>
+                                <tr x-show="!allCancelados.cancelados || allCancelados.cancelados.length === 0"><td colspan="3" class="py-5 text-center text-gray-400 italic">Sin cancelaciones</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -259,11 +259,13 @@
             monthVal: null,
             validWeek: true,
             metrics: { metodos: [], clientes_nuevos: {day:0,week:0,month:0}, inventario_bajo: [], ventas_series: {labels:[], values:[]}, prepay_clients: [] },
+            allCancelados: { cancelados_count: 0, cancelados: [] },
             chartMetodos: null,
             chartClientes: null,
             metodoColors: ['#16a34a','#0ea5e9','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16'],
             init(){
                 this.loadMetrics();
+                this.loadAllCancelados();
                 setInterval(() => this.loadMetrics(), 15000);
             },
             money(v){ return '$' + Number(v ?? 0).toFixed(2); },
@@ -341,6 +343,13 @@
                 if(this.period==='week'){ return !!this.weekFrom && !!this.weekTo && this.validWeek; }
                 if(this.period==='month'){ return !!this.monthVal; }
                 return true;
+            },
+            loadAllCancelados(){
+                const url = new URL('{{ route('admin.dashboard.cancelados.all') }}', window.location.origin);
+                fetch(url).then(r => r.json()).then(data => {
+                    if(!data.ok) return;
+                    this.allCancelados = data;
+                });
             },
             renderMetodos(){
                 const labels = (this.metrics.metodos || []).map(m => m.metodo || 'N/D');

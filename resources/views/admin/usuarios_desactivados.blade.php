@@ -10,7 +10,7 @@
             <div class="bg-white dark:bg-gray-800 rounded shadow p-4">
                 <div class="flex items-center justify-between mb-3">
                     <div class="text-sm text-gray-600">Total: {{ $usuarios->total() }}</div>
-                    <a href="{{ route('admin.index') }}" class="text-sm text-indigo-600 hover:underline">Regresar al dashboard</a>
+                    <a href="{{ route('admin.index') }}" class="btn btn-primary">Regresar al dashboard</a>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">

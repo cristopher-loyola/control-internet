@@ -52,6 +52,11 @@
         default => null,
     };
 
+    $clientesTecnicoRoute = match ($role) {
+        'tecnico' => route('tecnico.clientes.index'),
+        default => null,
+    };
+
     $clientesPagosRoute = match ($role) {
         'pagos' => route('pagos.clientes.index'),
         default => null,
@@ -59,7 +64,8 @@
 
     $clientesActive =
         request()->routeIs('admin.clientes.*') ||
-        request()->routeIs('contrataciones.clientes.*');
+        request()->routeIs('contrataciones.clientes.*') ||
+        request()->routeIs('tecnico.clientes.*');
 
     $pagosActive = request()->routeIs('admin.pagos.*');
     $recibosActive = request()->routeIs('pagos.recibos*');
@@ -68,6 +74,7 @@
     $reactivacionesPagosActive = request()->routeIs('pagos.reactivaciones*');
     $cortesTecnicoActive = request()->routeIs('tecnico.cortes*');
     $reactivacionesTecnicoActive = request()->routeIs('tecnico.reactivaciones*');
+    $clientesTecnicoActive = request()->routeIs('tecnico.clientes.*');
     $clientesPagosActive = request()->routeIs('pagos.clientes.*');
     // historial link removido de navbar a petición del usuario
     $corteRoute = $role === 'admin' ? route('admin.corte.view') : null;
@@ -143,6 +150,15 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                             <span class="text-sm font-medium">Reactivaciones</span>
+                        </x-nav-link>
+                        <span class="h-4 w-px bg-white/20 mx-1"></span>
+                    @endif
+                    @if ($clientesTecnicoRoute)
+                        <x-nav-link :href="$clientesTecnicoRoute" :active="$clientesTecnicoActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $clientesTecnicoActive ? 'bg-white/10' : '' }}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                            <span class="text-sm font-medium">Clientes</span>
                         </x-nav-link>
                         <span class="h-4 w-px bg-white/20 mx-1"></span>
                     @endif
@@ -305,6 +321,14 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7 7m-7-7l-2.879 2.879M12 12L9.121 9.121m0 0L5 5m4.121 4.121L5 19m10.879-10.879L19 5m-4.121 4.121l-2.879-2.879M12 12l2.879-2.879"></path>
                     </svg>
                     Cortes
+                </x-responsive-nav-link>
+            @endif
+            @if ($clientesTecnicoRoute)
+                <x-responsive-nav-link :href="$clientesTecnicoRoute" :active="$clientesTecnicoActive" class="flex items-center gap-3 px-4 py-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                    Clientes
                 </x-responsive-nav-link>
             @endif
             @if ($clientesPagosRoute)

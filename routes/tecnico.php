@@ -10,6 +10,13 @@ Route::middleware(['auth', 'role:tecnico'])
     ->group(function () {
         Route::get('/', [TecnicoController::class, 'index'])->name('index');
 
+        // Módulo de Clientes (solo lectura para técnico)
+        Route::get('/clientes', [TecnicoController::class, 'clientes'])->name('clientes.index');
+        Route::get('/clientes/historial/buscar', [TecnicoController::class, 'clientesHistorialBuscar'])->name('clientes.historial.buscar');
+        Route::post('/clientes/edit', [TecnicoController::class, 'clientesEdit'])->name('clientes.edit');
+        Route::get('/clientes/{id}', [TecnicoController::class, 'clientesShow'])->name('clientes.show');
+        Route::get('/clientes/{numero}/historial', [TecnicoController::class, 'clientesHistorial'])->name('clientes.historial');
+
         // Módulo de Cortes (para perfil tecnico)
         Route::get('/cortes', [CortesController::class, 'index'])->name('cortes.index');
         Route::get('/reactivaciones', [CortesController::class, 'reactivacionesIndex'])->name('reactivaciones.index');

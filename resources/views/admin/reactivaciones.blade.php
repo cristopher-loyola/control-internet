@@ -58,8 +58,8 @@
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <button @click="reactivarUsuario({{ $u->id }}, '{{ $u->nombre_cliente }}')"
-                                        class="inline-flex items-center px-3 py-1 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-black uppercase tracking-widest hover:bg-green-700 active:bg-green-900 focus:outline-none focus:border-green-900 focus:ring ring-green-300 disabled:opacity-25 transition ease-in-out duration-150">
-                                        ✅ Reactivar
+                                        class="inline-flex items-center px-3 py-1 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 active:bg-green-900 focus:outline-none focus:border-green-900 focus:ring ring-green-300 disabled:opacity-25 transition ease-in-out duration-150">
+                                         Reactivar
                                     </button>
                                 </td>
                             </tr>

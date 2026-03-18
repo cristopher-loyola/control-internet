@@ -20,6 +20,7 @@ Route::middleware(['auth', 'role:admin'])
 
         Route::get('/corte', [DashboardController::class, 'corteView'])->name('corte.view');
         Route::get('/dashboard/metrics', [DashboardController::class, 'metrics'])->name('dashboard.metrics');
+        Route::get('/dashboard/cancelados/all', [DashboardController::class, 'allCancelados'])->name('dashboard.cancelados.all');
         Route::get('/dashboard/corte', [DashboardController::class, 'corteCaja'])->name('dashboard.corte');
         Route::get('/dashboard/export', [DashboardController::class, 'exportResumen'])->name('dashboard.export');
         Route::get('/dashboard/cancelados', [DashboardController::class, 'canceladosIndex'])->name('dashboard.cancelados');
