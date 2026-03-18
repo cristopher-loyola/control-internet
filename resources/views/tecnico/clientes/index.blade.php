@@ -28,6 +28,9 @@
             };
         }
     }">
+        @if (session('status') === 'cliente-actualizado')
+            <div x-data x-init="Swal.fire({ icon: 'success', title: '¡Éxito!', text: 'Cliente actualizado correctamente.' })"></div>
+        @endif
         <div class="max-w-none w-full mx-auto sm:px-4 lg:px-8">
 
             <div class="flex justify-between items-center mb-4 gap-3">

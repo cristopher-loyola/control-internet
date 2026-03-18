@@ -130,7 +130,8 @@ class TecnicoController extends Controller
             'telefono' => $cliente->telefono,
             'estado_id' => $cliente->estado_id,
             'estatus_servicio_id' => $cliente->estatus_servicio_id,
-            'usuario_id' => $cliente->id,
+            'usuario_original_id' => $cliente->id,
+            'accion' => 'Actualizado',
         ]);
 
         // Actualizar cliente
@@ -147,6 +148,6 @@ class TecnicoController extends Controller
         $cliente->estatus_servicio_id = $request->input('estatus_servicio_id');
         $cliente->save();
 
-        return redirect()->route('tecnico.clientes.show', $cliente->id)->with('status', 'cliente-actualizado');
+        return redirect()->route('tecnico.clientes.index')->with('status', 'cliente-actualizado');
     }
 }
