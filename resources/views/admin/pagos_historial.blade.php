@@ -34,12 +34,6 @@
                         </form>
                     </div>
 
-                    @if (session('status'))
-                        <div class="mb-3 px-3 py-2 rounded bg-emerald-600 text-white text-sm">
-                            {{ session('status') }}
-                        </div>
-                    @endif
-
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-700/40">
@@ -105,4 +99,33 @@
             </form>
         </x-modal>
     </div>
+
+    @if (session('status'))
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const message = @json(session('status'));
+                if (!message) return;
+
+                let icon = 'info';
+                let title = 'Aviso';
+
+                if (message.includes('cancelado correctamente')) {
+                    icon = 'success';
+                    title = 'Recibo cancelado';
+                } else if (message.includes('ya estaba cancelada')) {
+                    icon = 'warning';
+                    title = 'Ya estaba cancelado';
+                }
+
+                Swal.fire({
+                    icon: icon,
+                    title: title,
+                    text: message,
+                    confirmButtonText: 'Aceptar',
+                    confirmButtonColor: '#2563eb',
+                });
+            });
+        </script>
+    @endif
 </x-app-layout>

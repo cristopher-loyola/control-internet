@@ -13,14 +13,14 @@
                         <a href="{{ route('pagos.clientes.index') }}" class="btn btn-primary">
                             Volver a la lista de clientes
                         </a>
-                        <!-- <button
+                        <button
                             type="button"
                             class="btn btn-success btn-sm"
                             x-data
                             x-on:click="$dispatch('open-modal', 'pagos-clientes-show-edit')"
                         >
                             Editar
-                        </button> se agrega si se solicita-->
+                        </button>
                     </div>
 
                     <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">

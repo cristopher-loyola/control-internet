@@ -127,130 +127,130 @@
                 </div>
 
                 <!-- Navigation Links -->
-                <div class="hidden sm:-my-px sm:ms-12 sm:flex sm:items-center sm:gap-1">
-                    <x-nav-link :href="$dashboardRoute" :active="$dashboardActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $dashboardActive ? 'bg-white/10' : '' }}">
+                <div class="hidden sm:-my-px sm:ms-12 sm:flex sm:items-center sm:gap-3">
+                    <x-nav-link :href="$dashboardRoute" :active="$dashboardActive" class="group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $dashboardActive ? 'bg-white/10' : '' }}">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
                         </svg>
                         <span class="text-sm font-medium">{{ __('Dashboard') }}</span>
                     </x-nav-link>
-                    <span class="h-4 w-px bg-white/20 mx-1"></span>
+                    <span class="h-5 w-px bg-white/20 mx-1"></span>
+                    @if ($clientesTecnicoRoute)
+                        <x-nav-link :href="$clientesTecnicoRoute" :active="$clientesTecnicoActive" class="group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $clientesTecnicoActive ? 'bg-white/10' : '' }}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                            <span class="text-sm font-medium">Clientes</span>
+                        </x-nav-link>
+                        <span class="h-5 w-px bg-white/20 mx-1"></span>
+                    @endif
                     @if ($cortesTecnicoRoute)
-                        <x-nav-link :href="$cortesTecnicoRoute" :active="$cortesTecnicoActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $cortesTecnicoActive ? 'bg-white/10' : '' }}">
+                        <x-nav-link :href="$cortesTecnicoRoute" :active="$cortesTecnicoActive" class="group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $cortesTecnicoActive ? 'bg-white/10' : '' }}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7 7m-7-7l-2.879 2.879M12 12L9.121 9.121m0 0L5 5m4.121 4.121L5 19m10.879-10.879L19 5m-4.121 4.121l-2.879-2.879M12 12l2.879-2.879"></path>
                             </svg>
                             <span class="text-sm font-medium">Cortes</span>
                         </x-nav-link>
-                        <span class="h-4 w-px bg-white/20 mx-1"></span>
+                        <span class="h-5 w-px bg-white/20 mx-1"></span>
                     @endif
                     @if ($reactivacionesTecnicoRoute)
-                        <x-nav-link :href="$reactivacionesTecnicoRoute" :active="$reactivacionesTecnicoActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $reactivacionesTecnicoActive ? 'bg-white/10' : '' }}">
+                        <x-nav-link :href="$reactivacionesTecnicoRoute" :active="$reactivacionesTecnicoActive" class="group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $reactivacionesTecnicoActive ? 'bg-white/10' : '' }}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                             <span class="text-sm font-medium">Reactivaciones</span>
                         </x-nav-link>
-                        <span class="h-4 w-px bg-white/20 mx-1"></span>
-                    @endif
-                    @if ($clientesTecnicoRoute)
-                        <x-nav-link :href="$clientesTecnicoRoute" :active="$clientesTecnicoActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $clientesTecnicoActive ? 'bg-white/10' : '' }}">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                            </svg>
-                            <span class="text-sm font-medium">Clientes</span>
-                        </x-nav-link>
-                        <span class="h-4 w-px bg-white/20 mx-1"></span>
+                        <span class="h-5 w-px bg-white/20 mx-1"></span>
                     @endif
                     @if ($clientesPagosRoute)
-                        <x-nav-link :href="$clientesPagosRoute" :active="$clientesPagosActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $clientesPagosActive ? 'bg-white/10' : '' }}">
+                        <x-nav-link :href="$clientesPagosRoute" :active="$clientesPagosActive" class="group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $clientesPagosActive ? 'bg-white/10' : '' }}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
                             </svg>
                             <span class="text-sm font-medium">Clientes</span>
                         </x-nav-link>
-                        <span class="h-4 w-px bg-white/20 mx-1"></span>
+                        <span class="h-5 w-px bg-white/20 mx-1"></span>
                     @endif
                     @if ($recibosRoute)
-                        <x-nav-link :href="$recibosRoute" :active="$recibosActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $recibosActive ? 'bg-white/10' : '' }}">
+                        <x-nav-link :href="$recibosRoute" :active="$recibosActive" class="group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $recibosActive ? 'bg-white/10' : '' }}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
                             <span class="text-sm font-medium">{{ __('Recibos') }}</span>
                         </x-nav-link>
-                        <span class="h-4 w-px bg-white/20 mx-1"></span>
+                        <span class="h-5 w-px bg-white/20 mx-1"></span>
                     @endif
                     @if ($cortePagosRoute)
-                        <x-nav-link :href="$cortePagosRoute" :active="$cortePagosActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $cortePagosActive ? 'bg-white/10' : '' }}">
+                        <x-nav-link :href="$cortePagosRoute" :active="$cortePagosActive" class="group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $cortePagosActive ? 'bg-white/10' : '' }}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                             </svg>
                             <span class="text-sm font-medium">Corte/Caja</span>
                         </x-nav-link>
-                        <span class="h-4 w-px bg-white/20 mx-1"></span>
+                        <span class="h-5 w-px bg-white/20 mx-1"></span>
                     @endif
                     @if ($cortesPagosRoute)
-                        <x-nav-link :href="$cortesPagosRoute" :active="$cortesPagosActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $cortesPagosActive ? 'bg-white/10' : '' }}">
+                        <x-nav-link :href="$cortesPagosRoute" :active="$cortesPagosActive" class="group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $cortesPagosActive ? 'bg-white/10' : '' }}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7 7m-7-7l-2.879 2.879M12 12L9.121 9.121m0 0L5 5m4.121 4.121L5 19m10.879-10.879L19 5m-4.121 4.121l-2.879-2.879M12 12l2.879-2.879"></path>
                             </svg>
                             <span class="text-sm font-medium">Cortes</span>
                         </x-nav-link>
-                        <span class="h-4 w-px bg-white/20 mx-1"></span>
+                        <span class="h-5 w-px bg-white/20 mx-1"></span>
                     @endif
                     @if ($reactivacionesPagosRoute)
-                        <x-nav-link :href="$reactivacionesPagosRoute" :active="$reactivacionesPagosActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $reactivacionesPagosActive ? 'bg-white/10' : '' }}">
+                        <x-nav-link :href="$reactivacionesPagosRoute" :active="$reactivacionesPagosActive" class="group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $reactivacionesPagosActive ? 'bg-white/10' : '' }}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                             <span class="text-sm font-medium">Reactivaciones</span>
                         </x-nav-link>
-                        <span class="h-4 w-px bg-white/20 mx-1"></span>
+                        <span class="h-5 w-px bg-white/20 mx-1"></span>
                     @endif
                     @if ($clientesRoute)
-                        <x-nav-link :href="$clientesRoute" :active="$clientesActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $clientesActive ? 'bg-white/10' : '' }}">
+                        <x-nav-link :href="$clientesRoute" :active="$clientesActive" class="group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $clientesActive ? 'bg-white/10' : '' }}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
                             </svg>
                             <span class="text-sm font-medium">{{ __('Clientes') }}</span>
                         </x-nav-link>
-                        <span class="h-4 w-px bg-white/20 mx-1"></span>
+                        <span class="h-5 w-px bg-white/20 mx-1"></span>
                     @endif
                     @if ($pagosRoute)
-                        <x-nav-link :href="$pagosRoute" :active="$pagosActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $pagosActive ? 'bg-white/10' : '' }}">
+                        <x-nav-link :href="$pagosRoute" :active="$pagosActive" class="group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $pagosActive ? 'bg-white/10' : '' }}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path>
                             </svg>
                             <span class="text-sm font-medium">{{ __('Pagos') }}</span>
                         </x-nav-link>
-                        <span class="h-4 w-px bg-white/20 mx-1"></span>
+                        <span class="h-5 w-px bg-white/20 mx-1"></span>
                     @endif
                     @if ($corteRoute)
-                        <x-nav-link :href="$corteRoute" :active="$corteActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $corteActive ? 'bg-white/10' : '' }}">
+                        <x-nav-link :href="$corteRoute" :active="$corteActive" class="group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $corteActive ? 'bg-white/10' : '' }}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                             </svg>
                             <span class="text-sm font-medium">Corte/Caja</span>
                         </x-nav-link>
-                        <span class="h-4 w-px bg-white/20 mx-1"></span>
+                        <span class="h-5 w-px bg-white/20 mx-1"></span>
                     @endif
                     @if ($cortesVistaRoute)
-                        <x-nav-link :href="$cortesVistaRoute" :active="$cortesVistaActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $cortesVistaActive ? 'bg-white/10' : '' }}">
+                        <x-nav-link :href="$cortesVistaRoute" :active="$cortesVistaActive" class="group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $cortesVistaActive ? 'bg-white/10' : '' }}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7 7m-7-7l-2.879 2.879M12 12L9.121 9.121m0 0L5 5m4.121 4.121L5 19m10.879-10.879L19 5m-4.121 4.121l-2.879-2.879M12 12l2.879-2.879"></path>
                             </svg>
                             <span class="text-sm font-medium">Cortes</span>
                         </x-nav-link>
-                        <span class="h-4 w-px bg-white/20 mx-1"></span>
+                        <span class="h-5 w-px bg-white/20 mx-1"></span>
                     @endif
                     @if ($reactivacionesVistaRoute)
-                        <x-nav-link :href="$reactivacionesVistaRoute" :active="$reactivacionesVistaActive" class="group flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $reactivacionesVistaActive ? 'bg-white/10' : '' }}">
+                        <x-nav-link :href="$reactivacionesVistaRoute" :active="$reactivacionesVistaActive" class="group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $reactivacionesVistaActive ? 'bg-white/10' : '' }}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                             <span class="text-sm font-medium">Reactivaciones</span>
                         </x-nav-link>
-                        <span class="h-4 w-px bg-white/20 mx-1"></span>
+                        <span class="h-5 w-px bg-white/20 mx-1"></span>
                     @endif
                 </div>
             </div>
@@ -315,6 +315,14 @@
                 </svg>
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+            @if ($clientesTecnicoRoute)
+                <x-responsive-nav-link :href="$clientesTecnicoRoute" :active="$clientesTecnicoActive" class="flex items-center gap-3 px-4 py-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                    Clientes
+                </x-responsive-nav-link>
+            @endif
             @if ($cortesTecnicoRoute)
                 <x-responsive-nav-link :href="$cortesTecnicoRoute" :active="$cortesTecnicoActive" class="flex items-center gap-3 px-4 py-3">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -323,12 +331,12 @@
                     Cortes
                 </x-responsive-nav-link>
             @endif
-            @if ($clientesTecnicoRoute)
-                <x-responsive-nav-link :href="$clientesTecnicoRoute" :active="$clientesTecnicoActive" class="flex items-center gap-3 px-4 py-3">
+            @if ($reactivacionesTecnicoRoute)
+                <x-responsive-nav-link :href="$reactivacionesTecnicoRoute" :active="$reactivacionesTecnicoActive" class="flex items-center gap-3 px-4 py-3">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
-                    Clientes
+                    Reactivaciones
                 </x-responsive-nav-link>
             @endif
             @if ($clientesPagosRoute)
