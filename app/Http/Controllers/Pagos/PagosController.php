@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Usuario;
 use App\Models\Factura;
+use App\Models\HistorialUsuario;
 use Illuminate\Support\Facades\DB;
 use App\Models\AppSetting;
 use App\Services\MorosidadService;
@@ -144,6 +145,35 @@ class PagosController extends Controller
             ->get(['id', 'numero_servicio', 'nombre_cliente', 'telefono']);
 
         return view('pagos.clientes.index', compact('clientes'));
+    }
+
+    public function clientesDestroy(int $id)
+    {
+        $usuario = Usuario::findOrFail($id);
+        // Snapshot historial (antes de eliminar)
+        HistorialUsuario::create([
+            'usuario_original_id' => $usuario->id,
+            'accion' => 'delete',
+            'captured_at' => now(),
+            'numero_servicio' => $usuario->numero_servicio,
+            'nombre_cliente' => $usuario->nombre_cliente,
+            'domicilio' => $usuario->domicilio,
+            'telefono' => $usuario->telefono,
+            'comunidad' => $usuario->comunidad,
+            'uso' => $usuario->uso,
+            'tecnologia' => $usuario->tecnologia,
+            'dispositivo' => $usuario->dispositivo,
+            'megas' => $usuario->megas,
+            'tarifa' => $usuario->tarifa,
+            'paquete' => $usuario->paquete,
+            'estado_id' => $usuario->estado_id,
+            'estatus_servicio_id' => $usuario->estatus_servicio_id,
+            'servicio_id' => $usuario->servicio_id,
+            'fecha_contratacion' => $usuario->fecha_contratacion,
+        ]);
+        $usuario->delete();
+
+        return redirect()->route('pagos.clientes.index')->with('status', 'cliente-eliminado');
     }
 
     public function prepaySettings(Request $request)
@@ -363,6 +393,25 @@ class PagosController extends Controller
                 $factura->created_by = $request->user()?->id;
                 $factura->fingerprint = $fingerprint;
                 $factura->save();
+
+                // Al registrar un pago exitoso, actualizar el estatus del cliente a Pagado/Activado
+                if ($request->input('usuario_id')) {
+                    $usuario = Usuario::find($request->input('usuario_id'));
+                    if ($usuario) {
+                        $usuario->update([
+                            'estatus_servicio_id' => 1, // Pagado
+                            'estado_id' => 1,           // Activado
+                        ]);
+                    }
+                } elseif ($request->input('numero_servicio')) {
+                    $usuario = Usuario::where('numero_servicio', $request->input('numero_servicio'))->first();
+                    if ($usuario) {
+                        $usuario->update([
+                            'estatus_servicio_id' => 1, // Pagado
+                            'estado_id' => 1,           // Activado
+                        ]);
+                    }
+                }
             } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
                 // Si falla por fingerprint duplicado (carrera), buscamos el que ganó
                 // Pero solo si NO está cancelado. Si está cancelado, dejamos que falle

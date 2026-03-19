@@ -209,6 +209,25 @@ class AdminController extends Controller
                 $factura->created_by = $request->user()?->id;
                 $factura->fingerprint = $fingerprint;
                 $factura->save();
+
+                // Al registrar un pago exitoso, actualizar el estatus del cliente a Pagado/Activado
+                if ($request->input('usuario_id')) {
+                    $usuario = \App\Models\Usuario::find($request->input('usuario_id'));
+                    if ($usuario) {
+                        $usuario->update([
+                            'estatus_servicio_id' => 1, // Pagado
+                            'estado_id' => 1,           // Activado
+                        ]);
+                    }
+                } elseif ($request->input('numero_servicio')) {
+                    $usuario = \App\Models\Usuario::where('numero_servicio', $request->input('numero_servicio'))->first();
+                    if ($usuario) {
+                        $usuario->update([
+                            'estatus_servicio_id' => 1, // Pagado
+                            'estado_id' => 1,           // Activado
+                        ]);
+                    }
+                }
             } catch (\Illuminate\Database\QueryException $e) {
                 // Si falla por fingerprint duplicado (carrera), buscamos el que ganó
                 // Pero solo si NO está cancelado. Si está cancelado, dejamos que falle

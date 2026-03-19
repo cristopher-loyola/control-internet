@@ -6,6 +6,26 @@
     </x-slot>
 
     <div class="py-6" x-data="adminDashboard()">
+        <!-- Pantalla de Carga -->
+        <div x-show="loading" 
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition ease-in duration-300"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gray-900/60 backdrop-blur-sm">
+            <div class="relative">
+                <div class="w-20 h-20 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <svg class="w-8 h-8 text-indigo-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                </div>
+            </div>
+            <p class="mt-4 text-white font-bold tracking-widest animate-pulse uppercase text-sm">Cargando Dashboard...</p>
+        </div>
+
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             <div class="flex flex-wrap items-end gap-3">
                 <div class="flex items-center gap-2">
@@ -252,6 +272,7 @@
     <script>
     function adminDashboard(){
         return {
+            loading: true,
             period: 'day',
             dayDate: new Date().toISOString().slice(0,10),
             weekFrom: null,
@@ -264,9 +285,9 @@
             chartClientes: null,
             metodoColors: ['#16a34a','#0ea5e9','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16'],
             init(){
-                this.loadMetrics();
+                this.loadMetrics(true);
                 this.loadAllCancelados();
-                setInterval(() => this.loadMetrics(), 15000);
+                setInterval(() => this.loadMetrics(false), 15000);
             },
             money(v){ return '$' + Number(v ?? 0).toFixed(2); },
             metodoPct(monto){
@@ -288,7 +309,8 @@
                 }
                 window.location.href = url.toString();
             },
-            loadMetrics(){
+            loadMetrics(showLoader = true){
+                if(showLoader) this.loading = true;
                 const url = new URL('{{ route('admin.dashboard.metrics') }}', window.location.origin);
                 url.searchParams.set('period', this.period);
                 if(this.period==='day'){
@@ -300,10 +322,17 @@
                     url.searchParams.set('date', d);
                 }
                 fetch(url).then(r => r.json()).then(data => {
-                    if(!data.ok) return;
+                    if(!data.ok) {
+                        this.loading = false;
+                        return;
+                    }
                     this.metrics = data;
                     this.renderMetodos();
                     this.renderClientes();
+                    this.loading = false;
+                }).catch(err => {
+                    console.error(err);
+                    this.loading = false;
                 });
             },
             onPeriodChange(){
