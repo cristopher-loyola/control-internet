@@ -44,6 +44,25 @@ class PagosController extends Controller
             ->paginate(50)
             ->appends($request->query());
 
+        // Lógica de cambio automático a "Pendiente de pago" después del día 7
+        $hoy = now();
+        if ($hoy->day >= 8) {
+            $periodoActual = $hoy->format('Y-m');
+            foreach ($clientes as $c) {
+                // Solo si está en Pagado (1) o sin estatus, y no es Cancelado (3) ni Suspendido (2)
+                if (in_array($c->estatus_servicio_id, [1, null])) {
+                    $pagado = \App\Models\Factura::where('numero_servicio', $c->numero_servicio)
+                        ->where('periodo', $periodoActual)
+                        ->whereNull('deleted_at')
+                        ->exists();
+                    
+                    if (!$pagado) {
+                        $c->update(['estatus_servicio_id' => 4]); // Pendiente de pago
+                    }
+                }
+            }
+        }
+
         return view('pagos.clientes.index', compact('clientes'));
     }
 

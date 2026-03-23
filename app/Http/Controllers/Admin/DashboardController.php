@@ -63,6 +63,23 @@ class DashboardController extends Controller
         return view('admin.usuarios_desactivados', compact('usuarios'));
     }
 
+    public function activosPagadosIndex(Request $request)
+    {
+        $estadoActivos = ['Activado', 'Activo'];
+        $estatusPagado = ['Pagado'];
+        
+        $usuarios = Usuario::with(['estado','estatusServicio'])
+            ->whereHas('estado', function ($q) use ($estadoActivos) {
+                $q->whereIn('nombre', $estadoActivos);
+            })
+            ->whereHas('estatusServicio', function ($q) use ($estatusPagado) {
+                $q->whereIn('nombre', $estatusPagado);
+            })
+            ->orderBy('numero_servicio', 'asc')
+            ->paginate(50);
+        return view('admin.usuarios_activos_pagados', compact('usuarios'));
+    }
+
     public function morososIndex(Request $request)
     {
         $month = $request->query('month', now()->format('Y-m'));
@@ -245,147 +262,169 @@ class DashboardController extends Controller
         $period = $request->query('period', 'day');
         $date = $request->query('date') ? Carbon::parse($request->query('date')) : now();
         $range = $this->dateRange($period, $date);
+        
+        // Cache key para datos que cambian poco
+        $cacheKey = "dashboard_metrics_{$period}_{$range['from']->format('Y-m-d')}_{$range['to']->format('Y-m-d')}";
+        
+        // Usar caché para datos estáticos por 5 minutos
+        $cachedData = cache()->remember($cacheKey, 300, function() use ($range, $period) {
+            // Aplicar recargos automáticos después del día 7 (solo una vez al día)
+            $this->applyMonthlySurchargesIfNeeded();
 
-        // Aplicar recargos automáticos después del día 7
-        $this->applyMonthlySurchargesIfNeeded();
+            // Optimización: una sola consulta para ventas totales y métodos
+            $ventasData = Factura::query()
+                ->whereNull('deleted_at')
+                ->whereBetween('created_at', [$range['from'], $range['to']])
+                ->select(['total', 'payload', 'created_at'])
+                ->get();
+            
+            $ventasTotal = (float) $ventasData->sum('total');
+            $ventasCount = $ventasData->count();
 
-        $ventasQuery = Factura::query()
-            ->whereNull('deleted_at')
-            ->whereBetween('created_at', [$range['from'], $range['to']]);
-        $ventasTotal = (float) $ventasQuery->sum('total');
-        $ventasCount = (int) $ventasQuery->count();
+            // Procesar métodos de pago en memoria
+            $metodos = $ventasData
+                ->map(function ($f) {
+                    $p = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+                    $raw = is_array($p) ? ($p['metodo'] ?? '') : '';
+                    
+                    
+                    
+                    
+                    
+                    
+                    $label = trim((string) $raw);
+                    if ($label === '' || strtolower($label) === 'desconocido' || strtolower($label) === 'unknown') {
+                        $label = 'Efectivo';
+                    }
+                    return ['metodo' => $label, 'total' => (float) $f->total];
+                })
+                ->groupBy(fn($r) => $r['metodo'])
+                ->map(function ($g, $k) {
+                    $suma = array_sum(array_map(fn($e) => (float) $e['total'], $g->all()));
+                    return ['metodo' => $k, 'conteo' => $g->count(), 'monto' => round($suma, 2)];
+                })
+                ->values();
 
-        $metodos = Factura::query()
-            ->whereNull('deleted_at')
-            ->whereBetween('created_at', [$range['from'], $range['to']])
-            ->get(['total', 'payload'])
-            ->map(function ($f) {
-                $p = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
-                $raw = is_array($p) ? ($p['metodo'] ?? '') : '';
-                $label = trim((string) $raw);
-                if ($label === '' || strtolower($label) === 'desconocido' || strtolower($label) === 'unknown') {
-                    $label = 'Efectivo';
-                }
-                return ['metodo' => $label, 'total' => (float) $f->total];
-            })
-            ->groupBy(fn($r) => $r['metodo'])
-            ->map(function ($g, $k) {
-                $suma = array_sum(array_map(fn($e) => (float) $e['total'], $g->all()));
-                return ['metodo' => $k, 'conteo' => $g->count(), 'monto' => round($suma, 2)];
-            })
-            ->values();
-
-        $ingresos = round($ventasTotal, 2);
-        // Solo ventas visibles en el dashboard
-
-        $clientesNuevos = [
-            'day' => (int) Usuario::whereDate('created_at', now()->toDateString())->count(),
-            'week' => (int) Usuario::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
-            'month' => (int) Usuario::whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])->count(),
-        ];
-
-        $inventarioBajo = Inventario::whereColumn('stock', '<=', 'minimo')
-            ->orderBy('stock', 'asc')
-            ->limit(10)
-            ->get(['id','producto','stock','minimo']);
-
-        // Serie de tendencia de ventas según periodo
-        $ventasSeries = $this->ventasSeries($period, $range);
-
-        // Clientes con suscripción cancelada (según estatus de servicio)
-        $cancelNames = ['Cancelado','Baja','Eliminado','Inactivo'];
-        $canceladosQuery = Usuario::whereHas('estatusServicio', function ($q) use ($cancelNames) {
-            $q->whereIn('nombre', $cancelNames);
-        })->whereBetween('updated_at', [$range['from'], $range['to']]);
-        $canceladosCount = (int) $canceladosQuery->count();
-        $cancelados = $canceladosQuery
-            ->orderBy('updated_at', 'desc')
-            ->limit(10)
-            ->get(['id','numero_servicio','nombre_cliente','updated_at']);
-
-        $topProductos = Factura::query()
-            ->whereNull('deleted_at')
-            ->whereBetween('created_at', [$range['from'], $range['to']])
-            ->get(['payload','total'])
-            ->map(function ($f) {
-                $p = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
-                $label = null;
-                if (is_array($p)) {
-                    $label = $p['paquete'] ?? ($p['producto'] ?? ($p['mensualidad'] ?? null));
-                }
-                $label = $label ?: 'General';
-                return ['label' => (string)$label, 'total' => (float)$f->total];
-            })
-            ->groupBy(fn($r) => $r['label'])
-            ->map(function ($g, $k) {
-                $suma = array_sum(array_map(fn($e) => (float)$e['total'], $g->all()));
-                return ['label' => $k, 'ventas' => $g->count(), 'monto' => round($suma, 2)];
-            })
-            ->sortByDesc('ventas')
-            ->values()
-            ->take(5);
-
-        $estadoActivos = ['Activado', 'Activo'];
-        $estadoDesactivos = ['Desactivado', 'Inactivo', 'Suspendido'];
-        $clientesActivos = (int) Usuario::whereHas('estado', function ($q) use ($estadoActivos) {
-            $q->whereIn('nombre', $estadoActivos);
-        })->count();
-        $clientesDesactivados = (int) Usuario::whereHas('estado', function ($q) use ($estadoDesactivos) {
-            $q->whereIn('nombre', $estadoDesactivos);
-        })->count();
-
-        // Morosos (pendientes del mes seleccionado)
-        $morososData = $this->computeMorosos($range['from']->format('Y-m'));
-        $morososPreview = array_slice($morososData['items'], 0, 8);
-
-        // Clientes con pagos adelantados
-        $prepayClients = Factura::whereNull('deleted_at')
-            ->where(function($q) {
-                $q->where('payload->prepay', 'si')
-                  ->orWhere('payload->prepay', true);
-            })
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function($f) {
-                $p = $f->payload;
-                $months = (int)($p['prepay_months'] ?? 0);
-                $from = $f->created_at ? Carbon::parse($f->created_at) : now();
-                $to = $from->copy()->addMonths($months);
+            // Datos que cambian menos frecuentemente - caché por 10 minutos
+            $staticData = cache()->remember('dashboard_static_data', 600, function() {
+                $estadoActivos = ['Activado', 'Activo'];
+                $estadoDesactivos = ['Desactivado', 'Inactivo', 'Suspendido'];
+                $clientesActivos = (int) Usuario::whereHas('estado', function ($q) use ($estadoActivos) {
+                    $q->whereIn('nombre', $estadoActivos);
+                })->count();
+                $clientesDesactivados = (int) Usuario::whereHas('estado', function ($q) use ($estadoDesactivos) {
+                    $q->whereIn('nombre', $estadoDesactivos);
+                })->count();
+                
                 return [
-                    'numero' => (string)($f->numero_servicio ?? '—'),
-                    'nombre' => (string)($p['nombre'] ?? '—'),
-                    'desde' => $from->format('d/m/Y'),
-                    'hasta' => $to->format('d/m/Y'),
-                    'monto' => (float)$f->total,
-                    'created_at' => $from->toDateTimeString()
+                    'clientes_activos' => $clientesActivos,
+                    'clientes_desactivados' => $clientesDesactivados,
+                    'clientes_activos_label' => 'Activado'
                 ];
-            })
-            ->unique('numero')
-            ->values()
-            ->take(10);
+            });
+
+            // Clientes nuevos - caché por 2 minutos
+            $clientesNuevos = cache()->remember('dashboard_clientes_nuevos', 120, function() {
+                return [
+                    'day' => (int) Usuario::whereDate('created_at', now()->toDateString())->count(),
+                    'week' => (int) Usuario::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
+                    'month' => (int) Usuario::whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])->count(),
+                ];
+            });
+
+            $inventarioBajo = Inventario::whereColumn('stock', '<=', 'minimo')
+                ->orderBy('stock', 'asc')
+                ->limit(10)
+                ->get(['id','producto','stock','minimo']);
+
+            // Serie de tendencia de ventas según periodo
+            $ventasSeries = $this->ventasSeries($period, $range);
+
+            // Clientes con suscripción cancelada
+            $cancelNames = ['Cancelado','Baja','Eliminado','Inactivo'];
+            $canceladosQuery = Usuario::whereHas('estatusServicio', function ($q) use ($cancelNames) {
+                $q->whereIn('nombre', $cancelNames);
+            })->whereBetween('updated_at', [$range['from'], $range['to']]);
+            $canceladosCount = (int) $canceladosQuery->count();
+            $cancelados = $canceladosQuery
+                ->orderBy('updated_at', 'desc')
+                ->limit(10)
+                ->get(['id','numero_servicio','nombre_cliente','updated_at']);
+
+            // Top productos - optimizado con la misma consulta de ventas
+            $topProductos = $ventasData
+                ->map(function ($f) {
+                    $p = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+                    $label = null;
+                    if (is_array($p)) {
+                        $label = $p['paquete'] ?? ($p['producto'] ?? ($p['mensualidad'] ?? null));
+                    }
+                    $label = $label ?: 'General';
+                    return ['label' => (string)$label, 'total' => (float)$f->total];
+                })
+                ->groupBy(fn($r) => $r['label'])
+                ->map(function ($g, $k) {
+                    $suma = array_sum(array_map(fn($e) => (float)$e['total'], $g->all()));
+                    return ['label' => $k, 'ventas' => $g->count(), 'monto' => round($suma, 2)];
+                })
+                ->sortByDesc('ventas')
+                ->values()
+                ->take(5);
+
+            // Morosos (pendientes del mes seleccionado)
+            $morososData = $this->computeMorosos($range['from']->format('Y-m'));
+            $morososPreview = array_slice($morososData['items'], 0, 8);
+
+            // Clientes con pagos adelantados
+            $prepayClients = Factura::whereNull('deleted_at')
+                ->where(function($q) {
+                    $q->where('payload->prepay', 'si')
+                      ->orWhere('payload->prepay', true);
+                })
+                ->orderBy('created_at', 'desc')
+                ->limit(20) // Limitar para mejorar rendimiento
+                ->get()
+                ->map(function($f) {
+                    $p = $f->payload;
+                    $months = (int)($p['prepay_months'] ?? 0);
+                    $from = $f->created_at ? Carbon::parse($f->created_at) : now();
+                    $to = $from->copy()->addMonths($months);
+                    return [
+                        'numero' => (string)($f->numero_servicio ?? '—'),
+                        'nombre' => (string)($p['nombre'] ?? '—'),
+                        'desde' => $from->format('d/m/Y'),
+                        'hasta' => $to->format('d/m/Y'),
+                        'monto' => (float)$f->total,
+                        'created_at' => $from->toDateTimeString()
+                    ];
+                })
+                ->unique('numero')
+                ->values()
+                ->take(10);
+
+            return [
+                'ingresos' => round($ventasTotal, 2),
+                'ventas_total' => $ventasTotal,
+                'ventas_count' => $ventasCount,
+                'metodos' => $metodos,
+                'clientes_nuevos' => $clientesNuevos,
+                'inventario_bajo' => $inventarioBajo,
+                'ventas_series' => $ventasSeries,
+                'cancelados_count' => $canceladosCount,
+                'cancelados' => $cancelados,
+                'top_productos' => $topProductos,
+                'morosos' => $morososPreview,
+                'morosos_count' => $morososData['count'],
+                'prepay_clients' => $prepayClients,
+            ] + $staticData;
+        });
 
         return response()->json([
             'ok' => true,
             'period' => $period,
             'from' => $range['from']->toDateTimeString(),
             'to' => $range['to']->toDateTimeString(),
-            'ingresos' => $ingresos,
-            'ventas_total' => $ventasTotal,
-            'ventas_count' => $ventasCount,
-            'metodos' => $metodos,
-            'clientes_nuevos' => $clientesNuevos,
-            'inventario_bajo' => $inventarioBajo,
-            'ventas_series' => $ventasSeries,
-            'cancelados_count' => $canceladosCount,
-            'cancelados' => $cancelados,
-            'top_productos' => $topProductos,
-            'clientes_activos' => $clientesActivos,
-            'clientes_desactivados' => $clientesDesactivados,
-            'clientes_activos_label' => 'Activado',
-            'morosos' => $morososPreview,
-            'morosos_count' => $morososData['count'],
-            'prepay_clients' => $prepayClients,
-        ]);
+        ] + $cachedData);
     }
 
     public function corteCaja(Request $request)

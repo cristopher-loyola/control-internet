@@ -6,7 +6,7 @@
     </x-slot>
 
     <div class="py-6" x-data="adminDashboard()">
-        <!-- Pantalla de Carga -->
+        <!-- Pantalla de Carga
         <div x-show="loading" 
              x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="opacity-0"
@@ -24,7 +24,7 @@
                 </div>
             </div>
             <p class="mt-4 text-white font-bold tracking-widest animate-pulse uppercase text-sm">Cargando Dashboard...</p>
-        </div>
+        </div> -->
 
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             <div class="flex flex-wrap items-end gap-3">
@@ -217,7 +217,10 @@
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-white dark:bg-gray-800 rounded shadow p-4">
-                    <div class="font-semibold mb-2">Clientes activos</div>
+                    <div class="flex items-center justify-between">
+                        <div class="font-semibold mb-2">Clientes activos</div>
+                        <a href="{{ route('admin.dashboard.activos.pagados') }}" class="btn btn-primary">Ver todos</a>
+                    </div>
                     <div class="text-3xl font-bold" x-text="metrics.clientes_activos ?? 0"></div>
                     <div class="text-sm text-gray-500 mt-1">
                         Estado: <span class="font-semibold" x-text="metrics.clientes_activos_label ?? 'Activado'"></span>
@@ -284,10 +287,14 @@
             chartMetodos: null,
             chartClientes: null,
             metodoColors: ['#16a34a','#0ea5e9','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16'],
+            currentRequest: null,
+            lastMetodos: null,
+            lastClientes: null,
             init(){
                 this.loadMetrics(true);
                 this.loadAllCancelados();
-                setInterval(() => this.loadMetrics(false), 15000);
+                // Reducir frecuencia de recarga a 2 minutos para mejorar rendimiento
+                setInterval(() => this.loadMetrics(false), 120000);
             },
             money(v){ return '$' + Number(v ?? 0).toFixed(2); },
             metodoPct(monto){
@@ -321,19 +328,36 @@
                     const d = (this.monthVal ? this.monthVal+'-01' : new Date().toISOString().slice(0,7)+'-01');
                     url.searchParams.set('date', d);
                 }
-                fetch(url).then(r => r.json()).then(data => {
-                    if(!data.ok) {
+                
+                // Abort controller para cancelar peticiones anteriores
+                if(this.currentRequest) this.currentRequest.abort();
+                this.currentRequest = new AbortController();
+                
+                fetch(url, { signal: this.currentRequest.signal })
+                    .then(r => r.json())
+                    .then(data => {
+                        if(!data.ok) {
+                            this.loading = false;
+                            return;
+                        }
+                        this.metrics = data;
+                        // Solo renderizar gráficas si los datos cambiaron
+                        if(JSON.stringify(data.metodos) !== JSON.stringify(this.lastMetodos)) {
+                            this.renderMetodos();
+                            this.lastMetodos = data.metodos;
+                        }
+                        if(JSON.stringify(data.clientes_nuevos) !== JSON.stringify(this.lastClientes)) {
+                            this.renderClientes();
+                            this.lastClientes = data.clientes_nuevos;
+                        }
                         this.loading = false;
-                        return;
-                    }
-                    this.metrics = data;
-                    this.renderMetodos();
-                    this.renderClientes();
-                    this.loading = false;
-                }).catch(err => {
-                    console.error(err);
-                    this.loading = false;
-                });
+                    })
+                    .catch(err => {
+                        if(err.name !== 'AbortError') {
+                            console.error(err);
+                        }
+                        this.loading = false;
+                    });
             },
             onPeriodChange(){
                 if(this.period==='week'){

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Factura;
 
 class Usuario extends Model
 {
@@ -51,5 +52,10 @@ class Usuario extends Model
     public function cortador()
     {
         return $this->belongsTo(Cortador::class, 'cortador_id');
+    }
+
+    public function facturas()
+    {
+        return $this->hasMany(Factura::class, 'usuario_id');
     }
 }

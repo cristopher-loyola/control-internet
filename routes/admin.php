@@ -25,6 +25,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/dashboard/export', [DashboardController::class, 'exportResumen'])->name('dashboard.export');
         Route::get('/dashboard/cancelados', [DashboardController::class, 'canceladosIndex'])->name('dashboard.cancelados');
         Route::get('/dashboard/desactivados', [DashboardController::class, 'desactivadosIndex'])->name('dashboard.desactivados');
+        Route::get('/dashboard/activos/pagados', [DashboardController::class, 'activosPagadosIndex'])->name('dashboard.activos.pagados');
         Route::get('/dashboard/morosos', [DashboardController::class, 'morososIndex'])->name('dashboard.morosos');
         Route::get('/dashboard/morosos/export', [DashboardController::class, 'morososExport'])->name('dashboard.morosos.export');
         Route::get('/dashboard/prepay-settings', [DashboardController::class, 'prepaySettings'])->name('dashboard.prepay.settings');

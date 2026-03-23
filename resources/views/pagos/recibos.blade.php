@@ -73,9 +73,14 @@
                     </select>
                 </div>
                 <div x-show="form.prepay==='si'" x-cloak>
-                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Meses (6–12)</label>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Meses (1–12)</label>
                     <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
                         x-model.number="form.prepay_months" :disabled="readOnlyMode || form.prepay!=='si'" @change="inputChanged()">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
                         <option value="6">6</option>
                         <option value="7">7</option>
                         <option value="8">8</option>
@@ -107,6 +112,26 @@
         <a class="btn btn-secondary w-full text-center" href="{{ route('pagos.recibos.historial') }}">📋 Historial</a>
         <button class="btn btn-primary w-full" @click="metodoValido() && openConfirm('ticket')">🧾 Imprimir Ticket</button>
         <button class="btn btn-danger w-full" @click="metodoValido() && openConfirm('receipt')">🖨️ Imprimir Recibo</button>
+    </div>
+</div>
+
+<!-- Información de Adeudos -->
+<div x-show="adeudo && adeudo.meses>0" class="mt-4 mb-4 p-4 bg-red-50 border border-red-200 rounded-lg not-print">
+    <div class="flex items-center gap-2 mb-2">
+        <svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+        </svg>
+        <h3 class="text-lg font-semibold text-red-800">Información de Adeudos</h3>
+    </div>
+    <div class="text-sm text-red-700">
+        <p class="mb-1">
+            <strong>Cliente con adeudos:</strong> 
+            <span x-text="`Adeuda desde ${new Date(adeudo.desde_label).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`"></span>
+        </p>
+        <p>
+            <strong>Total a pagar incluyendo adeudos:</strong> 
+            <span class="font-bold text-red-900" x-text="moneda(totales.total)"></span>
+        </p>
     </div>
 </div>
                     <br>
@@ -247,11 +272,6 @@
                                 <div>Importe</div><div x-text="moneda(0)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
-                                <template x-if="adeudo && adeudo.meses>0">
-                                    <div>Adeudos</div>
-                                </template>
-                                <template x-if="adeudo && adeudo.meses>0">
-<div x-text="`Adeuda desde ${new Date(adeudo.desde_label).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })} y en total a pagar: ${moneda(totales.total)}`"></div>                                </template>
                                 <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
                                 <div x-show="form.prepay==='si'">Meses adelantados</div><div x-show="form.prepay==='si'" x-text="`${form.prepay_months} (hasta ${mesFinalCobertura(form.prepay_months)})` || '-'"></div>
                                 <div>Su pago anterior</div><div x-text="moneda(form.pago_anterior || 0)"></div>
@@ -285,11 +305,6 @@
                                 <div>Importe</div><div x-text="moneda(0)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
-                                <template x-if="adeudo && adeudo.meses>0">
-                                    <div>Adeudos</div>
-                                </template>
-                                <template x-if="adeudo && adeudo.meses>0">
-<div x-text="`Adeuda desde ${new Date(adeudo.desde_label).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })} y en total a pagar: ${moneda(totales.total)}`"></div>                                </template>
                                 <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
                                 <div x-show="form.prepay==='si'">Meses adelantados</div><div x-show="form.prepay==='si'" x-text="`${form.prepay_months} (hasta ${mesFinalCobertura(form.prepay_months)})` || '-'"></div>
                                 <div>Su pago anterior</div><div x-text="moneda(form.pago_anterior || 0)"></div>
@@ -415,6 +430,8 @@
             get prepayLegend(){
                 if(this.form.prepay!=='si') return '';
                 const m = this.form.prepay_months||6;
+                // Para meses 1-5 no hay descuento
+                if(m <= 5) return 'Sin descuento';
                 const info = this.prepayConfig.matrix?.[m];
                 if(!info) return '';
                 return `Descuento ${info.percent}%`;
@@ -659,16 +676,23 @@
                 
                 if(this.form.prepay === 'si'){
                     const months = Number(this.form.prepay_months||6);
-                    const info = this.prepayConfig?.matrix?.[months];
                     const pkg = mensualidad;
-                    const totals = info?.totals || {};
-                    const expected = totals[String(pkg)] ?? totals[pkg];
-                    if(expected !== undefined){
-                        this.totales.prepay_total = Number(expected);
+                    
+                    // Para meses 1-5: sin descuento, solo multiplicar
+                    if(months <= 5){
+                        this.totales.prepay_total = Math.round((pkg * months) * 100) / 100;
                     }else{
-                        const percent = Number(info?.percent||0);
-                        const base = mensualidad * months;
-                        this.totales.prepay_total = Math.round((base * (1 - percent/100)) * 100) / 100;
+                        // Para meses 6-12: mantener lógica actual de descuentos
+                        const info = this.prepayConfig?.matrix?.[months];
+                        const totals = info?.totals || {};
+                        const expected = totals[String(pkg)] ?? totals[pkg];
+                        if(expected !== undefined){
+                            this.totales.prepay_total = Number(expected);
+                        }else{
+                            const percent = Number(info?.percent||0);
+                            const base = mensualidad * months;
+                            this.totales.prepay_total = Math.round((base * (1 - percent/100)) * 100) / 100;
+                        }
                     }
                     total = this.totales.prepay_total;
                 }else{

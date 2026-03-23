@@ -6,7 +6,7 @@
     </x-slot>
 
     <div class="py-6" x-data="pagosDashboard()">
-        <!-- Pantalla de Carga -->
+        <!-- Pantalla de Carga
         <div x-show="loading" 
              x-transition:enter="transition ease-out duration-300"
              x-transition:enter-start="opacity-0"
@@ -24,7 +24,7 @@
                 </div>
             </div>
             <p class="mt-4 text-white font-bold tracking-widest animate-pulse uppercase text-sm">Cargando Dashboard...</p>
-        </div>
+        </div> -->
 
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             {{-- Filtros de período --}}
@@ -150,7 +150,10 @@
             {{-- Clientes activos y desactivados --}}
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-white dark:bg-gray-800 rounded shadow p-4">
-                    <div class="font-semibold mb-2">Clientes activos</div>
+                    <div class="flex items-center justify-between">
+                        <div class="font-semibold mb-2">Clientes activos</div>
+                        <a href="{{ route('pagos.dashboard.activos.pagados') }}" class="btn btn-primary">Ver todos</a>
+                    </div>
                     <div class="text-3xl font-bold" x-text="metrics.clientes_activos ?? 0"></div>
                     <div class="text-sm text-gray-500 mt-1">
                         Estado: <span class="font-semibold" x-text="metrics.clientes_activos_label ?? 'Activado'"></span>
