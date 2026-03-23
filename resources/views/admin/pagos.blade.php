@@ -101,7 +101,7 @@
             </div>
         </div>
     </div>
- <!-- <div class="flex items-end justify-end md:justify-start gap-2">
+  <!-- <div class="flex items-end justify-end md:justify-start gap-2">
                             <button class="btn btn-secondary" @click="openHistorial()">Historial</button>
                             <button class="btn btn-secondary" @click="toggleEditor()"
                                 x-text="editMode ? 'Cerrar editor de plantilla' : 'Editar plantilla'"></button>
@@ -111,7 +111,7 @@
                             <button class="btn btn-secondary" x-show="editMode" @click="resetLayout()">Restablecer</button>
                             <button class="btn btn-secondary" x-show="editMode" @click="saveAsDefault()">Guardar cambios</button>
                             <button class="btn btn-danger" @click="openConfirm()">Exportar a PDF</button>
-                        </div>  NO ELIMINAR, SIRVE PARA EDITAR LA PLANTILLA -->
+                        </div>  NO ELIMINAR, SIRVE PARA EDITAR LA PLANTILLA      -->
     <div class="flex flex-col items-center justify-center gap-3 bg-gray-50 dark:bg-gray-700 rounded-xl p-5 shadow-inner">
         <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 dark:text-gray-300">Acciones</h3>
         <a class="btn btn-secondary w-full text-center" href="{{ route('admin.pagos.historial') }}">📋 Historial</a>
@@ -319,6 +319,9 @@
                                 <div>Cobro</div><div x-text="form.cobro || '—'"></div>
                                 <div>Fecha</div><div x-text="fecha()"></div>
                                 <div>Hora</div><div x-text="hora()"></div>
+                            </div>
+                            <div class="mt-4 text-center text-xs font-semibold text-gray-600 border-t pt-2">
+                                <p>Recuerda que del 1 al 7 de mes se realizan los pagos correctamente, posterior a eso se cobrarán cargos por costo de reconexión.</p>
                             </div>
                         </div>
                     </div>
@@ -1074,6 +1077,10 @@ html,body{ margin:0; padding:0 }
   <div class="line"><div class="l">Quién cobró</div><div>${cobro}</div></div>
   <div class="line"><div class="l">Fecha</div><div>${fecha}</div></div>
   <div class="line"><div class="l">Hora</div><div>${hora}</div></div>
+  <div class="sep"></div>
+  <div class="center" style="font-size:10px; font-weight:600; color:#555; margin-top:6px; padding-top:6px; border-top:1px solid #999;">
+    Recuerda que del 1 al 7 de mes se realizan los pagos correctamente, posterior a eso se cobrarán cargos por costo de reconexión.
+  </div>
   <div class="banner"><img src="${banner}" onerror="this.style.display='none'"></div>
 </div>
 <script>

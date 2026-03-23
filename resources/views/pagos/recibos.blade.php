@@ -301,6 +301,9 @@
                                 <div>Fecha</div><div x-text="fecha()"></div>
                                 <div>Hora</div><div x-text="hora()"></div>
                             </div>
+                            <div class="mt-4 text-center text-xs font-semibold text-gray-600 border-t pt-2">
+                                <p>Recuerda que del 1 al 7 de mes se realizan los pagos correctamente, posterior a eso se cobrarán cargos por costo de reconexión.</p>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -973,6 +976,11 @@ html,body{ margin:0; padding:0 }
   <div class="line"><div class="l">Quién cobró</div><div>${cobro}</div></div>
   <div class="line"><div class="l">Fecha</div><div>${fecha}</div></div>
   <div class="line"><div class="l">Hora</div><div>${hora}</div></div>
+  <div class="sep"></div>
+  <div class="center" style="font-size:10px; font-weight:600; color:#555; margin-top:6px; padding-top:6px; border-top:1px solid #999;">
+    Recuerda que del 1 al 7 de mes se realizan los pagos correctamente, posterior a eso se cobrarán cargos por costo de reconexión.
+  </div>
+  
   <div class="banner"><img src="${banner}" onerror="this.style.display='none'"></div>
 </div>
 </body>
