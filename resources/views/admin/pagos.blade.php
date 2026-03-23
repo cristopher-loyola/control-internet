@@ -101,7 +101,17 @@
             </div>
         </div>
     </div>
-
+ <!-- <div class="flex items-end justify-end md:justify-start gap-2">
+                            <button class="btn btn-secondary" @click="openHistorial()">Historial</button>
+                            <button class="btn btn-secondary" @click="toggleEditor()"
+                                x-text="editMode ? 'Cerrar editor de plantilla' : 'Editar plantilla'"></button>
+                            <button class="btn btn-secondary" @click="resetLayout()">Restablecer</button> 
+                            < <button class="btn btn-secondary" @click="saveAsDefault()">Guardar como predeterminado</button> 
+                                x-text="editMode ? 'Cerrar editor' : 'Editar plantilla'"></button> 
+                            <button class="btn btn-secondary" x-show="editMode" @click="resetLayout()">Restablecer</button>
+                            <button class="btn btn-secondary" x-show="editMode" @click="saveAsDefault()">Guardar cambios</button>
+                            <button class="btn btn-danger" @click="openConfirm()">Exportar a PDF</button>
+                        </div>  NO ELIMINAR, SIRVE PARA EDITAR LA PLANTILLA -->
     <div class="flex flex-col items-center justify-center gap-3 bg-gray-50 dark:bg-gray-700 rounded-xl p-5 shadow-inner">
         <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 dark:text-gray-300">Acciones</h3>
         <a class="btn btn-secondary w-full text-center" href="{{ route('admin.pagos.historial') }}">📋 Historial</a>

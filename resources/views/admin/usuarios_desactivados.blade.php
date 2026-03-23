@@ -5,12 +5,17 @@
         </h2>
     </x-slot>
 
+    @php
+        $isPagos = request()->is('pagos/*');
+        $routePrefix = $isPagos ? 'pagos' : 'admin';
+    @endphp
+
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 rounded shadow p-4">
                 <div class="flex items-center justify-between mb-3">
                     <div class="text-sm text-gray-600">Total: {{ $usuarios->total() }}</div>
-                    <a href="{{ route('admin.index') }}" class="btn btn-primary">Regresar al dashboard</a>
+                    <a href="{{ route($routePrefix . '.index') }}" class="btn btn-primary">Regresar al dashboard</a>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
@@ -33,7 +38,7 @@
                                 <td class="py-2">{{ optional($u->estado)->nombre }}</td>
                                 <td class="py-2">{{ optional($u->updated_at)->format('Y-m-d H:i') }}</td>
                                 <td class="py-2">
-                                    <form method="POST" action="{{ route('admin.clientes.destroy', $u->id) }}" onsubmit="event.preventDefault(); Swal.fire({ title: '¿Estás seguro?', text: '¡No podrás revertir esto!', icon: 'warning', showCancelButton: true, confirmButtonColor: '#3085d6', cancelButtonColor: '#d33', confirmButtonText: 'Sí, ¡elimínalo!', cancelButtonText: 'Cancelar' }).then((result) => { if (result.isConfirmed) { this.submit(); } });">
+                                    <form method="POST" action="{{ route($routePrefix . '.clientes.destroy', $u->id) }}" onsubmit="event.preventDefault(); Swal.fire({ title: '¿Estás seguro?', text: '¡No podrás revertir esto!', icon: 'warning', showCancelButton: true, confirmButtonColor: '#3085d6', cancelButtonColor: '#d33', confirmButtonText: 'Sí, ¡elimínalo!', cancelButtonText: 'Cancelar' }).then((result) => { if (result.isConfirmed) { this.submit(); } });">
                                         @csrf
                                         @method('DELETE')
                                         <button class="px-2 py-1 rounded bg-red-600 text-white text-xs hover:bg-red-700">Eliminar</button>

@@ -1,9 +1,14 @@
 <x-app-layout title="Clientes con pagos pendientes">
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-white leading-tight">
-            Clientes con pagos pendientes
+            Clientes con pagos pendientes ({{ $items->total() }})
         </h2>
     </x-slot>
+
+    @php
+        $isPagos = request()->is('pagos/*');
+        $routePrefix = $isPagos ? 'pagos' : 'admin';
+    @endphp
 
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -15,7 +20,7 @@
                     </div>
                     <button class="btn btn-primary">Filtrar</button>
                     <div class="ml-auto flex gap-2">
-                        <a href="{{ route('admin.index') }}" class="btn btn-primary">Volver a inicio</a>
+                        <a href="{{ route($routePrefix . '.index') }}" class="btn btn-primary">Volver a inicio</a>
                     </div>
                 </form>
                 <div class="overflow-x-auto">
@@ -54,6 +59,9 @@
                         @endforelse
                         </tbody>
                     </table>
+                </div>
+                <div class="mt-4">
+                    {{ $items->links() }}
                 </div>
             </div>
         </div>

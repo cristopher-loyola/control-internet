@@ -1025,6 +1025,24 @@ class AdminController extends Controller
                 $map[$i] = $normalize($fixEncoding($h));
             }
 
+            $hasPaqueteCol = false;
+            $paqKeys = ['paquete','plan','paquete_plan'];
+            foreach ($paqKeys as $pk) {
+                if (in_array($pk, $map)) {
+                    $hasPaqueteCol = true;
+                    break;
+                }
+            }
+
+            $hasTarifaCol = false;
+            $tarifaKeys = ['tarifa','costo','mensualidad','precio'];
+            foreach ($tarifaKeys as $tk) {
+                if (in_array($tk, $map)) {
+                    $hasTarifaCol = true;
+                    break;
+                }
+            }
+
             $lineNumber = 1;
             while (($row = fgetcsv($handle)) !== false) {
                 $lineNumber++;
@@ -1061,6 +1079,15 @@ class AdminController extends Controller
                     $domicilio = $get($item, $domicilioKeys);
                     $paquete = $get($item, $paqKeys);
                     $tarifaRaw = $get($item, $tarifaKeys);
+
+                    // Si no hay tarifaRaw pero paquete tiene un número, lo usamos como tarifa
+                    if ($tarifaRaw === null && $paquete !== null) {
+                        $p_norm = str_replace(['$', ' ', ','], ['', '', '.'], (string)$paquete);
+                        if (is_numeric($p_norm)) {
+                            $tarifaRaw = $paquete;
+                        }
+                    }
+
                     $zonaVal = $get($item, $zonaKeys);
                     $ipVal = $get($item, $ipKeys);
                     $macVal = $get($item, $macKeys);
@@ -1105,7 +1132,7 @@ class AdminController extends Controller
                         $report['errors'][] = "Línea $lineNumber: teléfono demasiado largo (máximo 20 caracteres)";
                         continue;
                     }
-                    $paqValue = null;
+                    $paqValue = '$300';
                     if ($paquete !== null) {
                         $p = trim((string) $paquete);
                         if ($p !== '') {
@@ -1116,6 +1143,10 @@ class AdminController extends Controller
                             }
                             $paqValue = $p;
                         }
+                    }
+                    // Si el paquete solo es un número, le ponemos el signo de $ para que se vea bien
+                    if (is_numeric(str_replace(['$', ' ', ','], ['', '', '.'], $paqValue))) {
+                        $paqValue = '$' . number_format((float)str_replace(['$', ' ', ','], ['', '', '.'], $paqValue), 2);
                     }
                     $zonaValue = null;
                     if ($zonaVal !== null) {
@@ -1129,7 +1160,7 @@ class AdminController extends Controller
                             $zonaValue = $z;
                         }
                     }
-                    $tarifaValue = null;
+                    $tarifaValue = 300;
                     if ($tarifaRaw !== null) {
                         $tr = trim((string) $tarifaRaw);
                         if ($tr !== '') {
@@ -1208,8 +1239,10 @@ class AdminController extends Controller
                         // Solo actualizamos campos si vienen presentes en el archivo.
                         $update = [];
                         if ($telefono !== null) $update['telefono'] = $defText($telValue);
-                        if ($paquete !== null) $update['paquete'] = $defText($paqValue);
-                        if ($tarifaRaw !== null) $update['tarifa'] = $tarifaValue;
+                        if ($hasPaqueteCol || $hasTarifaCol) {
+                            $update['paquete'] = $defText($paqValue);
+                            $update['tarifa'] = $tarifaValue;
+                        }
                         if ($zonaVal !== null) $update['zona'] = $defText($zonaValue);
                         if ($ipVal !== null) $update['ip'] = $defText($ipValue);
                         if ($macVal !== null) $update['mac'] = $defText($macValue);

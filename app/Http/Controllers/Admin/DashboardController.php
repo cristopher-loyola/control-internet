@@ -12,6 +12,8 @@ use App\Models\Inventario;
 use Dompdf\Dompdf;
 use App\Models\CargoMora;
 use App\Models\PrepaySetting;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 
 class DashboardController extends Controller
 {
@@ -72,8 +74,21 @@ class DashboardController extends Controller
         }
         // Ordenar por número de cliente ascendente
         $items = $items->sortBy(fn($r) => (int) ($r['numero'] ?? 0))->values();
+
+        // Paginación manual de la colección
+        $perPage = 50;
+        $page = Paginator::resolveCurrentPage() ?: 1;
+        $pagedItems = $items->forPage($page, $perPage);
+        $paginatedItems = new LengthAwarePaginator(
+            $pagedItems,
+            $items->count(),
+            $perPage,
+            $page,
+            ['path' => Paginator::resolveCurrentPath(), 'query' => $request->query()]
+        );
+
         return view('admin.usuarios_morosos', [
-            'items' => $items,
+            'items' => $paginatedItems,
             'month' => $month,
             'onlyRecargo' => $onlyRecargo,
         ]);

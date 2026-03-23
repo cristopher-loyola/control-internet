@@ -89,7 +89,7 @@
                         placeholder="Buscar por nombre, número o teléfono..."
                         class="form-input rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm py-1 w-64"
                     >
-                    <select name="tec" class="form-select rounded-md border-gray-300 text-sm py-1 px-2">    ">
+                    <select name="tec" class="form-select rounded-md border-gray-300 text-sm py-1 px-2">
                         <option value="">Filtrar por rango/clave</option>
                         <option value="ina" {{ request('tec') === 'ina' ? 'selected' : '' }}>INA (1000–4200)</option>
                         <option value="foi" {{ request('tec') === 'foi' ? 'selected' : '' }}>FOI (4800–5400, 5500–5999)</option>
