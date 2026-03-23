@@ -147,7 +147,7 @@ class PagosController extends Controller
         return view('pagos.clientes.index', compact('clientes'));
     }
 
-    public function clientesDestroy(int $id)
+    public function clientesDestroy(Request $request, int $id)
     {
         $usuario = Usuario::findOrFail($id);
         // Snapshot historial (antes de eliminar)
@@ -172,6 +172,10 @@ class PagosController extends Controller
             'fecha_contratacion' => $usuario->fecha_contratacion,
         ]);
         $usuario->delete();
+
+        if ($request->filled('redirect_to')) {
+            return redirect($request->redirect_to)->with('status', 'cliente-eliminado');
+        }
 
         return redirect()->route('pagos.clientes.index')->with('status', 'cliente-eliminado');
     }
