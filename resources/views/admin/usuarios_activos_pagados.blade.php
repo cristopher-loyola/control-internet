@@ -17,7 +17,7 @@
             @endif
             <div class="bg-white dark:bg-gray-800 rounded shadow p-4">
                 <div class="flex items-center justify-between mb-3">
-                    <div class="text-sm text-gray-600">Total: {{ $usuarios->total() }} clientes con estado Activo/Pagado</div>
+                    <div class="text-sm text-gray-600">Total: {{ $usuarios->total() }} clientes que han pagado</div>
                     <a href="{{ route($routePrefix . '.index') }}" class="btn btn-primary">Regresar al dashboard</a>
                 </div>
                 <div class="overflow-x-auto">
@@ -29,7 +29,6 @@
                                 <th class="py-2">Estatus</th>
                                 <th class="py-2">Estado</th>
                                 <th class="py-2">Actualizado</th>
-                                <th class="py-2">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -51,19 +50,13 @@
                                 <td class="py-2">
                                     <div class="flex gap-2">
                                         <a href="{{ route($routePrefix . '.clientes.show', $u->id) }}" class="px-2 py-1 rounded bg-indigo-600 text-white text-xs hover:bg-indigo-700">Ver</a>
-                                        <form method="POST" action="{{ route($routePrefix . '.clientes.destroy', $u->id) }}" onsubmit="event.preventDefault(); Swal.fire({ title: '¿Estás seguro?', text: '¡No podrás revertir esto!', icon: 'warning', showCancelButton: true, confirmButtonColor: '#3085d6', cancelButtonColor: '#d33', confirmButtonText: 'Sí, ¡elimínalo!', cancelButtonText: 'Cancelar' }).then((result) => { if (result.isConfirmed) { this.submit(); } });">
-                                            @csrf
-                                            @method('DELETE')
-                                            <input type="hidden" name="redirect_to" value="{{ url()->current() }}">
-                                            <button class="px-2 py-1 rounded bg-red-600 text-white text-xs hover:bg-red-700">Eliminar</button>
-                                        </form>
                                     </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
                                 <td colspan="6" class="py-8 text-center text-gray-400 italic">
-                                    No se encontraron clientes con estado Activo/Pagado
+                                    No se encontraron clientes que hayan pagado
                                 </td>
                             </tr>
                         @endforelse

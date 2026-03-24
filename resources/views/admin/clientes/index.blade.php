@@ -7,11 +7,19 @@
 
     <div class="py-12" x-data="{
         selected: null,
+        isLoading: false,
+        numerosDisponibles: [],
+        numerosFiltrados: [],
+        totalDisponibles: 0,
+        ultimoNumero: 0,
+        current_page: 1,
+        last_page: 1,
+        busquedaNumero: '',
+        busquedaActual: '',
         isNuevoCliente: true,
         deleteId: null,
         createMegasReadonly: false,
         editMegasReadonly: false,
-        isLoading: false,
         form: { id: null, numero_servicio: '', nombre_cliente: '', domicilio: '', comunidad: '', telefono: '', uso: '', megas: '', tecnologia: '', dispositivo: '', tarifa: '', estado_id: '', estatus_servicio_id: '' },
         selectRow(row) {
             this.selected = row.id;
@@ -72,6 +80,80 @@
         },
         openEdit() {
             if (this.form.id) this.$dispatch('open-modal', 'admin-clientes-edit')
+        },
+        cargarNumerosDisponibles() {
+            fetch('{{ route("admin.clientes.numeros-disponibles") }}')
+                .then(response => response.json())
+                .then(data => {
+                    this.numerosDisponibles = data.numeros;
+                    this.numerosFiltrados = [...data.numeros]; // Inicializar filtered
+                    this.totalDisponibles = data.total;
+                    this.ultimoNumero = data.ultimoNumero;
+                    this.current_page = data.current_page;
+                    this.last_page = data.last_page;
+                    this.busquedaActual = data.busqueda || '';
+                })
+                .catch(error => {
+                    console.error('Error al cargar números disponibles:', error);
+                });
+        },
+        copiarNumero(numero) {
+            navigator.clipboard.writeText(numero).then(() => {
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Copiado!',
+                    text: 'Número ' + numero + ' copiado al portapapeles',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            }).catch(err => {
+                console.error('Error al copiar:', err);
+            });
+        },
+        cargarPagina(page) {
+            const url = new URL('{{ route("admin.clientes.numeros-disponibles") }}', window.location.origin);
+            url.searchParams.set('page', page);
+            if (this.busquedaNumero) {
+                url.searchParams.set('busqueda', this.busquedaNumero);
+            }
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    this.numerosDisponibles = data.numeros;
+                    this.numerosFiltrados = [...data.numeros]; // Ya viene filtrado del backend
+                    this.totalDisponibles = data.total;
+                    this.ultimoNumero = data.ultimoNumero;
+                    this.current_page = data.current_page;
+                    this.last_page = data.last_page;
+                    this.busquedaActual = data.busqueda || '';
+                })
+                .catch(error => {
+                    console.error('Error al cargar números disponibles:', error);
+                });
+        },
+        filtrarNumeros() {
+            // Buscar con backend incluyendo búsqueda
+            const url = new URL('{{ route("admin.clientes.numeros-disponibles") }}', window.location.origin);
+            if (this.busquedaNumero) {
+                url.searchParams.set('busqueda', this.busquedaNumero);
+            }
+            url.searchParams.set('page', 1); // Resetear a página 1 al buscar
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    this.numerosDisponibles = data.numeros;
+                    this.numerosFiltrados = [...data.numeros]; // Ya viene filtrado del backend
+                    this.totalDisponibles = data.total;
+                    this.ultimoNumero = data.ultimoNumero;
+                    this.current_page = data.current_page;
+                    this.last_page = data.last_page;
+                    this.busquedaActual = data.busqueda || '';
+                })
+                .catch(error => {
+                    console.error('Error al filtrar números:', error);
+                });
         }
     }">
         <div class="max-w-none w-full mx-auto sm:px-4 lg:px-8">
@@ -131,6 +213,15 @@
                         title="Buscar historial por número o nombre"
                     >
                         Buscar historial
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-info"
+                        x-data
+                        x-on:click.prevent="cargarNumerosDisponibles(); $dispatch('open-modal', 'admin-clientes-numeros-disponibles')"
+                        title="Ver números de cliente disponibles"
+                    >
+                        Números disponibles
                     </button>
                     <a
                         :href="selected ? '{{ route('admin.clientes.historial', ['numero' => '__NUM__']) }}'.replace('__NUM__', form.numero_servicio ?? '') : '#'"
@@ -635,6 +726,150 @@
                 </form>
             </div>
         </div>
+        </x-modal>
+
+        <x-modal name="admin-clientes-numeros-disponibles" maxWidth="lg" focusable>
+            <div class="p-4">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Números Disponibles
+                        </h3>
+                        <div class="mt-1 flex items-center gap-3 text-xs">
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                <span x-text="totalDisponibles"></span>&nbsp;disponibles
+                            </span>
+                            <span class="text-gray-600 dark:text-gray-400">
+                                1000 - <span x-text="ultimoNumero"></span>
+                            </span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-sm" x-on:click="$dispatch('close')">Cerrar</button>
+                </div>
+
+                <div class="bg-gray-50 dark:bg-gray-700/50 rounded p-2 mb-3">
+                    <div class="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400 mb-2">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Click para copiar
+                    </div>
+                    <!-- Búsqueda específica -->
+                    <div class="flex items-center gap-2">
+                        <div class="flex-1 relative">
+                            <input 
+                                type="number" 
+                                x-model="busquedaNumero"
+                                x-on:input="filtrarNumeros()"
+                                placeholder="Buscar número específico..."
+                                class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                min="1000"
+                            />
+                        </div>
+                        <button 
+                            x-show="busquedaNumero"
+                            type="button"
+                            x-on:click="busquedaNumero = ''; filtrarNumeros()"
+                            class="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors"
+                        >
+                            Limpiar
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div class="max-h-64 overflow-y-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700/40 sticky top-0 z-10">
+                                <tr>
+                                    <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                        Número
+                                    </th>
+                                    <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                                        Acción
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                <template x-for="(numero, index) in numerosFiltrados" :key="numero">
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors" :class="index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-700/20'">
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
+                                            <span class="inline-flex items-center gap-1">
+                                                <svg class="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                                <span x-text="numero"></span>
+                                            </span>
+                                        </td>
+                                        <td class="px-3 py-2 whitespace-nowrap text-sm text-center">
+                                            <button 
+                                                type="button" 
+                                                class="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
+                                                x-on:click="copiarNumero(numero)"
+                                            >
+                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                                                </svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </template>
+                                
+                                <tr x-show="numerosFiltrados.length === 0">
+                                    <td colspan="2" class="px-3 py-8 text-center">
+                                        <div class="flex flex-col items-center gap-2">
+                                            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            <div class="text-gray-500 dark:text-gray-400 text-sm">
+                                                <p class="font-medium" x-show="busquedaNumero">No se encontró el número <span x-text="busquedaNumero"></span></p>
+                                                <p class="font-medium" x-show="!busquedaNumero">No hay números disponibles</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Paginación -->
+                <div x-show="last_page > 1" class="mt-3 flex items-center justify-between">
+                    <div class="text-xs text-gray-600 dark:text-gray-400">
+                        Página <span x-text="current_page"></span> de <span x-text="last_page"></span>
+                    </div>
+                    <div class="flex gap-1">
+                        <button 
+                            type="button"
+                            class="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            x-on:click="cargarPagina(current_page - 1)"
+                            :disabled="current_page === 1"
+                        >
+                            Anterior
+                        </button>
+                        <template x-for="page in Array.from({length: Math.min(5, last_page)}, (_, i) => i + 1)" :key="page">
+                            <button 
+                                type="button"
+                                class="px-2 py-1 text-xs rounded transition-colors"
+                                :class="page === current_page ? 'bg-blue-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'"
+                                x-on:click="cargarPagina(page)"
+                                x-text="page"
+                            ></button>
+                        </template>
+                        <button 
+                            type="button"
+                            class="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            x-on:click="cargarPagina(current_page + 1)"
+                            :disabled="current_page === last_page"
+                        >
+                            Siguiente
+                        </button>
+                    </div>
+                </div>
+            </div>
         </x-modal>
     </div>
 </x-app-layout>

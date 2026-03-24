@@ -735,12 +735,155 @@ thead th{ background:#2e7d32; color:#fff; }
 
     public function create()
     {
-        return response('Pagos create');
+        return view('admin.clientes.create');
     }
 
     public function store(Request $request)
     {
-        return response('Pagos store');
+        Validator::make(
+            $request->all(),
+            [
+                'numero_servicio' => ['required', 'numeric', 'unique:usuarios,numero_servicio'],
+                'nombre_cliente' => ['required', 'string', 'max:150'],
+                'domicilio' => ['nullable', 'string', 'max:255'],
+                'comunidad' => ['nullable', 'string', 'max:100'],
+                'telefono' => ['nullable', 'string', 'max:20'],
+                'uso' => ['nullable', 'string', 'max:50'],
+                'megas' => ['nullable', 'integer', 'min:0'],
+                'tecnologia' => ['nullable', 'string', 'in:ina,foi,fod'],
+                'dispositivo' => ['nullable', 'string', 'in:permanencia voluntaria,como dato'],
+                'tarifa' => ['nullable', 'numeric', 'min:0'],
+                'fecha_contratacion' => ['nullable', 'date'],
+            ],
+            [
+                'required' => 'El campo :attribute es obligatorio.',
+                'numeric' => 'El campo :attribute debe ser numérico.',
+                'integer' => 'El campo :attribute debe ser un número entero.',
+                'unique' => 'El :attribute ya existe.',
+                'max' => 'El campo :attribute es demasiado largo.',
+                'min' => 'El campo :attribute debe ser al menos :min.',
+            ],
+            [
+                'numero_servicio' => 'número de cliente',
+                'nombre_cliente' => 'nombre',
+                'domicilio' => 'domicilio',
+                'comunidad' => 'comunidad',
+                'telefono' => 'número telefónico',
+                'uso' => 'uso',
+                'megas' => 'megas',
+                'tarifa' => 'paquete',
+                'dispositivo' => 'dispositivo',
+                'fecha_contratacion' => 'fecha del siguiente cobro',
+            ]
+        )->validateWithBag('clienteCreate');
+
+        $textOrDash = function ($v) {
+            $s = is_null($v) ? null : trim((string) $v);
+            return ($s === null || $s === '') ? '-' : $s;
+        };
+        $tecByNumero = function ($n) {
+            $num = (int) $n;
+            if ($num >= 6000 || ($num >= 5401 && $num <= 5499)) return 'fod';
+            if (($num >= 4800 && $num <= 5400) || ($num >= 5500 && $num <= 5999)) return 'foi';
+            if ($num >= 1000 && $num <= 4200) return 'ina';
+            return null;
+        };
+
+        // Asignación automática de megas si hay costo y tecnología
+        $megasAsignados = null;
+        if ($request->filled('tarifa') && $request->filled('tecnologia')) {
+            try {
+                $megasAsignados = \App\Services\MegasAssigner::assign($request->tarifa, $request->tecnologia);
+            } catch (\InvalidArgumentException $e) {
+                $megasAsignados = null;
+            }
+        }
+
+        Usuario::create([
+            'numero_servicio' => $request->numero_servicio,
+            'nombre_cliente' => $request->nombre_cliente,
+            'domicilio' => $textOrDash($request->domicilio),
+            'telefono' => $textOrDash($request->telefono),
+            'paquete' => $request->uso ? ($request->uso . ($request->tecnologia ? " {$request->tecnologia}" : '') . (($megasAsignados ?? $request->megas) ? " " . ($megasAsignados ?? $request->megas) . "Mbps" : '')) : null,
+            'estado_id' => null,
+            'estatus_servicio_id' => null,
+            'servicio_id' => null,
+            'comunidad' => $textOrDash($request->comunidad),
+            'uso' => $textOrDash($request->uso),
+            'tecnologia' => $request->filled('tecnologia') ? $textOrDash($request->tecnologia) : ($tecByNumero($request->numero_servicio) ?? '-'),
+            'dispositivo' => $textOrDash($request->dispositivo),
+            'megas' => $megasAsignados ?? $request->megas ?? null,
+            'tarifa' => $request->tarifa ?? null,
+            'fecha_contratacion' => $request->fecha_contratacion ?? null,
+        ]);
+
+        // Snapshot historial (creación)
+        HistorialUsuario::create([
+            'accion' => 'create',
+            'captured_at' => now(),
+            'numero_servicio' => $request->numero_servicio,
+            'nombre_cliente' => $request->nombre_cliente,
+            'domicilio' => $textOrDash($request->domicilio),
+            'telefono' => $textOrDash($request->telefono),
+            'comunidad' => $textOrDash($request->comunidad),
+            'uso' => $textOrDash($request->uso),
+            'tecnologia' => $textOrDash($request->tecnologia),
+            'dispositivo' => $textOrDash($request->dispositivo),
+            'megas' => $megasAsignados ?? $request->megas,
+            'tarifa' => $request->tarifa,
+            'paquete' => $request->uso ? ($request->uso . ($request->tecnologia ? " {$request->tecnologia}" : '') . (($megasAsignados ?? $request->megas) ? " " . ($megasAsignados ?? $request->megas) . "Mbps" : '')) : null,
+            'estado_id' => null,
+            'estatus_servicio_id' => null,
+            'servicio_id' => null,
+            'fecha_contratacion' => $request->fecha_contratacion,
+        ]);
+
+        return redirect()->route('pagos.clientes.index')->with('status', 'cliente-creado');
+    }
+
+    public function numerosDisponibles()
+    {
+        // Obtener el último número de cliente registrado
+        $ultimoNumero = Usuario::max('numero_servicio') ?? 7418;
+        
+        // Generar rango de números desde 1000 hasta el último registro
+        $rangoCompleto = range(1000, $ultimoNumero);
+        
+        // Obtener números ocupados (>= 1000)
+        $numerosOcupados = Usuario::where('numero_servicio', '>=', 1000)
+            ->pluck('numero_servicio')
+            ->toArray();
+        
+        // Filtrar números desocupados
+        $numerosDisponibles = array_diff($rangoCompleto, $numerosOcupados);
+        
+        // Ordenar y convertir a colección
+        $numerosDisponibles = collect(array_values($numerosDisponibles))->sort();
+        
+        // Búsqueda específica
+        $busqueda = request('busqueda');
+        if ($busqueda) {
+            $numerosDisponibles = $numerosDisponibles->filter(function($numero) use ($busqueda) {
+                return str_contains($numero, $busqueda);
+            });
+        }
+        
+        // Paginar resultados (20 por página para el modal)
+        $page = request('page', 1);
+        $perPage = 20;
+        $offset = ($page - 1) * $perPage;
+        
+        $numerosPaginados = $numerosDisponibles->slice($offset, $perPage);
+        
+        return response()->json([
+            'numeros' => $numerosPaginados->values(),
+            'total' => $numerosDisponibles->count(),
+            'ultimoNumero' => $ultimoNumero,
+            'current_page' => $page,
+            'per_page' => $perPage,
+            'last_page' => ceil($numerosDisponibles->count() / $perPage),
+            'busqueda' => $busqueda
+        ]);
     }
 
     public function show(int $id)

@@ -47,6 +47,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::post('/clientes', [AdminController::class, 'clientesStore'])->name('clientes.store');
         Route::post('/clientes/editar', [AdminController::class, 'clientesEditStore'])->name('clientes.edit');
         Route::get('/clientes/historial/buscar', [AdminController::class, 'clientesHistorialBuscar'])->name('clientes.historial.buscar');
+        Route::get('/clientes/numeros-disponibles', [AdminController::class, 'numerosDisponibles'])->name('clientes.numeros-disponibles');
         Route::get('/clientes/{id}', [AdminController::class, 'clientesShow'])->name('clientes.show');
         Route::get('/clientes/{numero}/historial', [AdminController::class, 'clientesHistorial'])->name('clientes.historial');
         Route::post('/clientes/import', [AdminController::class, 'clientesImport'])->name('clientes.import');

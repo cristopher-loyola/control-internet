@@ -627,6 +627,51 @@ class AdminController extends Controller
         return view('admin.clientes.index', compact('clientes', 'q', 'tec', 'fodMax'));
     }
 
+    public function numerosDisponibles()
+    {
+        // Obtener el último número de cliente registrado
+        $ultimoNumero = Usuario::max('numero_servicio') ?? 7418;
+        
+        // Generar rango de números desde 1000 hasta el último registro
+        $rangoCompleto = range(1000, $ultimoNumero);
+        
+        // Obtener números ocupados (>= 1000)
+        $numerosOcupados = Usuario::where('numero_servicio', '>=', 1000)
+            ->pluck('numero_servicio')
+            ->toArray();
+        
+        // Filtrar números desocupados
+        $numerosDisponibles = array_diff($rangoCompleto, $numerosOcupados);
+        
+        // Ordenar y convertir a colección
+        $numerosDisponibles = collect(array_values($numerosDisponibles))->sort();
+        
+        // Búsqueda específica
+        $busqueda = request('busqueda');
+        if ($busqueda) {
+            $numerosDisponibles = $numerosDisponibles->filter(function($numero) use ($busqueda) {
+                return str_contains($numero, $busqueda);
+            });
+        }
+        
+        // Paginar resultados (20 por página para el modal)
+        $page = request('page', 1);
+        $perPage = 20;
+        $offset = ($page - 1) * $perPage;
+        
+        $numerosPaginados = $numerosDisponibles->slice($offset, $perPage);
+        
+        return response()->json([
+            'numeros' => $numerosPaginados->values(),
+            'total' => $numerosDisponibles->count(),
+            'ultimoNumero' => $ultimoNumero,
+            'current_page' => $page,
+            'per_page' => $perPage,
+            'last_page' => ceil($numerosDisponibles->count() / $perPage),
+            'busqueda' => $busqueda
+        ]);
+    }
+
     public function clientesShow(int $id)
     {
         $cliente = Usuario::with(['estado', 'estatusServicio'])->findOrFail($id);
