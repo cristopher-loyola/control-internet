@@ -107,13 +107,39 @@
         </div>
     </div>
 
-    <div class="flex flex-col items-center justify-center gap-3 bg-gray-50 dark:bg-gray-700 rounded-xl p-5 shadow-inner">
-        <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 dark:text-gray-300">Acciones</h3>
-        <a class="btn btn-secondary w-full text-center" href="{{ route('pagos.recibos.historial') }}">📋 Historial</a>
-        <button class="btn btn-primary w-full" @click="metodoValido() && openConfirm('ticket')">🧾 Imprimir Ticket</button>
-        <button class="btn btn-danger w-full" @click="metodoValido() && openConfirm('receipt')">🖨️ Imprimir Recibo</button>
-    </div>
+   <div class="flex flex-col items-center justify-center gap-3 bg-gray-50 dark:bg-gray-700 rounded-xl p-5 shadow-inner">
+    <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 dark:text-gray-300">Acciones</h3>
+
+    <a class="btn btn-secondary w-full text-center shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150" href="{{ route('pagos.recibos.historial') }}">📋 Historial</a>
+
+    <button class="btn btn-success w-full shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150" @click="openDiscountModal()">🏷️ Descuento</button>
+
+    <button class="btn btn-primary w-full shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150" @click="metodoValido() && openConfirm('ticket')">🧾 Imprimir Ticket</button>
+
+    <button class="btn btn-danger w-full shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150" @click="metodoValido() && openConfirm('receipt')">🖨️ Imprimir Recibo</button>
 </div>
+
+    <!-- Modal de Descuento -->
+    <div x-show="discountModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 not-print">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-96">
+            <div class="px-5 pt-5 pb-3 border-b border-gray-200 dark:border-gray-700">
+                <div class="text-sm font-semibold text-gray-800 dark:text-gray-100 uppercase tracking-wider">
+                    Aplicar Descuento
+                </div>
+            </div>
+            <div class="px-5 py-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Monto del descuento</label>
+                <input type="number" step="0.01" min="0" placeholder="0.00"
+                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                    x-model.number="discountAmount">
+                <p class="text-xs text-gray-500 mt-2">Este monto se restará del total a pagar</p>
+            </div>
+            <div class="px-5 pb-4 flex justify-end gap-2">
+                <button class="btn btn-secondary" @click="discountModalOpen = false">Cancelar</button>
+                <button class="btn btn-primary" @click="applyDiscount()">Aplicar</button>
+            </div>
+        </div>
+    </div>
 
 <!-- Información de Adeudos -->
 <div x-show="!pagadoMesActual && adeudo && adeudo.meses>0" class="mt-4 mb-4 p-4 bg-red-50 border border-red-200 rounded-lg not-print">
@@ -128,9 +154,13 @@
             <strong>Cliente con adeudos:</strong> 
             <span x-text="`Adeuda desde ${new Date(adeudo.desde_label).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`"></span>
         </p>
-        <p>
+        <p class="mb-1">
             <strong>Total a pagar incluyendo adeudos:</strong> 
             <span class="font-bold text-red-900" x-text="moneda(totales.total)"></span>
+        </p>
+        <p class="mb-1" x-show="appliedDiscount > 0">
+            <strong>Descuento aplicado:</strong> 
+            <span class="font-bold text-red-900" x-text="moneda(appliedDiscount)"></span>
         </p>
     </div>
 </div>
@@ -448,6 +478,9 @@
             pagadoMesActual: false,
             prepayConfig:{ enabled:{}, matrix:{} },
             prepayError:'',
+            discountModalOpen: false,
+            discountAmount: 0,
+            appliedDiscount: 0, // Nueva variable para almacenar el descuento aplicado
             get prepayLegend(){
                 if(this.form.prepay!=='si') return '';
                 const m = this.form.prepay_months||6;
@@ -764,6 +797,28 @@
                     }
                 }catch(_){}
             },
+            openDiscountModal(){
+                this.discountModalOpen = true;
+                this.discountAmount = 0;
+            },
+            applyDiscount(){
+                const discount = Number(this.discountAmount) || 0;
+                if (discount <= 0) {
+                    this.discountModalOpen = false;
+                    return;
+                }
+                
+                // Aplicar el descuento al total
+                this.totales.total = Math.max(0, this.totales.total - discount);
+                this.totales.letra = toWords(this.totales.total);
+                
+                // Guardar el descuento aplicado de forma persistente
+                this.appliedDiscount = discount;
+                
+                // Cerrar el modal y resetear solo el campo temporal
+                this.discountModalOpen = false;
+                this.discountAmount = 0;
+            },
             refNumberPad(){
                 const n = this.ref.numero;
                 if(!n) return '';
@@ -1048,6 +1103,7 @@ html,body{ margin:0; padding:0 }
                 this.adeudo = null;
                 this.pagadoMesActual = false;
                 this.pagoAnteriorFecha = '';
+                this.appliedDiscount = 0; // Resetear descuento aplicado
                 this.datos = { nombre: '', mensualidad: 0 };
                 this.form.recargo = 'no';
                 this.form.pago_anterior = 0;
