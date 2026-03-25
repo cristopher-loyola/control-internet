@@ -320,6 +320,7 @@
                                 <div>Mensualidad de Internet</div><div x-text="moneda(datos.mensualidad)"></div>
                                 <div>Otros</div><div x-text="form.otro === 'cancelacion' ? 'Cancelación de servicio' : 'No'"></div>
                                 <div>Importe</div><div x-text="moneda(0)"></div>
+                                <div x-show="appliedDiscount > 0">Descuento</div><div x-show="appliedDiscount > 0" x-text="moneda(appliedDiscount)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
                                 <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
@@ -353,6 +354,7 @@
                                 <div>Mensualidad de Internet</div><div x-text="moneda(datos.mensualidad)"></div>
                                 <div>Otros</div><div x-text="form.otro === 'cancelacion' ? 'Cancelación de servicio' : 'No'"></div>
                                 <div>Importe</div><div x-text="moneda(0)"></div>
+                                <div x-show="appliedDiscount > 0">Descuento</div><div x-show="appliedDiscount > 0" x-text="moneda(appliedDiscount)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
                                 <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
@@ -1036,7 +1038,7 @@
                 const folio = this.refNumberPad();
                 const prepayLabel = this.form.prepay === 'si' ? 'SÍ' : 'NO';
                 const prepayLine = this.form.prepay === 'si' ? `<div class="line"><div class="l">Meses adelantados</div><div>${this.form.prepay_months} (hasta ${this.mesFinalCobertura(this.form.prepay_months)})</div></div><div class="sep"></div>` : '';
-                const adeudosLine = (this.adeudo && this.adeudo.meses>0) ? `<div class="line"><div class="l">Adeudos</div><div>adeudos - adeuda desde ${this.adeudo.desde_label} y en total a pagar: ${this.moneda(this.totales.total)}</div></div><div class="sep"></div>` : '';
+                const discountLine = this.appliedDiscount > 0 ? `<div class="line"><div class="l">Descuento</div><div>${this.moneda(this.appliedDiscount)}</div></div>` : '';
                 const html = `
 <!doctype html>
 <html>
@@ -1069,11 +1071,11 @@ html,body{ margin:0; padding:0 }
   <div class="line"><div class="l">Mes</div><div>${mes}</div></div>
   <div class="line"><div class="l">Otros</div><div>${otros}</div></div>
   <div class="line"><div class="l">Importe</div><div>${importe}</div></div>
+  <div class="line"><div class="l">Descuento</div><div>${this.appliedDiscount > 0 ? this.moneda(this.appliedDiscount) : '—'}</div></div>
   <div class="line"><div class="l">Recargo</div><div>${recargo}</div></div>
   <div class="line"><div class="l">Pago por adelantado</div><div>${prepayLabel}</div></div>
   <div class="sep"></div>
   ${prepayLine}
-  ${adeudosLine}
   <div class="line"><div class="l">Total (número)</div><div>${totalNum}</div></div>
   <div class="line"><div class="l">Total (letra)</div><div style="max-width:42mm;text-align:right">${totalLetra}</div></div>
   <div class="sep"></div>
