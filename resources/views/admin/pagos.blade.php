@@ -126,7 +126,7 @@
 </div>
 
 <!-- Información de Adeudos -->
-<div x-show="adeudo && adeudo.meses>0" class="mt-4 mb-4 p-4 bg-red-50 border border-red-200 rounded-lg not-print">
+<div x-show="!pagadoMesActual && adeudo && adeudo.meses>0" class="mt-4 mb-4 p-4 bg-red-50 border border-red-200 rounded-lg not-print">
     <div class="flex items-center gap-2 mb-2">
         <svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
@@ -141,6 +141,26 @@
         <p>
             <strong>Total a pagar incluyendo adeudos:</strong> 
             <span class="font-bold text-red-900" x-text="moneda(totales.total)"></span>
+        </p>
+    </div>
+</div>
+
+<!-- Información de Pagos al Corriente -->
+<div x-show="pagadoMesActual" class="mt-4 mb-4 p-4 bg-green-50 border border-green-200 rounded-lg not-print">
+    <div class="flex items-center gap-2 mb-2">
+        <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+        </svg>
+        <h3 class="text-lg font-semibold text-green-800">Información de Pagos</h3>
+    </div>
+    <div class="text-sm text-green-700">
+        <p>
+            <strong>Cliente con pagos en regla:</strong> 
+            <span>Sus pagos están al corriente</span>
+        </p>
+        <p>
+            <strong>Total a pagar:</strong> 
+            <span class="font-bold text-green-900" x-text="moneda(totales.total)"></span>
         </p>
     </div>
 </div>
@@ -442,6 +462,7 @@
             datos:{ nombre:'', mensualidad:0 },
             totales:{ total:0, letra:'' },
             adeudo:null,
+            pagadoMesActual: false,
             prepayConfig:{ enabled:{}, matrix:{} },
             prepayError:'',
             get prepayLegend(){
@@ -828,8 +849,10 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 recargo: Number(j.recargo||0),
                                 pagado_parcial: Number(j.pagado_parcial||0)
                             };
-                            // Sincronizar el recargo del formulario con el del servidor si hay adeudo
-                            this.form.recargo = this.adeudo.recargo > 0 ? 'si' : 'no';
+                            // Sincronizar el recargo del formulario con el del servidor si hay adeudo y no ha pagado este mes
+                            if (!this.pagadoMesActual) {
+                                this.form.recargo = this.adeudo.recargo > 0 ? 'si' : 'no';
+                            }
                         } else {
                             this.adeudo = { desde_periodo:j.desde_periodo, desde_label:j.desde_mes_label||'', meses:meses, pendiente:0, recargo:Number(j.recargo||0), pagado_parcial:0 };
                         }
@@ -860,6 +883,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 paidThisMonth = (paidDate.getFullYear() === now.getFullYear() && paidDate.getMonth() === now.getMonth());
                             }
                         } catch(_) {}
+                        this.pagadoMesActual = paidThisMonth;
                         if (day >= 8 && !paidThisMonth) {
                             this.form.recargo = 'si';
                         } else if (day < 8) {
@@ -868,6 +892,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                     }else{
                         this.form.pago_anterior = 0;
                         this.pagoAnteriorFecha = '';
+                        this.pagadoMesActual = false;
                         // Si no hay pagos previos y estamos después del día 7, aplicar recargo
                         const now = new Date();
                         if (now.getDate() >= 8) {
@@ -879,6 +904,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 }catch(_){
                     this.form.pago_anterior = 0;
                     this.pagoAnteriorFecha = '';
+                    this.pagadoMesActual = false;
                     const now = new Date();
                     if (now.getDate() >= 8) {
                         this.form.recargo = 'si';
@@ -1133,6 +1159,7 @@ html,body{ margin:0; padding:0 }
                 // Reset states for the new client search
                 this.ref = { numero: null, id: null, created_at: null };
                 this.adeudo = null;
+                this.pagadoMesActual = false;
                 this.pagoAnteriorFecha = '';
                 this.datos = { nombre: '', mensualidad: 0 };
                 this.form.recargo = 'no';
