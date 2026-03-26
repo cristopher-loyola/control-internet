@@ -10,7 +10,7 @@
             <div class="bg-white dark:bg-gray-800 rounded shadow p-4">
                 <div class="flex items-center justify-between mb-4">
                     <div class="text-sm text-gray-600 dark:text-gray-400">Total: {{ $clients->total() }}</div>
-                    <a href="{{ route('admin.index') }}" class="btn btn-primary btn-sm">Regresar al dashboard</a>
+                    <a href="{{ auth()->user()->role === 'pagos' ? route('pagos.index') : route('admin.index') }}" class="btn btn-primary btn-sm">Regresar al dashboard</a>
                 </div>
                 
                 <div class="overflow-x-auto">

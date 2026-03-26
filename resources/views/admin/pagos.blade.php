@@ -1073,6 +1073,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                         this.ref.created_at = new Date().toISOString();
                         await this.fetchPagoAnterior();
                         await this.fetchAdeudo();
+                        // Actualizar el estado del cliente después del pago
+                        await this.buscar();
                     }
                 }catch(_){}
             },

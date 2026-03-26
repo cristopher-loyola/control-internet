@@ -87,10 +87,10 @@
     $cortesActive = request()->routeIs('admin.dashboard.corte');
 
     $dashboardActive = (
-        request()->routeIs('admin.*') ||
-        request()->routeIs('tecnico.*') ||
-        request()->routeIs('pagos.*') ||
-        request()->routeIs('contrataciones.*') ||
+        request()->routeIs('admin.index') ||
+        request()->routeIs('tecnico.index') ||
+        request()->routeIs('pagos.index') ||
+        request()->routeIs('contrataciones.index') ||
         request()->routeIs('dashboard')
     ) && ! $clientesActive;
 @endphp

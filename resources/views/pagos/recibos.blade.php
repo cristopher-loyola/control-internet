@@ -46,7 +46,7 @@
             <div>
                 <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Método de pago</label>
                 <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                    x-model="form.metodo" :disabled="readOnlyMode" required @change="inputChanged()">
+                    x-model="form.metodo" :disabled="readOnlyMode" required>
                     <option value="">Selecciona...</option>
                     <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
                     <option value="Cheque">Cheque</option>
@@ -118,28 +118,7 @@
 
     <button class="btn btn-danger w-full shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150" @click="metodoValido() && openConfirm('receipt')">🖨️ Imprimir Recibo</button>
 </div>
-
-    <!-- Modal de Descuento -->
-    <div x-show="discountModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 not-print">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-96">
-            <div class="px-5 pt-5 pb-3 border-b border-gray-200 dark:border-gray-700">
-                <div class="text-sm font-semibold text-gray-800 dark:text-gray-100 uppercase tracking-wider">
-                    Aplicar Descuento
-                </div>
-            </div>
-            <div class="px-5 py-4">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Monto del descuento</label>
-                <input type="number" step="0.01" min="0" placeholder="0.00"
-                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                    x-model.number="discountAmount">
-                <p class="text-xs text-gray-500 mt-2">Este monto se restará del total a pagar</p>
-            </div>
-            <div class="px-5 pb-4 flex justify-end gap-2">
-                <button class="btn btn-secondary" @click="discountModalOpen = false">Cancelar</button>
-                <button class="btn btn-primary" @click="applyDiscount()">Aplicar</button>
-            </div>
-        </div>
-    </div>
+</div>
 
 <!-- Información de Adeudos -->
 <div x-show="!pagadoMesActual && adeudo && adeudo.meses>0" class="mt-4 mb-4 p-4 bg-red-50 border border-red-200 rounded-lg not-print">
@@ -184,6 +163,28 @@
         </p>
     </div>
 </div>
+
+    <!-- Modal de Descuento -->
+    <div x-show="discountModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 not-print">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-96">
+            <div class="px-5 pt-5 pb-3 border-b border-gray-200 dark:border-gray-700">
+                <div class="text-sm font-semibold text-gray-800 dark:text-gray-100 uppercase tracking-wider">
+                    Aplicar Descuento
+                </div>
+            </div>
+            <div class="px-5 py-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Monto del descuento</label>
+                <input type="number" step="0.01" min="0" placeholder="0.00"
+                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                    x-model.number="discountAmount">
+                <p class="text-xs text-gray-500 mt-2">Este monto se restará del total a pagar</p>
+            </div>
+            <div class="px-5 pb-4 flex justify-end gap-2">
+                <button class="btn btn-secondary" @click="discountModalOpen = false">Cancelar</button>
+                <button class="btn btn-primary" @click="applyDiscount()">Aplicar</button>
+            </div>
+        </div>
+    </div>
                     <br>
 
                     <div class="mt-6 print-sheet" x-ref="sheet" x-show="layoutReady" x-cloak>
@@ -390,7 +391,7 @@
             .divider-line{display:none!important}
             .print-sheet::after{content:'';position:absolute;left:0;right:0;top:calc(50% - 0.3mm);height:0.6mm;background:#111;z-index:50}
         }
-         .print-sheet{position:relative;width:210mm;max-width:none;margin:0 auto;transform:none;height:297mm;background:#fff}       
+         .print-sheet{position:relative;width:210mm;max-width:none;margin:0 calc(50% - 105mm);transform:none;height:297mm;background:#fff}       
         .sheet-abs{position:absolute;inset:0;z-index:20;pointer-events:none}
         .receipt{position:relative;height:calc((297mm - 0.6mm)/2);border:1px solid #d1d5db;border-radius:8px;padding:6mm;background:#fff;overflow:hidden}
         .divider-line{height:0.6mm;background:#111;margin:0}
@@ -415,6 +416,16 @@
             .sheet-abs{ display: none; } /* Oculta overlays en móvil; la impresión no se afecta */
             .receipt-grid{ font-size: 0.95rem; line-height: 1.2; }
             .id-band{ margin: 8px 0; }
+        }
+        /* Responsive para pantallas medianas */
+        @media (max-width: 1024px) and (min-width: 641px){
+            .print-sheet{ 
+                width: 100%; 
+                max-width: 210mm; 
+                margin: 0 auto; 
+                transform: scale(0.8); 
+                transform-origin: top center;
+            }
         }
     </style>
 
@@ -972,6 +983,8 @@
                         this.ref.id = j.id;
                         this.ref.created_at = new Date().toISOString();
                         await this.fetchPagoAnterior();
+                        // Actualizar el estado del cliente después del pago
+                        await this.buscar();
                     }
                 }catch(_){}
             },
