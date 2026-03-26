@@ -6,7 +6,7 @@
     </x-slot>
 
     <div class="py-6" x-data="{ cancelId:null, motivo:'' }">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-gray-100">
                     <div class="mb-4 flex items-center justify-between gap-4">
@@ -34,16 +34,18 @@
                         </form>
                     </div>
 
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <div>
+                        <table class="w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-700/40">
                                 <tr>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Folio</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Monto</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Descuentos</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cliente</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Número</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Motivo Cancelación</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Usuario</th>
                                     <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
                                 </tr>
@@ -54,12 +56,28 @@
                                         <td class="px-4 py-2 whitespace-nowrap text-sm font-mono">{{ str_pad((string)$r->reference_number, 8, '0', STR_PAD_LEFT) }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm">{{ optional($r->created_at)->format('d/m/Y H:i') }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm">${{ number_format((float)$r->total, 2) }}</td>
+                                        <td class="px-4 py-2 whitespace-nowrap text-sm">
+                                            @if($r->descuento > 0)
+                                                <span class="text-green-600 font-medium">${{ number_format((float)$r->descuento, 2) }}</span>
+                                            @else
+                                                <span class="text-gray-400">—</span>
+                                            @endif
+                                        </td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm">{{ $r->cliente ?? '—' }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm">{{ $r->numero_servicio ?? '—' }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm">
                                             <span class="inline-flex items-center px-2 py-1 rounded text-xs {{ $r->status === 'Cancelado' ? 'bg-rose-600 text-white' : 'bg-emerald-600 text-white' }}">
                                                 {{ $r->status }}
                                             </span>
+                                        </td>
+                                        <td class="px-4 py-2 whitespace-nowrap text-sm">
+                                            @if($r->deleted_at && $r->motivo_cancelacion)
+                                                <span class="text-xs text-gray-700 dark:text-gray-300" title="{{ $r->motivo_cancelacion }}">
+                                                    {{ Str::limit($r->motivo_cancelacion, 30) }}
+                                                </span>
+                                            @else
+                                                <span class="text-xs text-gray-400">—</span>
+                                            @endif
                                         </td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm">{{ $r->user_name ?? '—' }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-right">

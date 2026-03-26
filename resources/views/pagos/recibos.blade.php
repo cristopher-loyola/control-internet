@@ -140,6 +140,17 @@
         <p class="mb-1" x-show="appliedDiscount > 0">
             <strong>Descuento aplicado:</strong> 
             <span class="font-bold text-red-900" x-text="moneda(appliedDiscount)"></span>
+            <button 
+            @click="removeDiscount()" 
+            class="ml-2 inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium 
+                    bg-red-100 text-red-700 border border-red-300 rounded-md 
+                    hover:bg-red-200 hover:text-red-900 hover:border-red-400 
+                    active:bg-red-300 transition-all duration-150 cursor-pointer">
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+            </svg>
+            Eliminar
+            </button>
         </p>
     </div>
 </div>
@@ -156,10 +167,6 @@
         <p>
             <strong>Cliente con pagos en regla:</strong> 
             <span>Sus pagos están al corriente</span>
-        </p>
-        <p>
-            <strong>Total a pagar:</strong> 
-            <span class="font-bold text-green-900" x-text="moneda(totales.total)"></span>
         </p>
     </div>
 </div>
@@ -777,7 +784,10 @@
             },
             async inputChanged(){
                 if(this.readOnlyMode) return;
-                this.ref = { numero: null, id: null, created_at: null };
+                // Solo resetear el folio si no existe uno (no después de emitir factura)
+                if(!this.ref.numero) {
+                    this.ref = { numero: null, id: null, created_at: null };
+                }
                 this.recalcular();
             },
             async fetchAdeudo(){
@@ -831,6 +841,24 @@
                 // Cerrar el modal y resetear solo el campo temporal
                 this.discountModalOpen = false;
                 this.discountAmount = 0;
+            },
+            removeDiscount(){
+                // Restaurar el total original sin descuento
+                const mensualidad = this.datos.mensualidad || 0;
+                const recargo = this.form.recargo === 'si' ? 50 : 0;
+                const pagoAnterior = this.form.pago_anterior || 0;
+                const prepayTotal = this.totales.prepay_total || 0;
+                
+                if (prepayTotal > 0) {
+                    this.totales.total = prepayTotal;
+                } else {
+                    this.totales.total = mensualidad + recargo + pagoAnterior;
+                }
+                
+                this.totales.letra = toWords(this.totales.total);
+                
+                // Eliminar el descuento aplicado
+                this.appliedDiscount = 0;
             },
             refNumberPad(){
                 const n = this.ref.numero;
@@ -973,7 +1001,8 @@
                                 cobro: this.form.cobro,
                                 otro: this.form.otro,
                                 fecha: this.fecha(),
-                                hora: this.hora()
+                                hora: this.hora(),
+                                descuento: this.appliedDiscount || 0
                             }
                         })
                     });
@@ -983,8 +1012,6 @@
                         this.ref.id = j.id;
                         this.ref.created_at = new Date().toISOString();
                         await this.fetchPagoAnterior();
-                        // Actualizar el estado del cliente después del pago
-                        await this.buscar();
                     }
                 }catch(_){}
             },
@@ -1015,7 +1042,8 @@
                                 metodo: this.form.metodo,
                                 cobro: this.form.cobro,
                                 fecha: this.fecha(),
-                                hora: this.hora()
+                                hora: this.hora(),
+                                descuento: this.appliedDiscount || 0
                             }
                         })
                     });

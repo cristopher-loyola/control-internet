@@ -334,7 +334,19 @@ class AdminController extends Controller
         $paginator = $query->paginate($perPage)->appends($request->query());
         $ids = $paginator->getCollection()->pluck('created_by')->filter()->unique()->all();
         $users = \App\Models\User::whereIn('id', $ids)->get(['id', 'name'])->keyBy('id');
-        $rows = $paginator->getCollection()->map(function ($f) use ($users) {
+        
+        // Obtener los motivos de cancelación
+        $reasonsRaw = \Illuminate\Support\Facades\DB::table('payment_attempts')
+            ->select('numero_servicio','periodo','reason')
+            ->where('status', 'canceled')
+            ->whereIn('numero_servicio', $paginator->getCollection()->pluck('numero_servicio')->filter()->unique()->all())
+            ->get();
+        $reasons = [];
+        foreach ($reasonsRaw as $r) {
+            $reasons[$r->numero_servicio.'|'.$r->periodo] = $r->reason;
+        }
+        
+        $rows = $paginator->getCollection()->map(function ($f) use ($users, $reasons) {
             $nombre = null;
             $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
             if (is_array($payload) && array_key_exists('nombre', $payload)) {
@@ -350,6 +362,8 @@ class AdminController extends Controller
                 'deleted_at' => $f->deleted_at,
                 'status' => $f->deleted_at ? 'Cancelado' : 'Vigente',
                 'user_name' => optional($users->get($f->created_by))->name,
+                'motivo_cancelacion' => $reasons[($f->numero_servicio ?? '').'|'.($f->periodo ?? '')] ?? null,
+                'descuento' => $payload['descuento'] ?? 0,
             ];
         });
         return view('admin.pagos_historial', [
