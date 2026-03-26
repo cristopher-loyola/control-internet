@@ -768,7 +768,20 @@
                             this.totales.prepay_total = Math.round((base * (1 - percent/100)) * 100) / 100;
                         }
                     }
+                    
+                    // Iniciar con el total del adelanto
                     total = this.totales.prepay_total;
+                    
+                    // Si hay deuda acumulada, sumarla al total del adelanto
+                    if (this.adeudo && this.adeudo.meses > 0) {
+                        const baseDeuda = mensualidad * this.adeudo.meses;
+                        const pagado = this.adeudo.pagado_parcial || 0;
+                        const deudaTotal = Math.max(0, baseDeuda - pagado);
+                        total += deudaTotal;
+                    }
+                    
+                    // Agregar recargo si aplica
+                    total += rec;
                 }else{
                     if (this.adeudo && this.adeudo.meses > 0) {
                         const base = mensualidad * this.adeudo.meses;
