@@ -8,6 +8,16 @@ Route::middleware(['auth', 'role:pagos'])
     ->name('pagos.')
     ->group(function () {
         Route::get('/', [PagosController::class, 'index'])->name('index');
+        
+        // Rutas módulo recibos
+        Route::get('/recibos', [PagosController::class, 'recibos'])->name('recibos');
+        Route::get('/recibos/lookup', [PagosController::class, 'recibosLookup'])->name('recibos.lookup');
+        Route::get('/recibos/layout', [PagosController::class, 'recibosLayoutGet'])->name('recibos.layout.get');
+        Route::post('/recibos/facturas', [PagosController::class, 'recibosFacturaStore'])->name('recibos.facturas.store');
+        Route::get('/recibos/facturas', [PagosController::class, 'recibosFacturasIndex'])->name('recibos.facturas.index');
+        Route::get('/recibos/facturas/{id}', [PagosController::class, 'recibosFacturaShow'])->name('recibos.facturas.show');
+        Route::get('/recibos/folio/{ref}', [PagosController::class, 'recibosFacturaByFolio'])->name('recibos.facturas.by_folio');
+
         Route::get('/create', [PagosController::class, 'create'])->name('create');
         Route::post('/', [PagosController::class, 'store'])->name('store');
         Route::get('/{id}', [PagosController::class, 'show'])->name('show');

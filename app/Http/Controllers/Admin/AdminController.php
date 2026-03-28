@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Validator;
 use App\Models\Usuario;
 use App\Services\MegasAssigner;
 use App\Models\HistorialUsuario;
+use App\Models\AppSetting;
 
 class AdminController extends Controller
 {
@@ -19,6 +20,30 @@ class AdminController extends Controller
     public function pagos()
     {
         return view('admin.pagos');
+    }
+
+    public function pagosLayoutStore(Request $request)
+    {
+        $layout = $request->input('layout');
+        if (!is_array($layout)) {
+            return response()->json(['ok' => false, 'message' => 'Layout inválido'], 422);
+        }
+        
+        AppSetting::updateOrCreate(
+            ['key' => 'receipt_layout'],
+            ['value' => $layout]
+        );
+        
+        return response()->json(['ok' => true]);
+    }
+
+    public function pagosLayoutGet()
+    {
+        $setting = AppSetting::find('receipt_layout');
+        return response()->json([
+            'ok' => true,
+            'layout' => $setting ? $setting->value : null
+        ]);
     }
 
     public function pagosFacturaStore(\Illuminate\Http\Request $request)

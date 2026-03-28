@@ -22,11 +22,17 @@
         default => null,
     };
 
+    $recibosRoute = match ($role) {
+        'pagos' => route('pagos.recibos'),
+        default => null,
+    };
+
     $clientesActive =
         request()->routeIs('admin.clientes.*') ||
         request()->routeIs('contrataciones.clientes.*');
 
     $pagosActive = request()->routeIs('admin.pagos.*');
+    $recibosActive = request()->routeIs('pagos.recibos*');
 
     $dashboardActive = (
         request()->routeIs('admin.*') ||
@@ -79,6 +85,11 @@
                     @if ($pagosRoute)
                         <x-nav-link :href="$pagosRoute" :active="$pagosActive">
                             {{ __('Pagos') }}
+                        </x-nav-link>
+                    @endif
+                    @if ($recibosRoute)
+                        <x-nav-link :href="$recibosRoute" :active="$recibosActive">
+                            {{ __('Recibos') }}
                         </x-nav-link>
                     @endif
                 </div>
@@ -149,6 +160,11 @@
             @if ($pagosRoute)
                 <x-responsive-nav-link :href="$pagosRoute" :active="$pagosActive">
                     {{ __('Pagos') }}
+                </x-responsive-nav-link>
+            @endif
+            @if ($recibosRoute)
+                <x-responsive-nav-link :href="$recibosRoute" :active="$recibosActive">
+                    {{ __('Recibos') }}
                 </x-responsive-nav-link>
             @endif
         </div>

@@ -1,7 +1,7 @@
-<x-app-layout title="Pagos">
+<x-app-layout title="Recibos">
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-white leading-tight">
-            {{ __('Pagos') }}
+            {{ __('Recibos') }}
         </h2>
     </x-slot>
 
@@ -17,24 +17,31 @@
                             </div>
                             <div class="col-span-2">
                                 <label for="numero" class="text-xs uppercase text-gray-500 dark:text-gray-400">Ingresa el ID</label>
-                                <input id="numero" type="number" class="form-input mt-1 w-full" x-model.trim="form.numero" @change="buscar()" @keydown.enter.prevent="buscar()">
+                                <div class="relative">
+                                   
+                                    <input id="numero" type="number" class="form-input pl-10 mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" x-model.trim="form.numero" @change="buscar()" @keydown.enter.prevent="buscar()">
+                                </div>
                                 <p class="text-xs text-red-500 mt-1" x-text="error" x-show="error"></p>
                             </div>
                             <div class="col-span-2 grid grid-cols-2 gap-3">
-                                <div>
+                                      <div>
                                     <label class="text-xs uppercase text-gray-500 dark:text-gray-400">Recargo</label>
                                     <select class="form-select mt-1 w-full" x-model="form.recargo" @change="recalcular()">
                                         <option value="no">No</option>
                                         <option value="si">Sí</option>
                                     </select>
                                 </div>
+                                    <select class="hidden" x-model="form.recargo"><option value="no">No</option><option value="si">Sí</option></select>
+                                </div>
                                 <div>
                                     <label class="text-xs uppercase text-gray-500 dark:text-gray-400">Pago anterior</label>
-                                    <input type="number" step="0.01" class="form-input mt-1 w-full" x-model.number="form.pago_anterior" @input="recalcular()">
+                                    <div class="relative mt-1">
+                                        <input type="number" step="1" class="form-input pl-7 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="0.00" x-model.number="form.pago_anterior" @input="recalcular()">
+                                    </div>
                                 </div>
                                 <div>
                                     <label class="text-xs uppercase text-gray-500 dark:text-gray-400">Método de pago</label>
-                                    <select class="form-select mt-1 w-full" x-model="form.metodo">
+                                    <select class="form-select mt-1 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" x-model="form.metodo">
                                         <option value="">Selecciona</option>
                                         <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
                                         <option value="Cheque">Cheque</option>
@@ -44,16 +51,18 @@
                                 </div>
                                 <div>
                                     <label class="text-xs uppercase text-gray-500 dark:text-gray-400">Quién cobró</label>
-                                    <input type="text" class="form-input mt-1 w-full" x-model="form.cobro">
+                                    <div class="relative mt-1">
+                                        <input type="text" class="form-input pl-10 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"  x-model="form.cobro">
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         <div class="flex items-end justify-end md:justify-start gap-2">
                             <button class="btn btn-secondary" @click="openHistorial()">Historial</button>
                             <!-- <button class="btn btn-secondary" @click="toggleEditor()"
-                                x-text="editMode ? 'Cerrar editor' : 'Editar plantilla'"></button> -->
-                            <button class="btn btn-secondary" x-show="editMode" @click="resetLayout()">Restablecer</button>
-                            <button class="btn btn-secondary" x-show="editMode" @click="saveAsDefault()">Guardar cambios</button>
+                                x-text="editMode ? 'Cerrar editor de plantilla' : 'Editar plantilla'"></button>
+                            <button class="btn btn-secondary" @click="resetLayout()">Restablecer</button> -->
+                            <!-- <button class="btn btn-secondary" @click="saveAsDefault()">Guardar como predeterminado</button> -->
                             <button class="btn btn-danger" @click="openConfirm()">Exportar a PDF</button>
                         </div>
                     </div>
@@ -328,10 +337,9 @@
             busquedaFolio:null,
             folioError:'',
             printTimerId:null,
-            layoutSaveTimer:null,
             error:'',
-            layoutReady:false,
             editMode:false,
+            layoutReady:false,
             defaultLayoutRef: JSON.parse(JSON.stringify(defaultLayout)),
             layout: (()=>{
                 const saved = JSON.parse(localStorage.getItem('reciboLayout') || 'null');
@@ -379,44 +387,19 @@
             },
             resetLayout(){ this.layout = JSON.parse(JSON.stringify(this.defaultLayoutRef)); this.saveLayout(); },
             saveAsDefault(){
-                // Guardar en local
                 localStorage.setItem('reciboLayoutDefault', JSON.stringify(this.layout));
                 this.defaultLayoutRef = JSON.parse(JSON.stringify(this.layout));
-                
-                // Guardar en servidor
-                this.saveServerLayout();
-                this.editMode = false;
-            },
-            layoutSaveDebounced(){
-                if(this.layoutSaveTimer){ clearTimeout(this.layoutSaveTimer); }
-                this.layoutSaveTimer = setTimeout(()=>{
-                    this.saveServerLayout();
-                    this.layoutSaveTimer = null;
-                }, 500);
-            },
-            async saveServerLayout(){
-                try{
-                    const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
-                    await fetch('{{ route('admin.pagos.layout.store') }}', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Accept': 'application/json',
-                            'X-CSRF-TOKEN': token
-                        },
-                        body: JSON.stringify({ layout: this.layout })
-                    });
-                }catch(_){}
             },
             async loadServerLayout(){
                 try{
-                    const r = await fetch('{{ route('admin.pagos.layout.get') }}', {
+                    const r = await fetch('{{ route('pagos.recibos.layout.get') }}', {
                         headers: {'Accept': 'application/json'}
                     });
                     const j = await r.json();
                     if(j.ok && j.layout){
                         this.layout = j.layout;
                         this.defaultLayoutRef = JSON.parse(JSON.stringify(j.layout));
+                        // Actualizar local para este usuario también
                         localStorage.setItem('reciboLayoutDefault', JSON.stringify(j.layout));
                         localStorage.setItem('reciboLayout', JSON.stringify(j.layout));
                     }
@@ -471,7 +454,7 @@
             },
             _upHandler(){
                 if(this.resizing){ this.resizing=false; this.resizeKey=null; this.saveLayout(); return; }
-                this.dragging=null; this.dragRef=null; this.saveLayout(); this.layoutSaveDebounced();
+                this.dragging=null; this.dragRef=null; this.saveLayout();
             },
             recalcular(){
                 const rec = this.form.recargo==='si'?50:0;
@@ -507,7 +490,7 @@
                 const ref = Number(this.busquedaFolio);
                 if(!ref || ref<1){ this.folioError='Ingresa un folio válido'; return }
                 try{
-                    const r = await fetch('{{ route('admin.pagos.facturas.by_folio', ['ref'=>'__REF__']) }}'.replace('__REF__', ref),{headers:{'Accept':'application/json'}});
+                    const r = await fetch('{{ route('pagos.recibos.facturas.by_folio', ['ref'=>'__REF__']) }}'.replace('__REF__', ref),{headers:{'Accept':'application/json'}});
                     const j = await r.json();
                     if(!r.ok || !j?.ok){ this.folioError = j?.message || 'Folio no encontrado'; return }
                     const d = j.data;
@@ -533,7 +516,7 @@
             },
             async reimprimir(id){
                 try{
-                    const r = await fetch('{{ route('admin.pagos.facturas.show', ['id'=>'__ID__']) }}'.replace('__ID__', id),{headers:{'Accept':'application/json'}});
+                    const r = await fetch('{{ route('pagos.recibos.facturas.show', ['id'=>'__ID__']) }}'.replace('__ID__', id),{headers:{'Accept':'application/json'}});
                     const j = await r.json();
                     if(r.ok && j?.ok){
                         const d = j.data;
@@ -559,7 +542,7 @@
             async emitirFactura(){
                 try{
                     const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
-                    const r = await fetch('{{ route('admin.pagos.facturas.store') }}', {
+                    const r = await fetch('{{ route('pagos.recibos.facturas.store') }}', {
                         method:'POST',
                         headers:{
                             'Content-Type':'application/json',
@@ -590,9 +573,11 @@
                 }catch(_){}
             },
             async prepareAndPrint(){
+                // Asegura plantilla más reciente antes de imprimir
+                if(this.loadServerLayout){ await this.loadServerLayout(); }
                 try{
                     const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
-                    const r = await fetch('{{ route('admin.pagos.facturas.store') }}', {
+                    const r = await fetch('{{ route('pagos.recibos.facturas.store') }}', {
                         method:'POST',
                         headers:{
                             'Content-Type':'application/json',
@@ -630,7 +615,7 @@
                 this.error='';
                 if(!this.form.numero){ this.error='Ingresa el ID'; return }
                 try{
-                    const r = await fetch('{{ route('admin.pagos.lookup') }}?numero='+encodeURIComponent(this.form.numero));
+                    const r = await fetch('{{ route('pagos.recibos.lookup') }}?numero='+encodeURIComponent(this.form.numero));
                     const j = await r.json();
                     if(!j.ok){ this.error = j.message || 'No encontrado'; this.datos={nombre:'',mensualidad:0}; this.recalcular(); return }
                     this.datos.nombre = j.data.nombre_cliente || '';
