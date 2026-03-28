@@ -332,6 +332,9 @@
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
                                 <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
+                                <div x-show="adeudoCobro > 0">Adeudo pendiente</div><div x-show="adeudoCobro > 0" x-text="moneda(adeudoCobro)"></div>
+                                <div x-show="adeudo && Number(adeudo.meses||0) > 0">Período adeudo</div><div x-show="adeudo && Number(adeudo.meses||0) > 0" x-text="adeudoPeriodoLabel() || '—'"></div>
+                                <div x-show="form.prepay==='si'">Total adelanto</div><div x-show="form.prepay==='si'" x-text="moneda(totales.prepay_total || 0)"></div>
                                 <div x-show="form.prepay==='si'">Meses adelantados</div><div x-show="form.prepay==='si'" x-text="`${form.prepay_months} (hasta ${mesFinalCobertura(form.prepay_months)})` || '-'"></div>
                                 <div>Su pago anterior</div><div x-text="moneda(form.pago_anterior || 0)"></div>
                                 <div>Fecha de pago anterior</div><div x-text="pagoAnteriorFecha || '—'"></div>
@@ -366,6 +369,9 @@
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
                                 <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
+                                <div x-show="adeudoCobro > 0">Adeudo pendiente</div><div x-show="adeudoCobro > 0" x-text="moneda(adeudoCobro)"></div>
+                                <div x-show="adeudo && Number(adeudo.meses||0) > 0">Período adeudo</div><div x-show="adeudo && Number(adeudo.meses||0) > 0" x-text="adeudoPeriodoLabel() || '—'"></div>
+                                <div x-show="form.prepay==='si'">Total adelanto</div><div x-show="form.prepay==='si'" x-text="moneda(totales.prepay_total || 0)"></div>
                                 <div x-show="form.prepay==='si'">Meses adelantados</div><div x-show="form.prepay==='si'" x-text="`${form.prepay_months} (hasta ${mesFinalCobertura(form.prepay_months)})` || '-'"></div>
                                 <div>Su pago anterior</div><div x-text="moneda(form.pago_anterior || 0)"></div>
                                 <div>Fecha de pago anterior</div><div x-text="pagoAnteriorFecha || '—'"></div>
@@ -461,7 +467,7 @@
             if(miles){ txt += miles===1 ? 'MIL' : c2(miles)+' MIL'; if(resto) txt+=' '; }
             txt += c2(resto);
             const cents = Math.round((num - Math.floor(num))*100).toString().padStart(2,'0');
-            return txt + ' PESOS ' + cents + '/100 M.N.';
+            return txt + ' PESOS';
         };
         const defaultLayout = (()=>{
             const baseDefaults = {
@@ -495,6 +501,8 @@
             datos:{ nombre:'', mensualidad:0 },
             totales:{ total:0, letra:'', prepay_total:0 },
             adeudo:null,
+            adeudoCobro: 0,
+            saldoDespues: null,
             pagadoMesActual: false,
             prepayConfig:{ enabled:{}, matrix:{} },
             prepayError:'',
@@ -540,6 +548,34 @@
             mesEnCursoCompleto(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleDateString('es-MX',{month:'long'})+' de '+d.getFullYear() },
             fecha(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) },
             hora(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleTimeString('es-MX') },
+            mesYearLabel(d){
+                try{
+                    if(!(d instanceof Date)) return '';
+                    return d.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+                }catch(_){
+                    return '';
+                }
+            },
+            adeudoPeriodoLabel(){
+                try{
+                    if(!this.adeudo || !this.adeudo.desde_periodo || !(Number(this.adeudo.meses||0) > 0)) return '';
+                    const parts = String(this.adeudo.desde_periodo).split('-');
+                    if(parts.length !== 2) return '';
+                    const y = Number(parts[0]);
+                    const m = Number(parts[1]) - 1;
+                    if(!isFinite(y) || !isFinite(m)) return '';
+                    const start = new Date(y, m, 1);
+                    const end = new Date(start.getTime());
+                    end.setMonth(end.getMonth() + (Number(this.adeudo.meses) - 1));
+                    const a = this.mesYearLabel(start);
+                    const b = this.mesYearLabel(end);
+                    if(!a) return b || '';
+                    if(!b || a === b) return a;
+                    return `${a} a ${b}`;
+                }catch(_){
+                    return '';
+                }
+            },
             mesFinalCobertura(meses){
                 if(!meses) return '';
                 const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date();
@@ -628,12 +664,15 @@
                                 this.form.pago_anterior = p.pago_anterior || 0;
                                 this.form.metodo = p.metodo || '';
                                 this.form.cobro = p.cobro || '';
+                                this.form.otro = p.otro || 'no';
                                 this.form.prepay = p.prepay || 'no';
                                 this.form.prepay_months = p.prepay_months || null;
-                                this.form.prepay = p.prepay || 'no';
-                                this.form.prepay_months = p.prepay_months || null;
-                                this.form.prepay = p.prepay || 'no';
-                                this.form.prepay_months = p.prepay_months || null;
+                                this.totales.prepay_total = Number(p.prepay_total)||0;
+                                const adeudoPendiente = Number(p.adeudo_pendiente || 0);
+                                this.adeudo = adeudoPendiente > 0 ? { pendiente: adeudoPendiente, meses: 0, desde_label: '', recargo: 0, pagado_parcial: 0 } : null;
+                                this.adeudoCobro = adeudoPendiente > 0 ? adeudoPendiente : 0;
+                                this.saldoDespues = null;
+                                this.appliedDiscount = Number(p.descuento || 0);
                                 this.totales.total = Number(d.total) || 0;
                                 this.totales.letra = toWords(this.totales.total);
                                 if(asTicket){
@@ -743,7 +782,7 @@
                 this.dragging=null; this.dragRef=null; this.saveLayout();
             },
             recalcular(){
-                if(this.readOnlyMode && this.ref.id) return;
+                if(this.ref && this.ref.id) return;
                 const mensualidad = Number(this.datos.mensualidad)||0;
                 const rec = this.form.recargo==='si'?50:0;
                 let total = 0;
@@ -768,27 +807,14 @@
                             this.totales.prepay_total = Math.round((base * (1 - percent/100)) * 100) / 100;
                         }
                     }
-                    
-                    // Iniciar con el total del adelanto
-                    total = this.totales.prepay_total;
-                    
-                    // Si hay deuda acumulada, sumarla al total del adelanto
-                    if (this.adeudo && this.adeudo.meses > 0) {
-                        const baseDeuda = mensualidad * this.adeudo.meses;
-                        const pagado = this.adeudo.pagado_parcial || 0;
-                        const deudaTotal = Math.max(0, baseDeuda - pagado);
-                        total += deudaTotal;
-                    }
-                    
-                    // Agregar recargo si aplica
-                    total += rec;
+                    const adeudoPendiente = Number(this.adeudoCobro || (this.adeudo && this.adeudo.pendiente ? Number(this.adeudo.pendiente) : 0) || 0);
+                    total = Math.round((adeudoPendiente + this.totales.prepay_total) * 100) / 100;
                 }else{
                     if (this.adeudo && this.adeudo.meses > 0) {
-                        const base = mensualidad * this.adeudo.meses;
-                        const pagado = this.adeudo.pagado_parcial || 0;
-                        total = Math.round((Math.max(0, base - pagado) + rec) * 100) / 100;
+                        const pendienteSrv = Number(this.adeudo.pendiente || 0);
+                        total = Math.round(pendienteSrv * 100) / 100;
                     } else {
-                        total = mensualidad + rec;
+                        total = Math.round((mensualidad + rec) * 100) / 100;
                     }
                 }
                 
@@ -829,6 +855,12 @@
                         } else {
                             this.adeudo = { desde_periodo:j.desde_periodo, desde_label:j.desde_mes_label||'', meses:meses, pendiente:0, recargo:Number(j.recargo||0), pagado_parcial:0 };
                         }
+                        if (this.ref && this.ref.id) {
+                            this.saldoDespues = Number(this.adeudo?.pendiente || 0);
+                        } else {
+                            this.adeudoCobro = Number(this.adeudo?.pendiente || 0);
+                            this.saldoDespues = null;
+                        }
                         this.recalcular();
                     }
                 }catch(_){}
@@ -856,22 +888,8 @@
                 this.discountAmount = 0;
             },
             removeDiscount(){
-                // Restaurar el total original sin descuento
-                const mensualidad = this.datos.mensualidad || 0;
-                const recargo = this.form.recargo === 'si' ? 50 : 0;
-                const pagoAnterior = this.form.pago_anterior || 0;
-                const prepayTotal = this.totales.prepay_total || 0;
-                
-                if (prepayTotal > 0) {
-                    this.totales.total = prepayTotal;
-                } else {
-                    this.totales.total = mensualidad + recargo + pagoAnterior;
-                }
-                
-                this.totales.letra = toWords(this.totales.total);
-                
-                // Eliminar el descuento aplicado
                 this.appliedDiscount = 0;
+                this.recalcular();
             },
             refNumberPad(){
                 const n = this.ref.numero;
@@ -982,6 +1000,12 @@
                         this.form.otro = p.otro || 'no';
                                 this.form.prepay = p.prepay || 'no';
                                 this.form.prepay_months = p.prepay_months || null;
+                        this.totales.prepay_total = Number(p.prepay_total)||0;
+                        const adeudoPendiente = Number(p.adeudo_pendiente || 0);
+                        this.adeudo = adeudoPendiente > 0 ? { pendiente: adeudoPendiente, meses: 0, desde_label: '', recargo: 0, pagado_parcial: 0 } : null;
+                        this.adeudoCobro = adeudoPendiente > 0 ? adeudoPendiente : 0;
+                        this.saldoDespues = null;
+                        this.appliedDiscount = Number(p.descuento || 0);
                                 this.totales.total = Number(d.total) || 0;
                         this.totales.letra = toWords(this.totales.total);
                         await this.doPrintOnce();
@@ -1008,7 +1032,8 @@
                                 recargo: this.form.recargo,
                                 prepay: this.form.prepay,
                                 prepay_months: this.form.prepay==='si'? this.form.prepay_months : null,
-                                prepay_total: this.form.prepay==='si'? this.totales.total : null,
+                                prepay_total: this.form.prepay==='si'? this.totales.prepay_total : null,
+                                adeudo_pendiente: Number(this.adeudoCobro || 0),
                                 pago_anterior: this.form.pago_anterior,
                                 metodo: this.form.metodo,
                                 cobro: this.form.cobro,
@@ -1050,7 +1075,8 @@
                                 recargo: this.form.recargo,
                                 prepay: this.form.prepay,
                                 prepay_months: this.form.prepay==='si'? this.form.prepay_months : null,
-                                prepay_total: this.form.prepay==='si'? this.totales.total : null,
+                                prepay_total: this.form.prepay==='si'? this.totales.prepay_total : null,
+                                adeudo_pendiente: Number(this.adeudoCobro || 0),
                                 pago_anterior: this.form.pago_anterior,
                                 metodo: this.form.metodo,
                                 cobro: this.form.cobro,
@@ -1091,7 +1117,10 @@
                 const hora = this.hora();
                 const folio = this.refNumberPad();
                 const prepayLabel = this.form.prepay === 'si' ? 'SÍ' : 'NO';
-                const prepayLine = this.form.prepay === 'si' ? `<div class="line"><div class="l">Meses adelantados</div><div>${this.form.prepay_months} (hasta ${this.mesFinalCobertura(this.form.prepay_months)})</div></div><div class="sep"></div>` : '';
+                const adeudoLine = (Number(this.adeudoCobro || 0) > 0) ? `<div class="line"><div class="l">Adeudo pendiente</div><div>${this.moneda(Number(this.adeudoCobro))}</div></div>` : '';
+                const adeudoPeriodoLine = (this.adeudo && Number(this.adeudo.meses||0) > 0) ? `<div class="line"><div class="l">Período adeudo</div><div style="max-width:42mm;text-align:right">${this.adeudoPeriodoLabel() || '—'}</div></div>` : '';
+                const saldoLine = (this.saldoDespues !== null) ? `<div class="line"><div class="l">Saldo pendiente</div><div>${this.moneda(Number(this.saldoDespues || 0))}</div></div>` : '';
+                const prepayLine = this.form.prepay === 'si' ? `<div class="line"><div class="l">Pago adelantado</div><div>${this.moneda(this.totales.prepay_total || 0)}</div></div><div class="line"><div class="l">Meses adelantados</div><div>${this.form.prepay_months} (hasta ${this.mesFinalCobertura(this.form.prepay_months)})</div></div><div class="sep"></div>` : '';
                 const discountLine = this.appliedDiscount > 0 ? `<div class="line"><div class="l">Descuento</div><div>${this.moneda(this.appliedDiscount)}</div></div>` : '';
                 const html = `
 <!doctype html>
@@ -1129,6 +1158,9 @@ html,body{ margin:0; padding:0 }
   <div class="line"><div class="l">Recargo</div><div>${recargo}</div></div>
   <div class="line"><div class="l">Pago por adelantado</div><div>${prepayLabel}</div></div>
   <div class="sep"></div>
+  ${adeudoLine}
+  ${adeudoPeriodoLine}
+  ${saldoLine}
   ${prepayLine}
   <div class="line"><div class="l">Total (número)</div><div>${totalNum}</div></div>
   <div class="line"><div class="l">Total (letra)</div><div style="max-width:42mm;text-align:right">${totalLetra}</div></div>
@@ -1157,6 +1189,8 @@ html,body{ margin:0; padding:0 }
                 // Reset states for the new client search
                 this.ref = { numero: null, id: null, created_at: null };
                 this.adeudo = null;
+                this.adeudoCobro = 0;
+                this.saldoDespues = null;
                 this.pagadoMesActual = false;
                 this.pagoAnteriorFecha = '';
                 this.appliedDiscount = 0; // Resetear descuento aplicado

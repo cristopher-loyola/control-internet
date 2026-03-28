@@ -3,17 +3,17 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
-use App\Models\Factura;
-use App\Models\Usuario;
-use App\Models\Inventario;
-use Dompdf\Dompdf;
 use App\Models\CargoMora;
+use App\Models\Factura;
+use App\Models\Inventario;
 use App\Models\PrepaySetting;
+use App\Models\Usuario;
+use App\Services\MorosidadService;
+use Dompdf\Dompdf;
+use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Carbon;
 
 class DashboardController extends Controller
 {
@@ -24,42 +24,45 @@ class DashboardController extends Controller
 
     public function canceladosIndex(Request $request)
     {
-        $cancelNames = ['Cancelado','Baja','Eliminado','Inactivo'];
-        $usuarios = Usuario::with(['estado','estatusServicio'])
+        $cancelNames = ['Cancelado', 'Baja', 'Eliminado', 'Inactivo'];
+        $usuarios = Usuario::with(['estado', 'estatusServicio'])
             ->whereHas('estatusServicio', function ($q) use ($cancelNames) {
                 $q->whereIn('nombre', $cancelNames);
             })
             ->orderBy('updated_at', 'desc')
             ->paginate(50);
+
         return view('admin.usuarios_cancelados', compact('usuarios'));
     }
 
     public function prepaySettings(Request $request)
     {
         $rows = PrepaySetting::all()->pluck('enabled', 'paquete')->toArray();
-        $defaults = [300=>true, 400=>true, 500=>true, 600=>true];
+        $defaults = [300 => true, 400 => true, 500 => true, 600 => true];
         $enabled = array_merge($defaults, $rows);
         $matrix = [
-            6  => ['percent' => 10, 'totals' => [300=>1620, 400=>2160, 500=>2700, 600=>3240]],
-            7  => ['percent' => 11, 'totals' => [300=>1869, 400=>2492, 500=>3115, 600=>3738]],
-            8  => ['percent' => 12, 'totals' => [300=>2112, 400=>2816, 500=>3520, 600=>4224]],
-            9  => ['percent' => 13, 'totals' => [300=>2349, 400=>3132, 500=>3915, 600=>4698]],
-            10 => ['percent' => 14, 'totals' => [300=>2580, 400=>3440, 500=>4300, 600=>5160]],
-            11 => ['percent' => 15, 'totals' => [300=>2805, 400=>3740, 500=>4675, 600=>5610]],
-            12 => ['percent' => 16, 'totals' => [300=>3024, 400=>4032, 500=>5040, 600=>6048]],
+            6 => ['percent' => 10, 'totals' => [300 => 1620, 400 => 2160, 500 => 2700, 600 => 3240]],
+            7 => ['percent' => 11, 'totals' => [300 => 1869, 400 => 2492, 500 => 3115, 600 => 3738]],
+            8 => ['percent' => 12, 'totals' => [300 => 2112, 400 => 2816, 500 => 3520, 600 => 4224]],
+            9 => ['percent' => 13, 'totals' => [300 => 2349, 400 => 3132, 500 => 3915, 600 => 4698]],
+            10 => ['percent' => 14, 'totals' => [300 => 2580, 400 => 3440, 500 => 4300, 600 => 5160]],
+            11 => ['percent' => 15, 'totals' => [300 => 2805, 400 => 3740, 500 => 4675, 600 => 5610]],
+            12 => ['percent' => 16, 'totals' => [300 => 3024, 400 => 4032, 500 => 5040, 600 => 6048]],
         ];
-        return response()->json(['ok'=>true,'enabled'=>$enabled,'matrix'=>$matrix]);
+
+        return response()->json(['ok' => true, 'enabled' => $enabled, 'matrix' => $matrix]);
     }
 
     public function desactivadosIndex(Request $request)
     {
-        $downNames = ['Desactivado','Inactivo','Suspendido'];
-        $usuarios = Usuario::with(['estado','estatusServicio'])
+        $downNames = ['Desactivado', 'Inactivo', 'Suspendido'];
+        $usuarios = Usuario::with(['estado', 'estatusServicio'])
             ->whereHas('estado', function ($q) use ($downNames) {
                 $q->whereIn('nombre', $downNames);
             })
             ->orderBy('updated_at', 'desc')
             ->paginate(50);
+
         return view('admin.usuarios_desactivados', compact('usuarios'));
     }
 
@@ -67,8 +70,8 @@ class DashboardController extends Controller
     {
         $estadoActivos = ['Activado', 'Activo'];
         $estatusPagado = ['Pagado'];
-        
-        $usuarios = Usuario::with(['estado','estatusServicio'])
+
+        $usuarios = Usuario::with(['estado', 'estatusServicio'])
             ->whereHas('estado', function ($q) use ($estadoActivos) {
                 $q->whereIn('nombre', $estadoActivos);
             })
@@ -77,6 +80,7 @@ class DashboardController extends Controller
             })
             ->orderBy('numero_servicio', 'asc')
             ->paginate(50);
+
         return view('admin.usuarios_activos_pagados', compact('usuarios'));
     }
 
@@ -87,10 +91,10 @@ class DashboardController extends Controller
         $data = $this->computeMorosos($month);
         $items = collect($data['items']);
         if ($onlyRecargo) {
-            $items = $items->filter(fn($r) => ($r['recargo'] ?? 0) > 0);
+            $items = $items->filter(fn ($r) => ($r['recargo'] ?? 0) > 0);
         }
         // Ordenar por número de cliente ascendente
-        $items = $items->sortBy(fn($r) => (int) ($r['numero'] ?? 0))->values();
+        $items = $items->sortBy(fn ($r) => (int) ($r['numero'] ?? 0))->values();
 
         // Paginación manual de la colección
         $perPage = 50;
@@ -119,17 +123,17 @@ class DashboardController extends Controller
         $data = $this->computeMorosos($month);
         $items = collect($data['items']);
         if ($onlyRecargo) {
-            $items = $items->filter(fn($r) => ($r['recargo'] ?? 0) > 0);
+            $items = $items->filter(fn ($r) => ($r['recargo'] ?? 0) > 0);
         }
         $title = 'Morosidad del mes '.$month;
         $fileBase = 'morosidad-'.$month.($onlyRecargo ? '-solo_recargo' : '');
-        $rows = $items->map(function($r){
+        $rows = $items->map(function ($r) {
             return [
                 $r['numero'],
                 $r['nombre'],
-                number_format((float)$r['mensualidad'], 2, '.', ''),
-                number_format((float)$r['recargo'], 2, '.', ''),
-                number_format((float)$r['pendiente'], 2, '.', ''),
+                number_format((float) $r['mensualidad'], 2, '.', ''),
+                number_format((float) $r['recargo'], 2, '.', ''),
+                number_format((float) $r['pendiente'], 2, '.', ''),
                 $r['vencimiento'],
                 $r['dias_retraso'],
                 $r['meses_adeudo'],
@@ -146,14 +150,17 @@ class DashboardController extends Controller
                 echo "\xEF\xBB\xBF";
                 $out = fopen('php://output', 'w');
                 fputcsv($out, [$title]);
-                fputcsv($out, ['Número','Nombre','Mensualidad','Recargo','Pendiente','Vencimiento','Días retraso','Meses adeudo','Desde periodo']);
-                foreach ($rows as $r) { fputcsv($out, $r); }
-                fputcsv($out, ['', '', '', '', number_format((float)$total, 2, '.', ''), 'TOTAL', '', '', '']);
+                fputcsv($out, ['Número', 'Nombre', 'Mensualidad', 'Recargo', 'Pendiente', 'Vencimiento', 'Días retraso', 'Meses adeudo', 'Desde periodo']);
+                foreach ($rows as $r) {
+                    fputcsv($out, $r);
+                }
+                fputcsv($out, ['', '', '', '', number_format((float) $total, 2, '.', ''), 'TOTAL', '', '', '']);
                 fclose($out);
             };
+
             return response()->stream($callback, 200, $headers);
         }
-        if (in_array($format, ['excel','xls','xlsx'], true)) {
+        if (in_array($format, ['excel', 'xls', 'xlsx'], true)) {
             $headers = [
                 'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
                 'Content-Disposition' => 'attachment; filename="'.$fileBase.'.xls"',
@@ -182,8 +189,9 @@ class DashboardController extends Controller
                     echo '<td>'.htmlspecialchars($r[8]).'</td>';
                     echo '</tr>';
                 }
-                echo '</tbody><tfoot><tr class="total-row"><td colspan="4"></td><td class="money">'.htmlspecialchars(number_format((float)$total, 2, '.', '')).'</td><td colspan="4">TOTAL</td></tr></tfoot></table></body></html>';
+                echo '</tbody><tfoot><tr class="total-row"><td colspan="4"></td><td class="money">'.htmlspecialchars(number_format((float) $total, 2, '.', '')).'</td><td colspan="4">TOTAL</td></tr></tfoot></table></body></html>';
             };
+
             return response()->stream($callback, 200, $headers);
         }
         $headers = [
@@ -203,34 +211,36 @@ class DashboardController extends Controller
         foreach ($rows as $r) {
             $html .= '<tr><td>'.htmlspecialchars($r[0]).'</td><td>'.htmlspecialchars($r[1]).'</td><td class="money">$'.htmlspecialchars($r[2]).'</td><td class="money">$'.htmlspecialchars($r[3]).'</td><td class="money">$'.htmlspecialchars($r[4]).'</td><td>'.htmlspecialchars($r[5]).'</td><td>'.htmlspecialchars($r[6]).'</td><td>'.htmlspecialchars($r[7]).'</td><td>'.htmlspecialchars($r[8]).'</td></tr>';
         }
-        $html .= '</tbody><tfoot><tr><td colspan="4"></td><td class="money">$'.htmlspecialchars(number_format((float)$total, 2, '.', '')).'</td><td colspan="4">TOTAL</td></tr></tfoot></table></body></html>';
+        $html .= '</tbody><tfoot><tr><td colspan="4"></td><td class="money">$'.htmlspecialchars(number_format((float) $total, 2, '.', '')).'</td><td colspan="4">TOTAL</td></tr></tfoot></table></body></html>';
         $dompdf = new Dompdf(['isRemoteEnabled' => true]);
         $dompdf->loadHtml($html);
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
+
         return response($dompdf->output(), 200, $headers);
     }
 
     public function prepayClientsIndex(Request $request)
     {
         $clients = Factura::whereNull('deleted_at')
-            ->where(function($q) {
+            ->where(function ($q) {
                 $q->where('payload->prepay', 'si')
-                  ->orWhere('payload->prepay', true);
+                    ->orWhere('payload->prepay', true);
             })
             ->orderBy('created_at', 'desc')
             ->get()
-            ->map(function($f) {
+            ->map(function ($f) {
                 $p = $f->payload;
-                $months = (int)($p['prepay_months'] ?? 0);
+                $months = (int) ($p['prepay_months'] ?? 0);
                 $from = $f->created_at ? Carbon::parse($f->created_at) : now();
                 $to = $from->copy()->addMonths($months);
-                return (object)[
-                    'numero' => (string)($f->numero_servicio ?? '—'),
-                    'nombre' => (string)($p['nombre'] ?? '—'),
+
+                return (object) [
+                    'numero' => (string) ($f->numero_servicio ?? '—'),
+                    'nombre' => (string) ($p['nombre'] ?? '—'),
                     'desde' => $from->format('d/m/Y'),
                     'hasta' => $to->format('d/m/Y'),
-                    'monto' => (float)$f->total,
+                    'monto' => (float) $f->total,
                     'created_at' => $f->created_at,
                     'meses' => $months,
                 ];
@@ -250,24 +260,25 @@ class DashboardController extends Controller
         );
 
         return view('admin.pagos_adelantados', [
-            'clients' => $paginatedItems
+            'clients' => $paginatedItems,
         ]);
     }
+
     public function metrics(Request $request)
     {
         $request->validate([
-            'period' => ['nullable','in:day,week,month'],
-            'date' => ['nullable','date'],
+            'period' => ['nullable', 'in:day,week,month'],
+            'date' => ['nullable', 'date'],
         ]);
         $period = $request->query('period', 'day');
         $date = $request->query('date') ? Carbon::parse($request->query('date')) : now();
         $range = $this->dateRange($period, $date);
-        
+
         // Cache key para datos que cambian poco
         $cacheKey = "dashboard_metrics_{$period}_{$range['from']->format('Y-m-d')}_{$range['to']->format('Y-m-d')}";
-        
+
         // Usar caché para datos estáticos por 5 minutos
-        $cachedData = cache()->remember($cacheKey, 300, function() use ($range, $period) {
+        $cachedData = cache()->remember($cacheKey, 300, function () use ($range, $period) {
             // Aplicar recargos automáticos después del día 7 (solo una vez al día)
             $this->applyMonthlySurchargesIfNeeded();
 
@@ -277,7 +288,7 @@ class DashboardController extends Controller
                 ->whereBetween('created_at', [$range['from'], $range['to']])
                 ->select(['total', 'payload', 'created_at'])
                 ->get();
-            
+
             $ventasTotal = (float) $ventasData->sum('total');
             $ventasCount = $ventasData->count();
 
@@ -286,27 +297,24 @@ class DashboardController extends Controller
                 ->map(function ($f) {
                     $p = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
                     $raw = is_array($p) ? ($p['metodo'] ?? '') : '';
-                    
-                    
-                    
-                    
-                    
-                    
+
                     $label = trim((string) $raw);
                     if ($label === '' || strtolower($label) === 'desconocido' || strtolower($label) === 'unknown') {
                         $label = 'Efectivo';
                     }
+
                     return ['metodo' => $label, 'total' => (float) $f->total];
                 })
-                ->groupBy(fn($r) => $r['metodo'])
+                ->groupBy(fn ($r) => $r['metodo'])
                 ->map(function ($g, $k) {
-                    $suma = array_sum(array_map(fn($e) => (float) $e['total'], $g->all()));
+                    $suma = array_sum(array_map(fn ($e) => (float) $e['total'], $g->all()));
+
                     return ['metodo' => $k, 'conteo' => $g->count(), 'monto' => round($suma, 2)];
                 })
                 ->values();
 
             // Datos que cambian menos frecuentemente - caché por 10 minutos
-            $staticData = cache()->remember('dashboard_static_data', 600, function() {
+            $staticData = cache()->remember('dashboard_static_data', 600, function () {
                 $estadoActivos = ['Activado', 'Activo'];
                 $estadoDesactivos = ['Desactivado', 'Inactivo', 'Suspendido'];
                 $clientesActivos = (int) Usuario::whereHas('estado', function ($q) use ($estadoActivos) {
@@ -315,16 +323,16 @@ class DashboardController extends Controller
                 $clientesDesactivados = (int) Usuario::whereHas('estado', function ($q) use ($estadoDesactivos) {
                     $q->whereIn('nombre', $estadoDesactivos);
                 })->count();
-                
+
                 return [
                     'clientes_activos' => $clientesActivos,
                     'clientes_desactivados' => $clientesDesactivados,
-                    'clientes_activos_label' => 'Activado'
+                    'clientes_activos_label' => 'Activado',
                 ];
             });
 
             // Clientes nuevos - caché por 2 minutos
-            $clientesNuevos = cache()->remember('dashboard_clientes_nuevos', 120, function() {
+            $clientesNuevos = cache()->remember('dashboard_clientes_nuevos', 120, function () {
                 return [
                     'day' => (int) Usuario::whereDate('created_at', now()->toDateString())->count(),
                     'week' => (int) Usuario::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
@@ -335,13 +343,13 @@ class DashboardController extends Controller
             $inventarioBajo = Inventario::whereColumn('stock', '<=', 'minimo')
                 ->orderBy('stock', 'asc')
                 ->limit(10)
-                ->get(['id','producto','stock','minimo']);
+                ->get(['id', 'producto', 'stock', 'minimo']);
 
             // Serie de tendencia de ventas según periodo
             $ventasSeries = $this->ventasSeries($period, $range);
 
             // Clientes con suscripción cancelada
-            $cancelNames = ['Cancelado','Baja','Eliminado','Inactivo'];
+            $cancelNames = ['Cancelado', 'Baja', 'Eliminado', 'Inactivo'];
             $canceladosQuery = Usuario::whereHas('estatusServicio', function ($q) use ($cancelNames) {
                 $q->whereIn('nombre', $cancelNames);
             })->whereBetween('updated_at', [$range['from'], $range['to']]);
@@ -349,7 +357,7 @@ class DashboardController extends Controller
             $cancelados = $canceladosQuery
                 ->orderBy('updated_at', 'desc')
                 ->limit(10)
-                ->get(['id','numero_servicio','nombre_cliente','updated_at']);
+                ->get(['id', 'numero_servicio', 'nombre_cliente', 'updated_at']);
 
             // Top productos - optimizado con la misma consulta de ventas
             $topProductos = $ventasData
@@ -360,11 +368,13 @@ class DashboardController extends Controller
                         $label = $p['paquete'] ?? ($p['producto'] ?? ($p['mensualidad'] ?? null));
                     }
                     $label = $label ?: 'General';
-                    return ['label' => (string)$label, 'total' => (float)$f->total];
+
+                    return ['label' => (string) $label, 'total' => (float) $f->total];
                 })
-                ->groupBy(fn($r) => $r['label'])
+                ->groupBy(fn ($r) => $r['label'])
                 ->map(function ($g, $k) {
-                    $suma = array_sum(array_map(fn($e) => (float)$e['total'], $g->all()));
+                    $suma = array_sum(array_map(fn ($e) => (float) $e['total'], $g->all()));
+
                     return ['label' => $k, 'ventas' => $g->count(), 'monto' => round($suma, 2)];
                 })
                 ->sortByDesc('ventas')
@@ -377,25 +387,26 @@ class DashboardController extends Controller
 
             // Clientes con pagos adelantados
             $prepayClients = Factura::whereNull('deleted_at')
-                ->where(function($q) {
+                ->where(function ($q) {
                     $q->where('payload->prepay', 'si')
-                      ->orWhere('payload->prepay', true);
+                        ->orWhere('payload->prepay', true);
                 })
                 ->orderBy('created_at', 'desc')
                 ->limit(20) // Limitar para mejorar rendimiento
                 ->get()
-                ->map(function($f) {
+                ->map(function ($f) {
                     $p = $f->payload;
-                    $months = (int)($p['prepay_months'] ?? 0);
+                    $months = (int) ($p['prepay_months'] ?? 0);
                     $from = $f->created_at ? Carbon::parse($f->created_at) : now();
                     $to = $from->copy()->addMonths($months);
+
                     return [
-                        'numero' => (string)($f->numero_servicio ?? '—'),
-                        'nombre' => (string)($p['nombre'] ?? '—'),
+                        'numero' => (string) ($f->numero_servicio ?? '—'),
+                        'nombre' => (string) ($p['nombre'] ?? '—'),
                         'desde' => $from->format('d/m/Y'),
                         'hasta' => $to->format('d/m/Y'),
-                        'monto' => (float)$f->total,
-                        'created_at' => $from->toDateTimeString()
+                        'monto' => (float) $f->total,
+                        'created_at' => $from->toDateTimeString(),
                     ];
                 })
                 ->unique('numero')
@@ -430,7 +441,7 @@ class DashboardController extends Controller
     public function corteCaja(Request $request)
     {
         $request->validate([
-            'date' => ['nullable','date'],
+            'date' => ['nullable', 'date'],
         ]);
         $date = $request->query('date') ? Carbon::parse($request->query('date')) : now();
         $from = $date->copy()->startOfDay();
@@ -447,10 +458,11 @@ class DashboardController extends Controller
         $metodos = $ventas
             ->map(function ($f) {
                 $p = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+
                 return $p['metodo'] ?? 'desconocido';
             })
-            ->groupBy(fn($m) => $m)
-            ->map(fn($g) => ['metodo' => $g->first(), 'conteo' => $g->count()])
+            ->groupBy(fn ($m) => $m)
+            ->map(fn ($g) => ['metodo' => $g->first(), 'conteo' => $g->count()])
             ->values();
 
         return response()->json([
@@ -481,7 +493,7 @@ class DashboardController extends Controller
         }
         // Obtener usuarios que no tienen pago vigente del periodo
         $pagos = Factura::whereNull('deleted_at')->where('periodo', $periodo)->pluck('numero_servicio')->filter()->unique()->all();
-        $usuarios = Usuario::whereNotIn('numero_servicio', $pagos)->get(['id','numero_servicio']);
+        $usuarios = Usuario::whereNotIn('numero_servicio', $pagos)->get(['id', 'numero_servicio']);
         foreach ($usuarios as $u) {
             CargoMora::firstOrCreate(
                 ['numero_servicio' => (string) $u->numero_servicio, 'periodo' => $periodo],
@@ -492,43 +504,30 @@ class DashboardController extends Controller
 
     private function computeMorosos(string $periodo): array
     {
-        $usuarios = Usuario::with(['estado','estatusServicio'])->get(['id','numero_servicio','nombre_cliente','tarifa','created_at','updated_at']);
+        $usuarios = Usuario::with(['estado', 'estatusServicio'])->get(['id', 'numero_servicio', 'nombre_cliente', 'tarifa', 'created_at', 'updated_at']);
         $pagados = Factura::whereNull('deleted_at')->where('periodo', $periodo)->pluck('numero_servicio')->filter()->unique()->toArray();
         $curStart = Carbon::createFromFormat('Y-m', $periodo)->startOfMonth();
         $dueDate = $curStart->copy()->day(7)->endOfDay();
         $today = now();
-        $mora = CargoMora::where('periodo', $periodo)->pluck('monto', 'numero_servicio');
+        $svc = new MorosidadService;
         $items = [];
         foreach ($usuarios as $u) {
             $num = (string) $u->numero_servicio;
             if (in_array($num, $pagados, true)) {
                 continue; // al corriente
             }
-            $mensualidad = (float) preg_replace('/[^\d.]/', '', (string) ($u->tarifa ?? 0));
-            // calcular meses de adeudo basado en último pago
-            $ultimoPago = Factura::whereNull('deleted_at')
-                ->where('numero_servicio', $num)
-                ->orderByDesc('periodo')->value('periodo');
-            $mesesAdeudo = 1;
-            $desdePeriodo = $periodo;
-            if ($ultimoPago) {
-                $lp = Carbon::createFromFormat('Y-m', $ultimoPago)->startOfMonth();
-                $cur = $curStart->copy();
-                // meses faltantes desde el mes posterior al último pagado hasta el periodo actual (inclusive)
-                $diff = $lp->diffInMonths($cur);
-                $mesesAdeudo = max(1, $diff);
-                if ($lp->lessThan($cur)) {
-                    $desdePeriodo = $lp->copy()->addMonth()->format('Y-m');
-                }
+            $res = $svc->calcularAdeudoUsuario($num, $periodo);
+            if (! ($res['ok'] ?? false)) {
+                continue;
             }
-            // aplicar recargo solo una vez (primer mes de mora) y solo si ya venció (>=día 8 del periodo actual)
-            $recargoUnaVez = ($today->day >= 8 && $mesesAdeudo >= 1) ? 50.0 : 0.0;
-            // si existe registro en cargos_mora para el periodo actual, respetar ese monto como recargo (sin duplicar)
-            if (isset($mora[$num])) {
-                $recargoUnaVez = max($recargoUnaVez, (float) $mora[$num]);
+            $pendiente = (float) ($res['pendiente'] ?? 0);
+            $mesesAdeudo = (int) ($res['meses_adeudo'] ?? 0);
+            if ($pendiente <= 0 || $mesesAdeudo <= 0) {
+                continue;
             }
-            // pendiente total = mensualidad * mesesAdeudo + recargoUnaVez
-            $pendiente = round(($mensualidad * $mesesAdeudo) + $recargoUnaVez, 2);
+            $mensualidad = (float) ($res['mensualidad'] ?? 0);
+            $recargoUnaVez = (float) ($res['recargo'] ?? 0);
+            $desdePeriodo = (string) ($res['desde_periodo'] ?? $periodo);
             $diasRetraso = max(0, $today->diffInDays($dueDate, false) * -1);
             $items[] = [
                 'numero' => $num,
@@ -543,6 +542,7 @@ class DashboardController extends Controller
                 'moroso' => $pendiente > 0,
             ];
         }
+
         return ['count' => count($items), 'items' => $items];
     }
 
@@ -550,30 +550,30 @@ class DashboardController extends Controller
     {
         $format = strtolower((string) $request->query('format', 'csv'));
         $period = (string) $request->query('period', 'day');
-        if (!in_array($period, ['day','week','month'], true)) {
+        if (! in_array($period, ['day', 'week', 'month'], true)) {
             $period = 'day';
         }
         if ($period === 'day') {
-            $request->validate(['date' => ['required','date']]);
+            $request->validate(['date' => ['required', 'date']]);
             $date = Carbon::parse($request->query('date'));
             $range = $this->dateRange('day', $date);
             $title = 'Resumen del día '.$date->format('d/m/Y');
             $fileBase = 'resumen-diario-'.$date->toDateString();
         } elseif ($period === 'week') {
             $request->validate([
-                'from' => ['required','date'],
-                'to' => ['required','date'],
+                'from' => ['required', 'date'],
+                'to' => ['required', 'date'],
             ]);
             $from = Carbon::parse($request->query('from'))->startOfDay();
             $to = Carbon::parse($request->query('to'))->endOfDay();
-            if (!$from->copy()->addDays(6)->isSameDay($to)) {
+            if (! $from->copy()->addDays(6)->isSameDay($to)) {
                 return response()->json(['ok' => false, 'message' => 'El rango de semana debe ser exactamente 7 días'], 422);
             }
             $range = ['from' => $from, 'to' => $to];
             $title = 'Resumen de la semana '.$from->format('d/m/Y').' a '.$to->format('d/m/Y');
             $fileBase = 'resumen-semanal-'.$from->toDateString().'_a_'.$to->toDateString();
         } else {
-            $request->validate(['month' => ['required','date_format:Y-m']]);
+            $request->validate(['month' => ['required', 'date_format:Y-m']]);
             $month = Carbon::createFromFormat('Y-m', $request->query('month'));
             $range = ['from' => $month->copy()->startOfMonth(), 'to' => $month->copy()->endOfMonth()];
             $title = 'Resumen del mes '.$month->translatedFormat('F Y');
@@ -592,11 +592,11 @@ class DashboardController extends Controller
             if (empty($metodo) || strtolower($metodo) === 'desconocido') {
                 $metodo = 'Efectivo';
             }
-            $monto = round((float)$v->total, 2);
+            $monto = round((float) $v->total, 2);
             $totalSum += $monto;
-            $rows[] = ['Venta', optional($v->created_at)->format('Y-m-d H:i'), number_format($monto, 2, '.', ''), $nombre, (string)$v->numero_servicio];
+            $rows[] = ['Venta', optional($v->created_at)->format('Y-m-d H:i'), number_format($monto, 2, '.', ''), $nombre, (string) $v->numero_servicio];
 
-            if (!isset($metodosData[$metodo])) {
+            if (! isset($metodosData[$metodo])) {
                 $metodosData[$metodo] = ['cantidad' => 0, 'monto' => 0.0];
             }
             $metodosData[$metodo]['cantidad']++;
@@ -613,7 +613,7 @@ class DashboardController extends Controller
                 $nombreMetodo,
                 $data['cantidad'],
                 number_format($data['monto'], 2, '.', ''),
-                $pct . '%'
+                $pct.'%',
             ];
         }
 
@@ -633,8 +633,8 @@ class DashboardController extends Controller
                     fputcsv($out, $r);
                 }
                 fputcsv($out, ['', '', number_format($totalSum, 2, '.', ''), 'TOTAL', '']);
-                
-                if (!empty($metodosRows)) {
+
+                if (! empty($metodosRows)) {
                     fputcsv($out, []);
                     fputcsv($out, ['DESGLOSE POR MÉTODO DE PAGO']);
                     fputcsv($out, ['Método', 'Cantidad', 'Monto', 'Porcentaje']);
@@ -642,9 +642,10 @@ class DashboardController extends Controller
                         fputcsv($out, $mr);
                     }
                 }
-                
+
                 fclose($out);
             };
+
             return response()->stream($callback, 200, $headers);
         }
         if (in_array($format, ['excel', 'xls', 'xlsx'], true)) {
@@ -698,7 +699,7 @@ class DashboardController extends Controller
                 echo '</td><td>';
 
                 // Segunda tabla: Desglose por método de pago (derecha)
-                if (!empty($metodosRows)) {
+                if (! empty($metodosRows)) {
                     echo '<table>';
                     echo '<thead>';
                     echo '<tr><th colspan="4" class="hdr">DESGLOSE POR MÉTODO DE PAGO</th></tr>';
@@ -723,6 +724,7 @@ class DashboardController extends Controller
 
                 echo '</body></html>';
             };
+
             return response()->stream($callback, 200, $headers);
         }
         $headers = [
@@ -747,7 +749,7 @@ class DashboardController extends Controller
         }
         $html .= '</tbody><tfoot><tr><td></td><td>TOTAL</td><td class="money">$'.htmlspecialchars(number_format($totalSum, 2, '.', '')).'</td><td colspan="2"></td></tr></tfoot></table>';
 
-        if (!empty($metodosRows)) {
+        if (! empty($metodosRows)) {
             $html .= '<br><h4>DESGLOSE POR MÉTODO DE PAGO</h4>';
             $html .= '<table><thead><tr><th>Método</th><th>Cantidad</th><th>Monto</th><th>Porcentaje</th></tr></thead><tbody>';
             foreach ($metodosRows as $mr) {
@@ -763,6 +765,7 @@ class DashboardController extends Controller
         $dompdf->setPaper('A4', 'portrait');
         $dompdf->render();
         $pdfOutput = $dompdf->output();
+
         return response($pdfOutput, 200, $headers);
     }
 
@@ -777,6 +780,7 @@ class DashboardController extends Controller
         if ($period === 'year') {
             return ['from' => $date->copy()->startOfYear(), 'to' => $date->copy()->endOfYear()];
         }
+
         return ['from' => $date->copy()->startOfDay(), 'to' => $date->copy()->endOfDay()];
     }
 
@@ -784,7 +788,7 @@ class DashboardController extends Controller
     {
         $ventas = Factura::whereNull('deleted_at')
             ->whereBetween('created_at', [$range['from'], $range['to']])
-            ->get(['created_at','total']);
+            ->get(['created_at', 'total']);
         $buckets = [];
         if ($period === 'week' || $period === 'day') {
             // Agrupar por día
@@ -800,9 +804,10 @@ class DashboardController extends Controller
                     $buckets[$k] += (float) $v->total;
                 }
             }
+
             return [
                 'labels' => array_keys($buckets),
-                'values' => array_map(fn($x) => round((float) $x, 2), array_values($buckets)),
+                'values' => array_map(fn ($x) => round((float) $x, 2), array_values($buckets)),
             ];
         }
         if ($period === 'month') {
@@ -818,9 +823,10 @@ class DashboardController extends Controller
                     $buckets[$k] += (float) $v->total;
                 }
             }
+
             return [
                 'labels' => array_keys($buckets),
-                'values' => array_map(fn($x) => round((float) $x, 2), array_values($buckets)),
+                'values' => array_map(fn ($x) => round((float) $x, 2), array_values($buckets)),
             ];
         }
         if ($period === 'year') {
@@ -835,27 +841,29 @@ class DashboardController extends Controller
                     $buckets[$k] += (float) $v->total;
                 }
             }
+
             return [
                 'labels' => array_keys($buckets),
-                'values' => array_map(fn($x) => round((float) $x, 2), array_values($buckets)),
+                'values' => array_map(fn ($x) => round((float) $x, 2), array_values($buckets)),
             ];
         }
+
         return ['labels' => [], 'values' => []];
     }
 
     public function allCancelados(Request $request)
     {
-        $cancelNames = ['Cancelado','Baja','Eliminado','Inactivo'];
+        $cancelNames = ['Cancelado', 'Baja', 'Eliminado', 'Inactivo'];
         $cancelados = Usuario::whereHas('estatusServicio', function ($q) use ($cancelNames) {
             $q->whereIn('nombre', $cancelNames);
         })
             ->orderBy('updated_at', 'desc')
-            ->get(['id','numero_servicio','nombre_cliente','updated_at']);
-        
+            ->get(['id', 'numero_servicio', 'nombre_cliente', 'updated_at']);
+
         return response()->json([
             'ok' => true,
             'cancelados_count' => $cancelados->count(),
-            'cancelados' => $cancelados
+            'cancelados' => $cancelados,
         ]);
     }
 }

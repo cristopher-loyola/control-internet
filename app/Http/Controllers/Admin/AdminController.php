@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
+use App\Models\AppSetting;
+use App\Models\HistorialUsuario;
 use App\Models\Usuario;
 use App\Services\MegasAssigner;
-use App\Models\HistorialUsuario;
-use App\Models\AppSetting;
 use App\Services\MorosidadService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class AdminController extends Controller
 {
@@ -21,16 +21,17 @@ class AdminController extends Controller
     public function pagosPagoAnterior(Request $request)
     {
         $numero = (string) $request->query('numero');
-        if ($numero === '' || !ctype_digit($numero)) {
+        if ($numero === '' || ! ctype_digit($numero)) {
             return response()->json(['ok' => false, 'message' => 'Número inválido'], 422);
         }
         $f = \App\Models\Factura::where('numero_servicio', $numero)
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->first();
-        if (!$f) {
+        if (! $f) {
             return response()->json(['ok' => false, 'message' => 'Sin pagos anteriores'], 404);
         }
+
         return response()->json([
             'ok' => true,
             'data' => [
@@ -46,16 +47,17 @@ class AdminController extends Controller
     {
         $numero = (string) $request->query('numero');
         $month = $request->query('month');
-        if ($numero === '' || !ctype_digit($numero)) {
+        if ($numero === '' || ! ctype_digit($numero)) {
             return response()->json(['ok' => false, 'message' => 'Número inválido'], 422);
         }
-        if ($month !== null && !preg_match('/^\d{4}\-\d{2}$/', (string) $month)) {
+        if ($month !== null && ! preg_match('/^\d{4}\-\d{2}$/', (string) $month)) {
             $month = null;
         }
         $res = $service->calcularAdeudoUsuario($numero, $month);
-        if (!($res['ok'] ?? false)) {
+        if (! ($res['ok'] ?? false)) {
             return response()->json($res, 404);
         }
+
         return response()->json($res);
     }
 
@@ -67,24 +69,25 @@ class AdminController extends Controller
     public function pagosLayoutStore(Request $request)
     {
         $layout = $request->input('layout');
-        if (!is_array($layout)) {
+        if (! is_array($layout)) {
             return response()->json(['ok' => false, 'message' => 'Layout inválido'], 422);
         }
-        
+
         AppSetting::updateOrCreate(
             ['key' => 'receipt_layout'],
             ['value' => $layout]
         );
-        
+
         return response()->json(['ok' => true]);
     }
 
     public function pagosLayoutGet()
     {
         $setting = AppSetting::find('receipt_layout');
+
         return response()->json([
             'ok' => true,
-            'layout' => $setting ? $setting->value : null
+            'layout' => $setting ? $setting->value : null,
         ]);
     }
 
@@ -105,32 +108,32 @@ class AdminController extends Controller
                 ->where('name', 'facturas')
                 ->lockForUpdate()
                 ->first();
-            if (!$row) {
+            if (! $row) {
                 \Illuminate\Support\Facades\DB::table('invoice_sequences')->insert([
                     'name' => 'facturas',
                     'current_value' => 0,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
-                $row = (object)['current_value' => 0];
+                $row = (object) ['current_value' => 0];
             }
             $payload = $request->input('payload', []);
             $fingerprintData = [
                 'numero_servicio' => $request->input('numero_servicio'),
                 'periodo' => $periodo,
-                'total' => round((float)$request->input('total', 0), 2),
+                'total' => round((float) $request->input('total', 0), 2),
                 'nombre' => $payload['nombre'] ?? null,
                 'mensualidad' => $payload['mensualidad'] ?? null,
                 'recargo' => $payload['recargo'] ?? null,
                 'pago_anterior' => $payload['pago_anterior'] ?? null,
                 'metodo' => $payload['metodo'] ?? 'Efectivo',
             ];
-            $fingerprint = hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+            $fingerprint = hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
-            $existing = \App\Models\Factura::where(function($q) use ($fingerprint, $request){
-                    $q->where('fingerprint', $fingerprint);
-                })
-                ->orWhere(function($q) use ($request, $periodo){
+            $existing = \App\Models\Factura::where(function ($q) use ($fingerprint) {
+                $q->where('fingerprint', $fingerprint);
+            })
+                ->orWhere(function ($q) use ($request, $periodo) {
                     $q->where('numero_servicio', $request->input('numero_servicio'))
                         ->where('periodo', $periodo)
                         ->where('total', $request->input('total', 0))
@@ -151,6 +154,7 @@ class AdminController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+
                 return response()->json([
                     'ok' => true,
                     'referencia' => $existing->reference_number,
@@ -158,14 +162,37 @@ class AdminController extends Controller
                     'reused' => true,
                 ]);
             }
+
+            $trashedByFingerprint = \App\Models\Factura::withTrashed()->where('fingerprint', $fingerprint)->first();
+            if ($trashedByFingerprint) {
+                \Illuminate\Support\Facades\DB::table('payment_attempts')->insert([
+                    'usuario_id' => $usuarioId,
+                    'numero_servicio' => $numero,
+                    'periodo' => $periodo,
+                    'status' => 'success',
+                    'reason' => 'Reimpresión / reuso de factura (trashed)',
+                    'created_by' => optional($request->user())->id,
+                    'payload' => json_encode($request->input('payload', [])),
+                    'attempted_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                return response()->json([
+                    'ok' => true,
+                    'referencia' => $trashedByFingerprint->reference_number,
+                    'id' => $trashedByFingerprint->id,
+                    'reused' => true,
+                ]);
+            }
             // Validación de duplicados por periodo solo si no es reimpresión
-            if (($numero !== null && $numero !== '') || !empty($usuarioId)) {
+            if (($numero !== null && $numero !== '') || ! empty($usuarioId)) {
                 $dup = \App\Models\Factura::where('periodo', $periodo)
-                    ->where(function($q) use ($numero, $usuarioId){
+                    ->where(function ($q) use ($numero, $usuarioId) {
                         if ($numero !== null && $numero !== '') {
                             $q->where('numero_servicio', $numero);
                         }
-                        if (!empty($usuarioId)) {
+                        if (! empty($usuarioId)) {
                             $q->orWhere('usuario_id', $usuarioId);
                         }
                     })
@@ -186,6 +213,7 @@ class AdminController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+
                 return response()->json([
                     'ok' => false,
                     'message' => 'Ya existe un pago registrado para este periodo',
@@ -199,7 +227,7 @@ class AdminController extends Controller
                 ->update(['current_value' => $next, 'updated_at' => now()]);
 
             try {
-                $factura = new \App\Models\Factura();
+                $factura = new \App\Models\Factura;
                 $factura->reference_number = $next;
                 $factura->usuario_id = $request->input('usuario_id');
                 $factura->numero_servicio = $request->input('numero_servicio');
@@ -231,7 +259,7 @@ class AdminController extends Controller
             } catch (\Illuminate\Database\QueryException $e) {
                 // Si falla por fingerprint duplicado (carrera), buscamos el que ganó
                 // Pero solo si NO está cancelado. Si está cancelado, dejamos que falle
-                $c = \App\Models\Factura::where('fingerprint', $fingerprint)->first();
+                $c = \App\Models\Factura::withTrashed()->where('fingerprint', $fingerprint)->first();
                 if ($c) {
                     return response()->json([
                         'ok' => true,
@@ -268,14 +296,16 @@ class AdminController extends Controller
     {
         $limit = (int) $request->query('limit', 50);
         $rows = \App\Models\Factura::orderByDesc('id')->limit($limit)->get([
-            'id', 'reference_number', 'numero_servicio', 'total', 'created_at'
+            'id', 'reference_number', 'numero_servicio', 'total', 'created_at',
         ]);
+
         return response()->json(['ok' => true, 'data' => $rows]);
     }
 
     public function pagosFacturaShow(int $id)
     {
         $f = \App\Models\Factura::findOrFail($id);
+
         return response()->json([
             'ok' => true,
             'data' => [
@@ -292,9 +322,10 @@ class AdminController extends Controller
     public function pagosFacturaByFolio(int $ref)
     {
         $f = \App\Models\Factura::where('reference_number', $ref)->first();
-        if (!$f) {
+        if (! $f) {
             return response()->json(['ok' => false, 'message' => 'Folio no encontrado'], 404);
         }
+
         return response()->json([
             'ok' => true,
             'data' => [
@@ -327,17 +358,17 @@ class AdminController extends Controller
                 if (ctype_digit($cliente)) {
                     $q->where('numero_servicio', $cliente);
                 } else {
-                    $q->orWhereRaw("JSON_EXTRACT(payload, '$.nombre') LIKE ?", ['%' . $cliente . '%']);
+                    $q->orWhereRaw("JSON_EXTRACT(payload, '$.nombre') LIKE ?", ['%'.$cliente.'%']);
                 }
             });
         }
         $paginator = $query->paginate($perPage)->appends($request->query());
         $ids = $paginator->getCollection()->pluck('created_by')->filter()->unique()->all();
         $users = \App\Models\User::whereIn('id', $ids)->get(['id', 'name'])->keyBy('id');
-        
+
         // Obtener los motivos de cancelación
         $reasonsRaw = \Illuminate\Support\Facades\DB::table('payment_attempts')
-            ->select('numero_servicio','periodo','reason')
+            ->select('numero_servicio', 'periodo', 'reason')
             ->where('status', 'canceled')
             ->whereIn('numero_servicio', $paginator->getCollection()->pluck('numero_servicio')->filter()->unique()->all())
             ->get();
@@ -345,14 +376,15 @@ class AdminController extends Controller
         foreach ($reasonsRaw as $r) {
             $reasons[$r->numero_servicio.'|'.$r->periodo] = $r->reason;
         }
-        
+
         $rows = $paginator->getCollection()->map(function ($f) use ($users, $reasons) {
             $nombre = null;
             $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
             if (is_array($payload) && array_key_exists('nombre', $payload)) {
                 $nombre = $payload['nombre'];
             }
-            return (object)[
+
+            return (object) [
                 'id' => $f->id,
                 'reference_number' => $f->reference_number,
                 'numero_servicio' => $f->numero_servicio,
@@ -366,6 +398,7 @@ class AdminController extends Controller
                 'descuento' => $payload['descuento'] ?? 0,
             ];
         });
+
         return view('admin.pagos_historial', [
             'rows' => $rows,
             'paginator' => $paginator,
@@ -393,15 +426,15 @@ class AdminController extends Controller
                 if (ctype_digit($cliente)) {
                     $q->where('numero_servicio', $cliente);
                 } else {
-                    $q->orWhereRaw("JSON_EXTRACT(payload, '$.nombre') LIKE ?", ['%' . $cliente . '%']);
+                    $q->orWhereRaw("JSON_EXTRACT(payload, '$.nombre') LIKE ?", ['%'.$cliente.'%']);
                 }
             });
         }
         $items = $query->get();
-        $totalRecaudado = $items->filter(fn($f) => $f->deleted_at === null)->sum('total');
+        $totalRecaudado = $items->filter(fn ($f) => $f->deleted_at === null)->sum('total');
         // Prefetch motivos de cancelación por (numero_servicio|periodo)
         $reasonsRaw = \Illuminate\Support\Facades\DB::table('payment_attempts')
-            ->select('numero_servicio','periodo','reason','status')
+            ->select('numero_servicio', 'periodo', 'reason', 'status')
             ->where('status', 'canceled')
             ->whereIn('numero_servicio', $items->pluck('numero_servicio')->filter()->unique()->all())
             ->get();
@@ -424,9 +457,9 @@ class AdminController extends Controller
                     $cliente = is_array($payload) ? ($payload['nombre'] ?? '') : '';
                     $motivo = $reasons[($f->numero_servicio ?? '').'|'.($f->periodo ?? '')] ?? '';
                     fputcsv($out, [
-                        str_pad((string)$f->reference_number, 8, '0', STR_PAD_LEFT),
+                        str_pad((string) $f->reference_number, 8, '0', STR_PAD_LEFT),
                         optional($f->created_at)->format('d/m/Y H:i'),
-                        number_format((float)$f->total, 2, '.', ''),
+                        number_format((float) $f->total, 2, '.', ''),
                         $cliente,
                         $f->numero_servicio,
                         $f->deleted_at ? 'Cancelado' : 'Vigente',
@@ -435,9 +468,10 @@ class AdminController extends Controller
                     ]);
                 }
                 // Fila de total (solo recaudado)
-                fputcsv($out, ['', '', number_format((float)$totalRecaudado, 2, '.', ''), 'TOTAL', '', '', '', '']);
+                fputcsv($out, ['', '', number_format((float) $totalRecaudado, 2, '.', ''), 'TOTAL', '', '', '', '']);
                 fclose($out);
             };
+
             return response()->stream($callback, 200, $headers);
         } elseif (in_array($format, ['excel', 'xls', 'xlsx'], true)) {
             $headers = [
@@ -458,19 +492,19 @@ class AdminController extends Controller
                 .money{ mso-number-format:"\\$#,##0.00"; text-align:right; }
                 .total-row td{ background:#1e3a8a; color:#fff; font-weight:700; }
                                 </style></head><body>';
-                                echo '<table>';
-                                echo '<colgroup>
+                echo '<table>';
+                echo '<colgroup>
                 <col style="width:90px"><col style="width:160px"><col style="width:110px"><col style="width:260px"><col style="width:110px"><col style="width:140px"><col style="width:150px">
                 </colgroup>';
-                                echo '<thead><tr>
+                echo '<thead><tr>
                 <th>Folio</th><th>Fecha</th><th>Monto</th><th>Cliente</th><th>Número</th><th>Estado</th><th>Motivo</th><th>Usuario</th>
                 </tr></thead><tbody>';
                 foreach ($items as $f) {
                     $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
                     $cliente = is_array($payload) ? ($payload['nombre'] ?? '') : '';
-                    $folio = str_pad((string)$f->reference_number, 8, '0', STR_PAD_LEFT);
+                    $folio = str_pad((string) $f->reference_number, 8, '0', STR_PAD_LEFT);
                     $fecha = optional($f->created_at)->format('d/m/Y H:i');
-                    $monto = number_format((float)$f->total, 2, '.', '');
+                    $monto = number_format((float) $f->total, 2, '.', '');
                     $numero = $f->numero_servicio;
                     $estado = $f->deleted_at ? 'Cancelado' : 'Vigente';
                     $motivo = $reasons[($f->numero_servicio ?? '').'|'.($f->periodo ?? '')] ?? '';
@@ -481,7 +515,7 @@ class AdminController extends Controller
                     echo '<td class="date">'.htmlspecialchars($fecha).'</td>';
                     echo '<td class="money">'.htmlspecialchars($monto).'</td>';
                     echo '<td>'.htmlspecialchars($cliente).'</td>';
-                    echo '<td class="text">'.htmlspecialchars((string)$numero).'</td>';
+                    echo '<td class="text">'.htmlspecialchars((string) $numero).'</td>';
                     echo '<td>'.htmlspecialchars($estado).'</td>';
                     echo '<td>'.htmlspecialchars($motivo).'</td>';
                     echo '<td>'.htmlspecialchars($usuario).'</td>';
@@ -491,13 +525,15 @@ class AdminController extends Controller
                 // Fila de total (solo recaudado)
                 echo '<tfoot><tr class="total-row">';
                 echo '<td class="text"></td><td class="text">TOTAL</td>';
-                echo '<td class="money">'.htmlspecialchars(number_format((float)$totalRecaudado, 2, '.', '')).'</td>';
+                echo '<td class="money">'.htmlspecialchars(number_format((float) $totalRecaudado, 2, '.', '')).'</td>';
                 echo '<td colspan="5"></td>';
                 echo '</tr></tfoot>';
                 echo '</table></body></html>';
             };
+
             return response()->stream($callback, 200, $headers);
         }
+
         return view('admin.pagos_historial_pdf', [
             'items' => $items,
             'from' => $from,
@@ -523,7 +559,7 @@ class AdminController extends Controller
         // Liberamos el fingerprint para permitir un nuevo pago tras la cancelación
         // Nos aseguramos de que el nuevo fingerprint no exceda los 64 caracteres
         if ($f->fingerprint) {
-            $f->fingerprint = substr($f->fingerprint, 0, 40) . '_can_' . now()->timestamp;
+            $f->fingerprint = substr($f->fingerprint, 0, 40).'_can_'.now()->timestamp;
             $f->save();
         }
         $f->delete();
@@ -539,18 +575,21 @@ class AdminController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
         return back()->with('status', 'Recibo cancelado correctamente.');
     }
+
     public function pagosLookup(Request $request)
     {
         $numero = (string) $request->query('numero');
-        if ($numero === '' || !ctype_digit($numero)) {
+        if ($numero === '' || ! ctype_digit($numero)) {
             return response()->json(['ok' => false, 'message' => 'Número inválido'], 422);
         }
         $u = \App\Models\Usuario::with(['estado', 'estatusServicio'])->where('numero_servicio', $numero)->first();
-        if (!$u) {
+        if (! $u) {
             return response()->json(['ok' => false, 'message' => 'No encontrado'], 404);
         }
+
         return response()->json([
             'ok' => true,
             'data' => [
@@ -592,10 +631,10 @@ class AdminController extends Controller
                                 $r->whereBetween('numero_servicio', [1000, 4200]);
                             } elseif ($upper === 'FOI') {
                                 $r->whereBetween('numero_servicio', [4800, 5400])
-                                  ->orWhereBetween('numero_servicio', [5500, 5999]);
+                                    ->orWhereBetween('numero_servicio', [5500, 5999]);
                             } elseif ($upper === 'FOD') {
                                 $r->whereBetween('numero_servicio', [5401, 5499])
-                                  ->orWhere('numero_servicio', '>=', 6000);
+                                    ->orWhere('numero_servicio', '>=', 6000);
                             }
                         });
                     }
@@ -609,10 +648,10 @@ class AdminController extends Controller
                     $r->whereBetween('numero_servicio', [1000, 4200]);
                 } elseif ($tec === 'foi') {
                     $r->whereBetween('numero_servicio', [4800, 5400])
-                      ->orWhereBetween('numero_servicio', [5500, 5999]);
+                        ->orWhereBetween('numero_servicio', [5500, 5999]);
                 } elseif ($tec === 'fod') {
                     $r->whereBetween('numero_servicio', [5401, 5499])
-                      ->orWhere('numero_servicio', '>=', 6000);
+                        ->orWhere('numero_servicio', '>=', 6000);
                 }
             });
         }
@@ -630,8 +669,8 @@ class AdminController extends Controller
                         ->where('periodo', $periodoActual)
                         ->whereNull('deleted_at')
                         ->exists();
-                    
-                    if (!$pagado) {
+
+                    if (! $pagado) {
                         $c->update(['estatus_servicio_id' => 4]); // Pendiente de pago
                     }
                 }
@@ -645,36 +684,36 @@ class AdminController extends Controller
     {
         // Obtener el último número de cliente registrado
         $ultimoNumero = Usuario::max('numero_servicio') ?? 7418;
-        
+
         // Generar rango de números desde 1000 hasta el último registro
         $rangoCompleto = range(1000, $ultimoNumero);
-        
+
         // Obtener números ocupados (>= 1000)
         $numerosOcupados = Usuario::where('numero_servicio', '>=', 1000)
             ->pluck('numero_servicio')
             ->toArray();
-        
+
         // Filtrar números desocupados
         $numerosDisponibles = array_diff($rangoCompleto, $numerosOcupados);
-        
+
         // Ordenar y convertir a colección
         $numerosDisponibles = collect(array_values($numerosDisponibles))->sort();
-        
+
         // Búsqueda específica
         $busqueda = request('busqueda');
         if ($busqueda) {
-            $numerosDisponibles = $numerosDisponibles->filter(function($numero) use ($busqueda) {
+            $numerosDisponibles = $numerosDisponibles->filter(function ($numero) use ($busqueda) {
                 return str_contains($numero, $busqueda);
             });
         }
-        
+
         // Paginar resultados (20 por página para el modal)
         $page = request('page', 1);
         $perPage = 20;
         $offset = ($page - 1) * $perPage;
-        
+
         $numerosPaginados = $numerosDisponibles->slice($offset, $perPage);
-        
+
         return response()->json([
             'numeros' => $numerosPaginados->values(),
             'total' => $numerosDisponibles->count(),
@@ -682,13 +721,14 @@ class AdminController extends Controller
             'current_page' => $page,
             'per_page' => $perPage,
             'last_page' => ceil($numerosDisponibles->count() / $perPage),
-            'busqueda' => $busqueda
+            'busqueda' => $busqueda,
         ]);
     }
 
     public function clientesShow(int $id)
     {
         $cliente = Usuario::with(['estado', 'estatusServicio'])->findOrFail($id);
+
         return view('admin.clientes.show', compact('cliente'));
     }
 
@@ -733,13 +773,21 @@ class AdminController extends Controller
 
         $textOrDash = function ($v) {
             $s = is_null($v) ? null : trim((string) $v);
+
             return ($s === null || $s === '') ? '-' : $s;
         };
         $tecByNumero = function ($n) {
             $num = (int) $n;
-            if ($num >= 6000 || ($num >= 5401 && $num <= 5499)) return 'fod';
-            if (($num >= 4800 && $num <= 5400) || ($num >= 5500 && $num <= 5999)) return 'foi';
-            if ($num >= 1000 && $num <= 4200) return 'ina';
+            if ($num >= 6000 || ($num >= 5401 && $num <= 5499)) {
+                return 'fod';
+            }
+            if (($num >= 4800 && $num <= 5400) || ($num >= 5500 && $num <= 5999)) {
+                return 'foi';
+            }
+            if ($num >= 1000 && $num <= 4200) {
+                return 'ina';
+            }
+
             return null;
         };
 
@@ -758,7 +806,7 @@ class AdminController extends Controller
             'nombre_cliente' => $request->nombre_cliente,
             'domicilio' => $textOrDash($request->domicilio),
             'telefono' => $textOrDash($request->telefono),
-            'paquete' => $request->uso ? ($request->uso . ($request->tecnologia ? " {$request->tecnologia}" : '') . (($megasAsignados ?? $request->megas) ? " " . ($megasAsignados ?? $request->megas) . "Mbps" : '')) : null,
+            'paquete' => $request->uso ? ($request->uso.($request->tecnologia ? " {$request->tecnologia}" : '').(($megasAsignados ?? $request->megas) ? ' '.($megasAsignados ?? $request->megas).'Mbps' : '')) : null,
             'estado_id' => null,
             'estatus_servicio_id' => null,
             'servicio_id' => null,
@@ -785,7 +833,7 @@ class AdminController extends Controller
             'dispositivo' => $textOrDash($request->dispositivo),
             'megas' => $megasAsignados ?? $request->megas,
             'tarifa' => $request->tarifa,
-            'paquete' => $request->uso ? ($request->uso . ($request->tecnologia ? " {$request->tecnologia}" : '') . (($megasAsignados ?? $request->megas) ? " " . ($megasAsignados ?? $request->megas) . "Mbps" : '')) : null,
+            'paquete' => $request->uso ? ($request->uso.($request->tecnologia ? " {$request->tecnologia}" : '').(($megasAsignados ?? $request->megas) ? ' '.($megasAsignados ?? $request->megas).'Mbps' : '')) : null,
             'estado_id' => null,
             'estatus_servicio_id' => null,
             'servicio_id' => null,
@@ -801,7 +849,7 @@ class AdminController extends Controller
             $request->all(),
             [
                 'id' => ['required', 'exists:usuarios,id'],
-                'numero_servicio' => ['required', 'numeric', 'unique:usuarios,numero_servicio,' . $request->id],
+                'numero_servicio' => ['required', 'numeric', 'unique:usuarios,numero_servicio,'.$request->id],
                 'nombre_cliente' => ['required', 'string', 'max:150'],
                 'domicilio' => ['nullable', 'string', 'max:255'],
                 'comunidad' => ['nullable', 'string', 'max:100'],
@@ -840,13 +888,21 @@ class AdminController extends Controller
 
         $textOrDash = function ($v) {
             $s = is_null($v) ? null : trim((string) $v);
+
             return ($s === null || $s === '') ? '-' : $s;
         };
         $tecByNumero = function ($n) {
             $num = (int) $n;
-            if ($num >= 6000 || ($num >= 5401 && $num <= 5499)) return 'fod';
-            if (($num >= 4800 && $num <= 5400) || ($num >= 5500 && $num <= 5999)) return 'foi';
-            if ($num >= 1000 && $num <= 4200) return 'ina';
+            if ($num >= 6000 || ($num >= 5401 && $num <= 5499)) {
+                return 'fod';
+            }
+            if (($num >= 4800 && $num <= 5400) || ($num >= 5500 && $num <= 5999)) {
+                return 'foi';
+            }
+            if ($num >= 1000 && $num <= 4200) {
+                return 'ina';
+            }
+
             return null;
         };
 
@@ -898,7 +954,7 @@ class AdminController extends Controller
             'nombre_cliente' => $request->nombre_cliente,
             'domicilio' => $textOrDash($request->domicilio),
             'telefono' => $textOrDash($request->telefono),
-            'paquete' => $request->uso ? ($request->uso . ($request->tecnologia ? " {$request->tecnologia}" : '') . (($megasAsignados ?? $request->megas) ? " " . ($megasAsignados ?? $request->megas) . "Mbps" : '')) : null,
+            'paquete' => $request->uso ? ($request->uso.($request->tecnologia ? " {$request->tecnologia}" : '').(($megasAsignados ?? $request->megas) ? ' '.($megasAsignados ?? $request->megas).'Mbps' : '')) : null,
             'comunidad' => $textOrDash($request->comunidad),
             'uso' => $textOrDash($request->uso),
             'tecnologia' => $request->filled('tecnologia') ? $textOrDash($request->tecnologia) : ($tecByNumero($request->numero_servicio) ?? '-'),
@@ -983,6 +1039,7 @@ class AdminController extends Controller
             ->orderByDesc('captured_at')
             ->get();
         $actual = Usuario::where('numero_servicio', $numero)->first();
+
         return view('admin.clientes.historial', compact('numero', 'historial', 'actual'));
     }
 
@@ -998,16 +1055,16 @@ class AdminController extends Controller
         }
 
         $activos = Usuario::where(function ($query) use ($q) {
-                $query->where('nombre_cliente', 'like', '%' . $q . '%')
-                    ->orWhereRaw("SOUNDEX(nombre_cliente) LIKE CONCAT(SOUNDEX(?), '%')", [$q]);
-            })
+            $query->where('nombre_cliente', 'like', '%'.$q.'%')
+                ->orWhereRaw("SOUNDEX(nombre_cliente) LIKE CONCAT(SOUNDEX(?), '%')", [$q]);
+        })
             ->orderBy('nombre_cliente')
             ->get(['numero_servicio', 'nombre_cliente', 'telefono']);
 
         $eliminadosRaw = HistorialUsuario::select('numero_servicio', 'nombre_cliente', 'telefono', 'captured_at')
             ->where('accion', 'delete')
             ->where(function ($query) use ($q) {
-                $query->where('nombre_cliente', 'like', '%' . $q . '%')
+                $query->where('nombre_cliente', 'like', '%'.$q.'%')
                     ->orWhereRaw("SOUNDEX(nombre_cliente) LIKE CONCAT(SOUNDEX(?), '%')", [$q]);
             })
             ->orderByDesc('captured_at')
@@ -1028,7 +1085,7 @@ class AdminController extends Controller
         }
 
         foreach ($eliminadosRaw as $num => $e) {
-            if (!$num || in_array($num, $activosNumeros, true)) {
+            if (! $num || in_array($num, $activosNumeros, true)) {
                 continue;
             }
             $resultados->push((object) [
@@ -1072,15 +1129,18 @@ class AdminController extends Controller
             $first = fgets($handle);
             if ($first === false) {
                 fclose($handle);
+
                 return back()->withErrors(['file' => 'El archivo está vacío.']);
             }
             if (str_starts_with($first, "\xEF\xBB\xBF")) {
                 $first = substr($first, 3);
             }
             $fixEncoding = function ($s) {
-                if ($s === null) return $s;
+                if ($s === null) {
+                    return $s;
+                }
                 $s = (string) $s;
-                if (!mb_check_encoding($s, 'UTF-8')) {
+                if (! mb_check_encoding($s, 'UTF-8')) {
                     $converted = @iconv('Windows-1252', 'UTF-8//IGNORE', $s);
                     if ($converted === false || $converted === '') {
                         $converted = @iconv('ISO-8859-1', 'UTF-8//IGNORE', $s);
@@ -1089,18 +1149,21 @@ class AdminController extends Controller
                         return $converted;
                     }
                 }
+
                 return $s;
             };
             $first = $fixEncoding($first);
             $header = str_getcsv($first);
-            if (!$header) {
+            if (! $header) {
                 fclose($handle);
+
                 return back()->withErrors(['file' => 'No se pudieron leer los encabezados (línea 1).']);
             }
 
             $normalize = function ($s) {
                 $s = strtolower(trim((string) $s));
-                $s = str_replace([' ', 'á','é','í','ó','ú','ñ','#'], ['_','a','e','i','o','u','n','num'], $s);
+                $s = str_replace([' ', 'á', 'é', 'í', 'ó', 'ú', 'ñ', '#'], ['_', 'a', 'e', 'i', 'o', 'u', 'n', 'num'], $s);
+
                 return $s;
             };
             $map = [];
@@ -1109,7 +1172,7 @@ class AdminController extends Controller
             }
 
             $hasPaqueteCol = false;
-            $paqKeys = ['paquete','plan','paquete_plan'];
+            $paqKeys = ['paquete', 'plan', 'paquete_plan'];
             foreach ($paqKeys as $pk) {
                 if (in_array($pk, $map)) {
                     $hasPaqueteCol = true;
@@ -1118,7 +1181,7 @@ class AdminController extends Controller
             }
 
             $hasTarifaCol = false;
-            $tarifaKeys = ['tarifa','costo','mensualidad','precio'];
+            $tarifaKeys = ['tarifa', 'costo', 'mensualidad', 'precio'];
             foreach ($tarifaKeys as $tk) {
                 if (in_array($tk, $map)) {
                     $hasTarifaCol = true;
@@ -1130,30 +1193,32 @@ class AdminController extends Controller
             while (($row = fgetcsv($handle)) !== false) {
                 $lineNumber++;
                 try {
-                    if (count(array_filter($row, fn($v) => $v !== null && $v !== '')) === 0) {
+                    if (count(array_filter($row, fn ($v) => $v !== null && $v !== '')) === 0) {
                         $report['skipped']++;
                         $report['errors'][] = "Línea $lineNumber: fila vacía";
+
                         continue;
                     }
                     $item = [];
                     foreach ($row as $i => $v) {
                         $item[$map[$i] ?? 'col_'.$i] = $fixEncoding($v);
                     }
-                    $numeroKeys = ['numero_servicio','numero','num_cliente','no_cliente','n_cliente','nro','nro_cliente','numero_de_servicio','no_de_servicio'];
-                    $nombreKeys = ['nombre_cliente','nombre','cliente','nombre_del_cliente','nombre_de_cliente'];
-                    $telKeys = ['telefono','tel','numero_telefono','numero_de_telefono','celular','cel'];
-                    $domicilioKeys = ['domicilio','direccion','direccion_1','direccion1','calle'];
-                    $paqKeys = ['paquete','plan','paquete_plan'];
-                    $tarifaKeys = ['tarifa','costo','mensualidad','precio'];
-                    $zonaKeys = ['zona','sector','zona_servicio'];
-                    $ipKeys = ['ip','ip_servicio','direccion_ip'];
-                    $macKeys = ['mac','mac_address','direccion_mac'];
+                    $numeroKeys = ['numero_servicio', 'numero', 'num_cliente', 'no_cliente', 'n_cliente', 'nro', 'nro_cliente', 'numero_de_servicio', 'no_de_servicio'];
+                    $nombreKeys = ['nombre_cliente', 'nombre', 'cliente', 'nombre_del_cliente', 'nombre_de_cliente'];
+                    $telKeys = ['telefono', 'tel', 'numero_telefono', 'numero_de_telefono', 'celular', 'cel'];
+                    $domicilioKeys = ['domicilio', 'direccion', 'direccion_1', 'direccion1', 'calle'];
+                    $paqKeys = ['paquete', 'plan', 'paquete_plan'];
+                    $tarifaKeys = ['tarifa', 'costo', 'mensualidad', 'precio'];
+                    $zonaKeys = ['zona', 'sector', 'zona_servicio'];
+                    $ipKeys = ['ip', 'ip_servicio', 'direccion_ip'];
+                    $macKeys = ['mac', 'mac_address', 'direccion_mac'];
                     $get = function ($arr, $keys) {
                         foreach ($keys as $k) {
                             if (array_key_exists($k, $arr) && $arr[$k] !== '' && $arr[$k] !== null) {
                                 return $arr[$k];
                             }
                         }
+
                         return null;
                     };
                     $numero = $get($item, $numeroKeys);
@@ -1165,7 +1230,7 @@ class AdminController extends Controller
 
                     // Si no hay tarifaRaw pero paquete tiene un número, lo usamos como tarifa
                     if ($tarifaRaw === null && $paquete !== null) {
-                        $p_norm = str_replace(['$', ' ', ','], ['', '', '.'], (string)$paquete);
+                        $p_norm = str_replace(['$', ' ', ','], ['', '', '.'], (string) $paquete);
                         if (is_numeric($p_norm)) {
                             $tarifaRaw = $paquete;
                         }
@@ -1178,6 +1243,7 @@ class AdminController extends Controller
                     if ($numero === null || $nombre === null) {
                         $report['skipped']++;
                         $report['errors'][] = "Línea $lineNumber: falta numero_servicio o nombre_cliente";
+
                         continue;
                     }
 
@@ -1185,6 +1251,7 @@ class AdminController extends Controller
                     if ($numero === '') {
                         $report['skipped']++;
                         $report['errors'][] = "Línea $lineNumber: numero_servicio inválido";
+
                         continue;
                     }
 
@@ -1192,11 +1259,13 @@ class AdminController extends Controller
                     if ($nombreVal === '') {
                         $report['skipped']++;
                         $report['errors'][] = "Línea $lineNumber: el nombre del cliente está vacío";
+
                         continue;
                     }
                     if (mb_strlen($nombreVal, 'UTF-8') > 150) {
                         $report['skipped']++;
                         $report['errors'][] = "Línea $lineNumber: el nombre del cliente supera 150 caracteres";
+
                         continue;
                     }
 
@@ -1206,13 +1275,14 @@ class AdminController extends Controller
                         $t = preg_replace('/\s+/', '', trim((string) $telefono));
                         if ($t !== '') {
                             $telValue = $t;
-                        } elseif (!$allowNullPhone) {
+                        } elseif (! $allowNullPhone) {
                             $telValue = '';
                         }
                     }
                     if ($telValue !== null && strlen($telValue) > 20) {
                         $report['skipped']++;
                         $report['errors'][] = "Línea $lineNumber: teléfono demasiado largo (máximo 20 caracteres)";
+
                         continue;
                     }
                     $paqValue = '$300';
@@ -1222,6 +1292,7 @@ class AdminController extends Controller
                             if (mb_strlen($p, 'UTF-8') > 100) {
                                 $report['skipped']++;
                                 $report['errors'][] = "Línea $lineNumber: paquete demasiado largo (máximo 100 caracteres)";
+
                                 continue;
                             }
                             $paqValue = $p;
@@ -1229,7 +1300,7 @@ class AdminController extends Controller
                     }
                     // Si el paquete solo es un número, le ponemos el signo de $ para que se vea bien
                     if (is_numeric(str_replace(['$', ' ', ','], ['', '', '.'], $paqValue))) {
-                        $paqValue = '$' . number_format((float)str_replace(['$', ' ', ','], ['', '', '.'], $paqValue), 2);
+                        $paqValue = '$'.number_format((float) str_replace(['$', ' ', ','], ['', '', '.'], $paqValue), 2);
                     }
                     $zonaValue = null;
                     if ($zonaVal !== null) {
@@ -1238,6 +1309,7 @@ class AdminController extends Controller
                             if (mb_strlen($z, 'UTF-8') > 100) {
                                 $report['skipped']++;
                                 $report['errors'][] = "Línea $lineNumber: zona demasiado larga (máximo 100 caracteres)";
+
                                 continue;
                             }
                             $zonaValue = $z;
@@ -1253,12 +1325,14 @@ class AdminController extends Controller
                                 if ($t < 0) {
                                     $report['skipped']++;
                                     $report['errors'][] = "Línea $lineNumber: tarifa inválida (negativa)";
+
                                     continue;
                                 }
                                 $tarifaValue = $t;
                             } else {
                                 $report['skipped']++;
                                 $report['errors'][] = "Línea $lineNumber: tarifa inválida";
+
                                 continue;
                             }
                         }
@@ -1270,6 +1344,7 @@ class AdminController extends Controller
                             if (mb_strlen($i, 'UTF-8') > 45) {
                                 $report['skipped']++;
                                 $report['errors'][] = "Línea $lineNumber: IP demasiado larga (máximo 45 caracteres)";
+
                                 continue;
                             }
                             $ipValue = $i;
@@ -1278,31 +1353,41 @@ class AdminController extends Controller
                     $macValue = null;
                     if ($macVal !== null) {
                         $m = strtoupper(trim((string) $macVal));
-                        $m = str_replace(['-',' '], ':', $m);
+                        $m = str_replace(['-', ' '], ':', $m);
                         $m = preg_replace('/:+/', ':', $m);
                         if ($m !== '') {
                             if (mb_strlen($m, 'UTF-8') > 20) {
                                 $report['skipped']++;
                                 $report['errors'][] = "Línea $lineNumber: MAC demasiado larga (máximo 20 caracteres)";
+
                                 continue;
                             }
                             $macValue = $m;
                         }
                     }
                     $defText = function ($v) {
-                        $s = is_null($v) ? null : trim((string)$v);
+                        $s = is_null($v) ? null : trim((string) $v);
+
                         return ($s === null || $s === '') ? '-' : $s;
                     };
 
                     $defText = function ($v) {
-                        $s = is_null($v) ? null : trim((string)$v);
+                        $s = is_null($v) ? null : trim((string) $v);
+
                         return ($s === null || $s === '') ? '-' : $s;
                     };
                     $tecByNumero = function ($n) {
                         $num = (int) $n;
-                        if ($num >= 6000 || ($num >= 5401 && $num <= 5499)) return 'fod';
-                        if (($num >= 4800 && $num <= 5400) || ($num >= 5500 && $num <= 5999)) return 'foi';
-                        if ($num >= 1000 && $num <= 4200) return 'ina';
+                        if ($num >= 6000 || ($num >= 5401 && $num <= 5499)) {
+                            return 'fod';
+                        }
+                        if (($num >= 4800 && $num <= 5400) || ($num >= 5500 && $num <= 5999)) {
+                            return 'foi';
+                        }
+                        if ($num >= 1000 && $num <= 4200) {
+                            return 'ina';
+                        }
+
                         return null;
                     };
                     $payload = [
@@ -1321,20 +1406,30 @@ class AdminController extends Controller
                     if ($existing) {
                         // Solo actualizamos campos si vienen presentes en el archivo.
                         $update = [];
-                        if ($telefono !== null) $update['telefono'] = $defText($telValue);
+                        if ($telefono !== null) {
+                            $update['telefono'] = $defText($telValue);
+                        }
                         if ($hasPaqueteCol || $hasTarifaCol) {
                             $update['paquete'] = $defText($paqValue);
                             $update['tarifa'] = $tarifaValue;
                         }
-                        if ($zonaVal !== null) $update['zona'] = $defText($zonaValue);
-                        if ($ipVal !== null) $update['ip'] = $defText($ipValue);
-                        if ($macVal !== null) $update['mac'] = $defText($macValue);
-                        if ($nombre !== null) $update['nombre_cliente'] = $nombreVal;
+                        if ($zonaVal !== null) {
+                            $update['zona'] = $defText($zonaValue);
+                        }
+                        if ($ipVal !== null) {
+                            $update['ip'] = $defText($ipValue);
+                        }
+                        if ($macVal !== null) {
+                            $update['mac'] = $defText($macValue);
+                        }
+                        if ($nombre !== null) {
+                            $update['nombre_cliente'] = $nombreVal;
+                        }
                         if ($domicilio !== null) {
-                            $d = trim((string)$domicilio);
+                            $d = trim((string) $domicilio);
                             $update['domicilio'] = ($d === '') ? '-' : $d;
                         }
-                        if (!empty($update)) {
+                        if (! empty($update)) {
                             $existing->update($update);
                             $report['updated']++;
                         } else {
@@ -1342,7 +1437,7 @@ class AdminController extends Controller
                         }
                     } else {
                         // Para nuevas filas, domicilio es obligatorio: usa '-' si no viene o viene vacío
-                        $domValue = $domicilio !== null ? trim((string)$domicilio) : null;
+                        $domValue = $domicilio !== null ? trim((string) $domicilio) : null;
                         $domValue = ($domValue === null || $domValue === '') ? '-' : $domValue;
                         Usuario::create(array_merge([
                             'numero_servicio' => $numero,
@@ -1378,6 +1473,7 @@ class AdminController extends Controller
         }
 
         $summary = "Importación: {$report['created']} creados, {$report['updated']} actualizados, {$report['skipped']} omitidos";
+
         return redirect()
             ->route('admin.clientes.index')
             ->with('status', $summary)

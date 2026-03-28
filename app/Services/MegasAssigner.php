@@ -23,12 +23,11 @@ class MegasAssigner
     /**
      * Asigna megas en función del costo del paquete y la tecnología.
      *
-     * @param int|float|string $costo       Costo del paquete (300, 400, 500, 600). Se aceptan "300.00" o 300.0.
-     * @param string           $tecnologia  Tipo de tecnología (FOD, FOI, INA), sin distinción de mayúsculas/minúsculas.
+     * @param  int|float|string  $costo  Costo del paquete (300, 400, 500, 600). Se aceptan "300.00" o 300.0.
+     * @param  string  $tecnologia  Tipo de tecnología (FOD, FOI, INA), sin distinción de mayúsculas/minúsculas.
+     * @return int Megas asignados (entero).
      *
-     * @return int                          Megas asignados (entero).
-     *
-     * @throws InvalidArgumentException     Si el costo o la tecnología no son válidos.
+     * @throws InvalidArgumentException Si el costo o la tecnología no son válidos.
      */
     public static function assign($costo, string $tecnologia): int
     {
@@ -44,20 +43,20 @@ class MegasAssigner
         }
 
         $validCosts = [300, 400, 500, 600];
-        if (!in_array($costo, $validCosts, true)) {
+        if (! in_array($costo, $validCosts, true)) {
             throw new InvalidArgumentException('Costo de paquete inválido. Debe ser uno de: 300, 400, 500, 600.');
         }
 
         // Normalizar tecnología
         $tec = strtoupper(trim($tecnologia));
         $validTechs = ['FOD', 'FOI', 'INA'];
-        if (!in_array($tec, $validTechs, true)) {
+        if (! in_array($tec, $validTechs, true)) {
             throw new InvalidArgumentException('Tecnología inválida. Debe ser una de: FOD, FOI, INA.');
         }
 
         // Matriz de asignación
         $matrix = [
-            300 => ['FOD' => 30, 'FOI' => 20, 'INA' => 12],
+            300 => ['FOD' => 30, 'FOI' => 20, 'INA' => 10],
             400 => ['FOD' => 50, 'FOI' => 30, 'INA' => 20],
             500 => ['FOD' => 70, 'FOI' => 40, 'INA' => 30],
             600 => ['FOD' => 100, 'FOI' => 50, 'INA' => 40],

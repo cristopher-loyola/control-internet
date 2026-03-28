@@ -15,7 +15,7 @@ class RoleHomePagesTest extends TestCase
         $user = User::factory()->create(['role' => 'admin']);
         $response = $this->actingAs($user)->get('/admin');
         $response->assertStatus(200);
-        $response->assertSeeText("You're logged in!");
+        $response->assertSeeText('Dashboard');
     }
 
     public function test_tecnico_home_page_is_accessible(): void
@@ -23,7 +23,7 @@ class RoleHomePagesTest extends TestCase
         $user = User::factory()->create(['role' => 'tecnico']);
         $response = $this->actingAs($user)->get('/tecnico');
         $response->assertStatus(200);
-        $response->assertSeeText("You're logged in!");
+        $response->assertSeeText('Dashboard');
     }
 
     public function test_pagos_home_page_is_accessible(): void
@@ -31,7 +31,7 @@ class RoleHomePagesTest extends TestCase
         $user = User::factory()->create(['role' => 'pagos']);
         $response = $this->actingAs($user)->get('/pagos');
         $response->assertStatus(200);
-        $response->assertSeeText("You're logged in!");
+        $response->assertSeeText('Dashboard');
     }
 
     public function test_contrataciones_home_page_is_accessible(): void
@@ -39,6 +39,6 @@ class RoleHomePagesTest extends TestCase
         $user = User::factory()->create(['role' => 'contrataciones']);
         $response = $this->actingAs($user)->get('/contrataciones');
         $response->assertStatus(200);
-        $response->assertSeeText("You're logged in!");
+        $response->assertSeeText('Dashboard');
     }
 }

@@ -3,14 +3,14 @@
 namespace App\Http\Controllers\Pagos;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
-use App\Models\Usuario;
+use App\Models\AppSetting;
 use App\Models\Factura;
 use App\Models\HistorialUsuario;
-use Illuminate\Support\Facades\DB;
-use App\Models\AppSetting;
+use App\Models\Usuario;
 use App\Services\MorosidadService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class PagosController extends Controller
 {
@@ -55,8 +55,8 @@ class PagosController extends Controller
                         ->where('periodo', $periodoActual)
                         ->whereNull('deleted_at')
                         ->exists();
-                    
-                    if (!$pagado) {
+
+                    if (! $pagado) {
                         $c->update(['estatus_servicio_id' => 4]); // Pendiente de pago
                     }
                 }
@@ -70,7 +70,7 @@ class PagosController extends Controller
     {
         $request->validate([
             'id' => ['required', 'exists:usuarios,id'],
-            'numero_servicio' => ['required', 'numeric', 'unique:usuarios,numero_servicio,' . $request->id],
+            'numero_servicio' => ['required', 'numeric', 'unique:usuarios,numero_servicio,'.$request->id],
             'nombre_cliente' => ['required', 'string', 'max:150'],
             'domicilio' => ['nullable', 'string', 'max:255'],
             'telefono' => ['nullable', 'string', 'max:20'],
@@ -86,12 +86,19 @@ class PagosController extends Controller
             'nombre_cliente' => 'nombre',
         ]);
 
-        $textOrDash = fn($v) => ($v === null || trim((string)$v) === '') ? '-' : trim((string)$v);
+        $textOrDash = fn ($v) => ($v === null || trim((string) $v) === '') ? '-' : trim((string) $v);
         $tecByNumero = function ($n) {
             $num = (int) $n;
-            if ($num >= 6000 || ($num >= 5401 && $num <= 5499)) return 'fod';
-            if (($num >= 4800 && $num <= 5400) || ($num >= 5500 && $num <= 5999)) return 'foi';
-            if ($num >= 1000 && $num <= 4200) return 'ina';
+            if ($num >= 6000 || ($num >= 5401 && $num <= 5499)) {
+                return 'fod';
+            }
+            if (($num >= 4800 && $num <= 5400) || ($num >= 5500 && $num <= 5999)) {
+                return 'foi';
+            }
+            if ($num >= 1000 && $num <= 4200) {
+                return 'ina';
+            }
+
             return null;
         };
 
@@ -117,7 +124,7 @@ class PagosController extends Controller
             'nombre_cliente' => $request->nombre_cliente,
             'domicilio' => $textOrDash($request->domicilio),
             'telefono' => $textOrDash($request->telefono),
-            'paquete' => $request->uso ? ($request->uso . ($request->tecnologia ? " {$request->tecnologia}" : '') . (($megasAsignados ?? $request->megas) ? " " . ($megasAsignados ?? $request->megas) . "Mbps" : '')) : null,
+            'paquete' => $request->uso ? ($request->uso.($request->tecnologia ? " {$request->tecnologia}" : '').(($megasAsignados ?? $request->megas) ? ' '.($megasAsignados ?? $request->megas).'Mbps' : '')) : null,
             'comunidad' => $textOrDash($request->comunidad),
             'uso' => $textOrDash($request->uso),
             'tecnologia' => $request->filled('tecnologia') ? $textOrDash($request->tecnologia) : ($tecByNumero($request->numero_servicio) ?? '-'),
@@ -134,6 +141,7 @@ class PagosController extends Controller
     public function clientesShow(int $id)
     {
         $cliente = Usuario::with(['estado', 'estatusServicio'])->findOrFail($id);
+
         return view('pagos.clientes.show', compact('cliente'));
     }
 
@@ -145,6 +153,7 @@ class PagosController extends Controller
             ->orderByDesc('captured_at')
             ->get();
         $actual = Usuario::with(['estado', 'estatusServicio'])->where('numero_servicio', $numero)->first();
+
         return view('pagos.clientes.historial', compact('numero', 'historial', 'actual'));
     }
 
@@ -159,7 +168,7 @@ class PagosController extends Controller
             return redirect()->route('pagos.clientes.historial', ['numero' => (int) $q]);
         }
 
-        $clientes = Usuario::where('nombre_cliente', 'like', '%' . $q . '%')
+        $clientes = Usuario::where('nombre_cliente', 'like', '%'.$q.'%')
             ->orderBy('nombre_cliente')
             ->get(['id', 'numero_servicio', 'nombre_cliente', 'telefono']);
 
@@ -202,33 +211,35 @@ class PagosController extends Controller
     public function prepaySettings(Request $request)
     {
         $rows = \App\Models\PrepaySetting::all()->pluck('enabled', 'paquete')->toArray();
-        $defaults = [300=>true, 400=>true, 500=>true, 600=>true];
+        $defaults = [300 => true, 400 => true, 500 => true, 600 => true];
         $enabled = array_merge($defaults, $rows);
         $matrix = [
-            6  => ['percent' => 10, 'totals' => [300=>1620, 400=>2160, 500=>2700, 600=>3240]],
-            7  => ['percent' => 11, 'totals' => [300=>1869, 400=>2492, 500=>3115, 600=>3738]],
-            8  => ['percent' => 12, 'totals' => [300=>2112, 400=>2816, 500=>3520, 600=>4224]],
-            9  => ['percent' => 13, 'totals' => [300=>2349, 400=>3132, 500=>3915, 600=>4698]],
-            10 => ['percent' => 14, 'totals' => [300=>2580, 400=>3440, 500=>4300, 600=>5160]],
-            11 => ['percent' => 15, 'totals' => [300=>2805, 400=>3740, 500=>4675, 600=>5610]],
-            12 => ['percent' => 16, 'totals' => [300=>3024, 400=>4032, 500=>5040, 600=>6048]],
+            6 => ['percent' => 10, 'totals' => [300 => 1620, 400 => 2160, 500 => 2700, 600 => 3240]],
+            7 => ['percent' => 11, 'totals' => [300 => 1869, 400 => 2492, 500 => 3115, 600 => 3738]],
+            8 => ['percent' => 12, 'totals' => [300 => 2112, 400 => 2816, 500 => 3520, 600 => 4224]],
+            9 => ['percent' => 13, 'totals' => [300 => 2349, 400 => 3132, 500 => 3915, 600 => 4698]],
+            10 => ['percent' => 14, 'totals' => [300 => 2580, 400 => 3440, 500 => 4300, 600 => 5160]],
+            11 => ['percent' => 15, 'totals' => [300 => 2805, 400 => 3740, 500 => 4675, 600 => 5610]],
+            12 => ['percent' => 16, 'totals' => [300 => 3024, 400 => 4032, 500 => 5040, 600 => 6048]],
         ];
-        return response()->json(['ok'=>true,'enabled'=>$enabled,'matrix'=>$matrix]);
+
+        return response()->json(['ok' => true, 'enabled' => $enabled, 'matrix' => $matrix]);
     }
 
     public function recibosPagoAnterior(Request $request)
     {
         $numero = (string) $request->query('numero');
-        if ($numero === '' || !ctype_digit($numero)) {
+        if ($numero === '' || ! ctype_digit($numero)) {
             return response()->json(['ok' => false, 'message' => 'Número inválido'], 422);
         }
         $f = Factura::where('numero_servicio', $numero)
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->first();
-        if (!$f) {
+        if (! $f) {
             return response()->json(['ok' => false, 'message' => 'Sin pagos anteriores'], 404);
         }
+
         return response()->json([
             'ok' => true,
             'data' => [
@@ -243,9 +254,10 @@ class PagosController extends Controller
     public function recibosLayoutGet()
     {
         $setting = AppSetting::find('receipt_layout');
+
         return response()->json([
             'ok' => true,
-            'layout' => $setting ? $setting->value : null
+            'layout' => $setting ? $setting->value : null,
         ]);
     }
 
@@ -253,29 +265,31 @@ class PagosController extends Controller
     {
         $numero = (string) $request->query('numero');
         $month = $request->query('month');
-        if ($numero === '' || !ctype_digit($numero)) {
+        if ($numero === '' || ! ctype_digit($numero)) {
             return response()->json(['ok' => false, 'message' => 'Número inválido'], 422);
         }
-        if ($month !== null && !preg_match('/^\d{4}\-\d{2}$/', (string) $month)) {
+        if ($month !== null && ! preg_match('/^\d{4}\-\d{2}$/', (string) $month)) {
             $month = null;
         }
         $res = $service->calcularAdeudoUsuario($numero, $month);
-        if (!($res['ok'] ?? false)) {
+        if (! ($res['ok'] ?? false)) {
             return response()->json($res, 404);
         }
+
         return response()->json($res);
     }
 
     public function recibosLookup(Request $request)
     {
         $numero = (string) $request->query('numero');
-        if ($numero === '' || !ctype_digit($numero)) {
+        if ($numero === '' || ! ctype_digit($numero)) {
             return response()->json(['ok' => false, 'message' => 'Número inválido'], 422);
         }
         $u = Usuario::with(['estado', 'estatusServicio'])->where('numero_servicio', $numero)->first();
-        if (!$u) {
+        if (! $u) {
             return response()->json(['ok' => false, 'message' => 'No encontrado'], 404);
         }
+
         return response()->json([
             'ok' => true,
             'data' => [
@@ -311,32 +325,32 @@ class PagosController extends Controller
                 ->where('name', 'facturas')
                 ->lockForUpdate()
                 ->first();
-            if (!$row) {
+            if (! $row) {
                 DB::table('invoice_sequences')->insert([
                     'name' => 'facturas',
                     'current_value' => 0,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
-                $row = (object)['current_value' => 0];
+                $row = (object) ['current_value' => 0];
             }
             $payload = $request->input('payload', []);
             $fingerprintData = [
                 'numero_servicio' => $request->input('numero_servicio'),
                 'periodo' => $periodo,
-                'total' => round((float)$request->input('total', 0), 2),
+                'total' => round((float) $request->input('total', 0), 2),
                 'nombre' => $payload['nombre'] ?? null,
                 'mensualidad' => $payload['mensualidad'] ?? null,
                 'recargo' => $payload['recargo'] ?? null,
                 'pago_anterior' => $payload['pago_anterior'] ?? null,
                 'metodo' => $payload['metodo'] ?? 'Efectivo',
             ];
-            $fingerprint = hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
+            $fingerprint = hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
-            $existing = Factura::where(function($q) use ($fingerprint, $request){
-                    $q->where('fingerprint', $fingerprint);
-                })
-                ->orWhere(function($q) use ($request, $periodo){
+            $existing = Factura::where(function ($q) use ($fingerprint) {
+                $q->where('fingerprint', $fingerprint);
+            })
+                ->orWhere(function ($q) use ($request, $periodo) {
                     $q->where('numero_servicio', $request->input('numero_servicio'))
                         ->where('periodo', $periodo)
                         ->where('total', $request->input('total', 0))
@@ -358,6 +372,7 @@ class PagosController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+
                 return response()->json([
                     'ok' => true,
                     'referencia' => $existing->reference_number,
@@ -365,14 +380,37 @@ class PagosController extends Controller
                     'reused' => true,
                 ]);
             }
+
+            $trashedByFingerprint = Factura::withTrashed()->where('fingerprint', $fingerprint)->first();
+            if ($trashedByFingerprint) {
+                DB::table('payment_attempts')->insert([
+                    'usuario_id' => $usuarioId,
+                    'numero_servicio' => $numero,
+                    'periodo' => $periodo,
+                    'status' => 'success',
+                    'reason' => 'Reimpresión / reuso de factura (trashed)',
+                    'created_by' => optional($request->user())->id,
+                    'payload' => json_encode($request->input('payload', [])),
+                    'attempted_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                return response()->json([
+                    'ok' => true,
+                    'referencia' => $trashedByFingerprint->reference_number,
+                    'id' => $trashedByFingerprint->id,
+                    'reused' => true,
+                ]);
+            }
             // Validar duplicados por periodo (numero_servicio o usuario_id) SOLO si no es reimpresión
-            if (($numero !== null && $numero !== '') || !empty($usuarioId)) {
+            if (($numero !== null && $numero !== '') || ! empty($usuarioId)) {
                 $dup = Factura::where('periodo', $periodo)
-                    ->where(function($q) use ($numero, $usuarioId){
+                    ->where(function ($q) use ($numero, $usuarioId) {
                         if ($numero !== null && $numero !== '') {
                             $q->where('numero_servicio', $numero);
                         }
-                        if (!empty($usuarioId)) {
+                        if (! empty($usuarioId)) {
                             $q->orWhere('usuario_id', $usuarioId);
                         }
                     })
@@ -393,6 +431,7 @@ class PagosController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+
                 return response()->json([
                     'ok' => false,
                     'message' => 'Ya existe un pago registrado para este periodo',
@@ -406,7 +445,7 @@ class PagosController extends Controller
                 ->update(['current_value' => $next, 'updated_at' => now()]);
 
             try {
-                $factura = new Factura();
+                $factura = new Factura;
                 $factura->reference_number = $next;
                 $factura->usuario_id = $request->input('usuario_id');
                 $factura->numero_servicio = $request->input('numero_servicio');
@@ -441,7 +480,7 @@ class PagosController extends Controller
                 // para que el usuario reciba un error o se gestione de otra forma.
                 // En la práctica, ya renombramos los cancelados, así que esto solo
                 // debería ocurrir en condiciones de carrera de inserción real.
-                $c = Factura::where('fingerprint', $fingerprint)->first();
+                $c = Factura::withTrashed()->where('fingerprint', $fingerprint)->first();
                 if ($c) {
                     return response()->json([
                         'ok' => true,
@@ -479,14 +518,16 @@ class PagosController extends Controller
     {
         $limit = (int) $request->query('limit', 50);
         $rows = Factura::orderByDesc('id')->limit($limit)->get([
-            'id', 'reference_number', 'numero_servicio', 'total', 'created_at'
+            'id', 'reference_number', 'numero_servicio', 'total', 'created_at',
         ]);
+
         return response()->json(['ok' => true, 'data' => $rows]);
     }
 
     public function recibosFacturaShow(int $id)
     {
         $f = Factura::findOrFail($id);
+
         return response()->json([
             'ok' => true,
             'data' => [
@@ -503,9 +544,10 @@ class PagosController extends Controller
     public function recibosFacturaByFolio(int $ref)
     {
         $f = Factura::where('reference_number', $ref)->first();
-        if (!$f) {
+        if (! $f) {
             return response()->json(['ok' => false, 'message' => 'Folio no encontrado'], 404);
         }
+
         return response()->json([
             'ok' => true,
             'data' => [
@@ -537,17 +579,17 @@ class PagosController extends Controller
                 if (ctype_digit($cliente)) {
                     $q->where('numero_servicio', $cliente);
                 } else {
-                    $q->orWhereRaw("JSON_EXTRACT(payload, '$.nombre') LIKE ?", ['%' . $cliente . '%']);
+                    $q->orWhereRaw("JSON_EXTRACT(payload, '$.nombre') LIKE ?", ['%'.$cliente.'%']);
                 }
             });
         }
         $paginator = $query->paginate($perPage)->appends($request->query());
         $ids = $paginator->getCollection()->pluck('created_by')->filter()->unique()->all();
         $users = \App\Models\User::whereIn('id', $ids)->get(['id', 'name'])->keyBy('id');
-        
+
         // Obtener los motivos de cancelación
         $reasonsRaw = \Illuminate\Support\Facades\DB::table('payment_attempts')
-            ->select('numero_servicio','periodo','reason')
+            ->select('numero_servicio', 'periodo', 'reason')
             ->where('status', 'canceled')
             ->whereIn('numero_servicio', $paginator->getCollection()->pluck('numero_servicio')->filter()->unique()->all())
             ->get();
@@ -555,14 +597,15 @@ class PagosController extends Controller
         foreach ($reasonsRaw as $r) {
             $reasons[$r->numero_servicio.'|'.$r->periodo] = $r->reason;
         }
-        
+
         $rows = $paginator->getCollection()->map(function ($f) use ($users, $reasons) {
             $nombre = null;
             $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
             if (is_array($payload) && array_key_exists('nombre', $payload)) {
                 $nombre = $payload['nombre'];
             }
-            return (object)[
+
+            return (object) [
                 'id' => $f->id,
                 'reference_number' => $f->reference_number,
                 'numero_servicio' => $f->numero_servicio,
@@ -576,6 +619,7 @@ class PagosController extends Controller
                 'descuento' => $payload['descuento'] ?? 0,
             ];
         });
+
         return view('pagos.recibos_historial', [
             'rows' => $rows,
             'paginator' => $paginator,
@@ -603,14 +647,14 @@ class PagosController extends Controller
                 if (ctype_digit($cliente)) {
                     $q->where('numero_servicio', $cliente);
                 } else {
-                    $q->orWhereRaw("JSON_EXTRACT(payload, '$.nombre') LIKE ?", ['%' . $cliente . '%']);
+                    $q->orWhereRaw("JSON_EXTRACT(payload, '$.nombre') LIKE ?", ['%'.$cliente.'%']);
                 }
             });
         }
         $items = $query->get();
-        $totalRecaudado = $items->filter(fn($f) => $f->deleted_at === null)->sum('total');
+        $totalRecaudado = $items->filter(fn ($f) => $f->deleted_at === null)->sum('total');
         $reasonsRaw = \Illuminate\Support\Facades\DB::table('payment_attempts')
-            ->select('numero_servicio','periodo','reason','status')
+            ->select('numero_servicio', 'periodo', 'reason', 'status')
             ->where('status', 'canceled')
             ->whereIn('numero_servicio', $items->pluck('numero_servicio')->filter()->unique()->all())
             ->get();
@@ -633,9 +677,9 @@ class PagosController extends Controller
                     $cliente = is_array($payload) ? ($payload['nombre'] ?? '') : '';
                     $motivo = $reasons[($f->numero_servicio ?? '').'|'.($f->periodo ?? '')] ?? '';
                     fputcsv($out, [
-                        str_pad((string)$f->reference_number, 8, '0', STR_PAD_LEFT),
+                        str_pad((string) $f->reference_number, 8, '0', STR_PAD_LEFT),
                         optional($f->created_at)->format('d/m/Y H:i'),
-                        number_format((float)$f->total, 2, '.', ''),
+                        number_format((float) $f->total, 2, '.', ''),
                         $cliente,
                         $f->numero_servicio,
                         $f->deleted_at ? 'Cancelado' : 'Vigente',
@@ -644,9 +688,10 @@ class PagosController extends Controller
                     ]);
                 }
                 // Fila TOTAL (recaudado)
-                fputcsv($out, ['', 'TOTAL', number_format((float)$totalRecaudado, 2, '.', ''), '', '', '', '', '']);
+                fputcsv($out, ['', 'TOTAL', number_format((float) $totalRecaudado, 2, '.', ''), '', '', '', '', '']);
                 fclose($out);
             };
+
             return response()->stream($callback, 200, $headers);
         } elseif (in_array($format, ['excel', 'xls', 'xlsx'], true)) {
             $headers = [
@@ -677,9 +722,9 @@ thead th{ background:#2e7d32; color:#fff; }
                 foreach ($items as $f) {
                     $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
                     $cliente = is_array($payload) ? ($payload['nombre'] ?? '') : '';
-                    $folio = str_pad((string)$f->reference_number, 8, '0', STR_PAD_LEFT);
+                    $folio = str_pad((string) $f->reference_number, 8, '0', STR_PAD_LEFT);
                     $fecha = optional($f->created_at)->format('d/m/Y H:i');
-                    $monto = number_format((float)$f->total, 2, '.', '');
+                    $monto = number_format((float) $f->total, 2, '.', '');
                     $numero = $f->numero_servicio;
                     $estado = $f->deleted_at ? 'Cancelado' : 'Vigente';
                     $motivo = $reasons[($f->numero_servicio ?? '').'|'.($f->periodo ?? '')] ?? '';
@@ -690,7 +735,7 @@ thead th{ background:#2e7d32; color:#fff; }
                     echo '<td class="date">'.htmlspecialchars($fecha).'</td>';
                     echo '<td class="money">'.htmlspecialchars($monto).'</td>';
                     echo '<td>'.htmlspecialchars($cliente).'</td>';
-                    echo '<td class="text">'.htmlspecialchars((string)$numero).'</td>';
+                    echo '<td class="text">'.htmlspecialchars((string) $numero).'</td>';
                     echo '<td>'.htmlspecialchars($estado).'</td>';
                     echo '<td>'.htmlspecialchars($motivo).'</td>';
                     echo '<td>'.htmlspecialchars($usuario).'</td>';
@@ -699,13 +744,15 @@ thead th{ background:#2e7d32; color:#fff; }
                 echo '</tbody>';
                 echo '<tfoot><tr class="total-row">';
                 echo '<td class="text"></td><td class="text">TOTAL</td>';
-                echo '<td class="money">'.htmlspecialchars(number_format((float)$totalRecaudado, 2, '.', '')).'</td>';
+                echo '<td class="money">'.htmlspecialchars(number_format((float) $totalRecaudado, 2, '.', '')).'</td>';
                 echo '<td colspan="5"></td>';
                 echo '</tr></tfoot>';
                 echo '</table></body></html>';
             };
+
             return response()->stream($callback, 200, $headers);
         }
+
         return view('pagos.recibos_historial_pdf', [
             'items' => $items,
             'from' => $from,
@@ -728,7 +775,7 @@ thead th{ background:#2e7d32; color:#fff; }
         // Liberamos el fingerprint para permitir un nuevo pago tras la cancelación
         // Nos aseguramos de que el nuevo fingerprint no exceda los 64 caracteres
         if ($f->fingerprint) {
-            $f->fingerprint = substr($f->fingerprint, 0, 40) . '_can_' . now()->timestamp;
+            $f->fingerprint = substr($f->fingerprint, 0, 40).'_can_'.now()->timestamp;
             $f->save();
         }
         $f->delete();
@@ -744,6 +791,7 @@ thead th{ background:#2e7d32; color:#fff; }
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
         return back()->with('status', 'Recibo cancelado correctamente.');
     }
 
@@ -793,13 +841,21 @@ thead th{ background:#2e7d32; color:#fff; }
 
         $textOrDash = function ($v) {
             $s = is_null($v) ? null : trim((string) $v);
+
             return ($s === null || $s === '') ? '-' : $s;
         };
         $tecByNumero = function ($n) {
             $num = (int) $n;
-            if ($num >= 6000 || ($num >= 5401 && $num <= 5499)) return 'fod';
-            if (($num >= 4800 && $num <= 5400) || ($num >= 5500 && $num <= 5999)) return 'foi';
-            if ($num >= 1000 && $num <= 4200) return 'ina';
+            if ($num >= 6000 || ($num >= 5401 && $num <= 5499)) {
+                return 'fod';
+            }
+            if (($num >= 4800 && $num <= 5400) || ($num >= 5500 && $num <= 5999)) {
+                return 'foi';
+            }
+            if ($num >= 1000 && $num <= 4200) {
+                return 'ina';
+            }
+
             return null;
         };
 
@@ -818,7 +874,7 @@ thead th{ background:#2e7d32; color:#fff; }
             'nombre_cliente' => $request->nombre_cliente,
             'domicilio' => $textOrDash($request->domicilio),
             'telefono' => $textOrDash($request->telefono),
-            'paquete' => $request->uso ? ($request->uso . ($request->tecnologia ? " {$request->tecnologia}" : '') . (($megasAsignados ?? $request->megas) ? " " . ($megasAsignados ?? $request->megas) . "Mbps" : '')) : null,
+            'paquete' => $request->uso ? ($request->uso.($request->tecnologia ? " {$request->tecnologia}" : '').(($megasAsignados ?? $request->megas) ? ' '.($megasAsignados ?? $request->megas).'Mbps' : '')) : null,
             'estado_id' => null,
             'estatus_servicio_id' => null,
             'servicio_id' => null,
@@ -845,7 +901,7 @@ thead th{ background:#2e7d32; color:#fff; }
             'dispositivo' => $textOrDash($request->dispositivo),
             'megas' => $megasAsignados ?? $request->megas,
             'tarifa' => $request->tarifa,
-            'paquete' => $request->uso ? ($request->uso . ($request->tecnologia ? " {$request->tecnologia}" : '') . (($megasAsignados ?? $request->megas) ? " " . ($megasAsignados ?? $request->megas) . "Mbps" : '')) : null,
+            'paquete' => $request->uso ? ($request->uso.($request->tecnologia ? " {$request->tecnologia}" : '').(($megasAsignados ?? $request->megas) ? ' '.($megasAsignados ?? $request->megas).'Mbps' : '')) : null,
             'estado_id' => null,
             'estatus_servicio_id' => null,
             'servicio_id' => null,
@@ -859,36 +915,36 @@ thead th{ background:#2e7d32; color:#fff; }
     {
         // Obtener el último número de cliente registrado
         $ultimoNumero = Usuario::max('numero_servicio') ?? 7418;
-        
+
         // Generar rango de números desde 1000 hasta el último registro
         $rangoCompleto = range(1000, $ultimoNumero);
-        
+
         // Obtener números ocupados (>= 1000)
         $numerosOcupados = Usuario::where('numero_servicio', '>=', 1000)
             ->pluck('numero_servicio')
             ->toArray();
-        
+
         // Filtrar números desocupados
         $numerosDisponibles = array_diff($rangoCompleto, $numerosOcupados);
-        
+
         // Ordenar y convertir a colección
         $numerosDisponibles = collect(array_values($numerosDisponibles))->sort();
-        
+
         // Búsqueda específica
         $busqueda = request('busqueda');
         if ($busqueda) {
-            $numerosDisponibles = $numerosDisponibles->filter(function($numero) use ($busqueda) {
+            $numerosDisponibles = $numerosDisponibles->filter(function ($numero) use ($busqueda) {
                 return str_contains($numero, $busqueda);
             });
         }
-        
+
         // Paginar resultados (20 por página para el modal)
         $page = request('page', 1);
         $perPage = 20;
         $offset = ($page - 1) * $perPage;
-        
+
         $numerosPaginados = $numerosDisponibles->slice($offset, $perPage);
-        
+
         return response()->json([
             'numeros' => $numerosPaginados->values(),
             'total' => $numerosDisponibles->count(),
@@ -896,7 +952,7 @@ thead th{ background:#2e7d32; color:#fff; }
             'current_page' => $page,
             'per_page' => $perPage,
             'last_page' => ceil($numerosDisponibles->count() / $perPage),
-            'busqueda' => $busqueda
+            'busqueda' => $busqueda,
         ]);
     }
 
