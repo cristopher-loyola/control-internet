@@ -21,7 +21,7 @@ class NavbarRoleColorTest extends TestCase
     {
         $user = User::factory()->create(['role' => 'admin']);
 
-        $response = $this->actingAs($user)->get('/dashboard');
+        $response = $this->actingAs($user)->get('/admin');
 
         $response->assertSee(config('role_colors.navbar.admin'), false);
     }
@@ -30,7 +30,7 @@ class NavbarRoleColorTest extends TestCase
     {
         $user = User::factory()->create(['role' => 'tecnico']);
 
-        $response = $this->actingAs($user)->get('/dashboard');
+        $response = $this->actingAs($user)->get('/tecnico');
 
         $response->assertSee(config('role_colors.navbar.tecnico'), false);
     }
@@ -39,7 +39,7 @@ class NavbarRoleColorTest extends TestCase
     {
         $user = User::factory()->create(['role' => 'pagos']);
 
-        $response = $this->actingAs($user)->get('/dashboard');
+        $response = $this->actingAs($user)->get('/pagos');
 
         $response->assertSee(config('role_colors.navbar.pagos'), false);
     }
@@ -48,7 +48,7 @@ class NavbarRoleColorTest extends TestCase
     {
         $user = User::factory()->create(['role' => 'contrataciones']);
 
-        $response = $this->actingAs($user)->get('/dashboard');
+        $response = $this->actingAs($user)->get('/contrataciones');
 
         $response->assertSee(config('role_colors.navbar.contrataciones'), false);
     }

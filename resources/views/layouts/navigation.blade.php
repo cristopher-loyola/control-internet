@@ -8,7 +8,7 @@
         'tecnico' => route('tecnico.index'),
         'pagos' => route('pagos.index'),
         'contrataciones' => route('contrataciones.index'),
-        default => route('dashboard'),
+        default => url('/'),
     };
 
     $clientesRoute = match ($role) {

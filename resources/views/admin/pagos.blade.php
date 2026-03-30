@@ -98,12 +98,21 @@
                 </div>
             </div>
 
-            <div>
-                <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Quién cobró</label>
-                <input type="text" placeholder="Nombre del cobrador"
-                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                    x-model="form.cobro" :disabled="readOnlyMode">
-            </div>
+           <div>
+    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
+        Quién cobró
+    </label>
+    <select
+        class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+        x-model="form.cobro"
+        :disabled="readOnlyMode">
+        <option value="">Selecciona...</option>
+        <option value="Luz">Luz</option>
+        <option value="Jaime">Jaime</option>
+        <option value="Nancy">Nancy</option>
+        <option value="Ivan">Ivan</option>
+    </select>
+</div>
         </div>
     </div>      
                          <!-- <div class="flex items-end justify-end md:justify-start gap-2">

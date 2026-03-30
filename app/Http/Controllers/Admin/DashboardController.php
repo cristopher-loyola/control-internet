@@ -430,30 +430,35 @@ class DashboardController extends Controller
                 })
                 ->values();
 
-            // Datos que cambian menos frecuentemente - caché por 10 minutos
-            $staticData = cache()->remember('dashboard_static_data', 600, function () {
-                $estadoActivos = ['Activado', 'Activo'];
-                $estadoDesactivos = ['Desactivado', 'Inactivo', 'Suspendido'];
-                $clientesActivos = (int) Usuario::whereHas('estado', function ($q) use ($estadoActivos) {
-                    $q->whereIn('nombre', $estadoActivos);
-                })->count();
-                $clientesDesactivados = (int) Usuario::whereHas('estado', function ($q) use ($estadoDesactivos) {
-                    $q->whereIn('nombre', $estadoDesactivos);
-                })->count();
+            $estadoActivos = ['Activado', 'Activo'];
+            $estadoDesactivos = ['Desactivado', 'Inactivo', 'Suspendido'];
+            $clientesActivos = (int) Usuario::whereHas('estado', function ($q) use ($estadoActivos) {
+                $q->whereIn('nombre', $estadoActivos);
+            })->count();
+            $clientesDesactivados = (int) Usuario::whereHas('estado', function ($q) use ($estadoDesactivos) {
+                $q->whereIn('nombre', $estadoDesactivos);
+            })->count();
+            $staticData = [
+                'clientes_activos' => $clientesActivos,
+                'clientes_desactivados' => $clientesDesactivados,
+                'clientes_activos_label' => 'Activado',
+            ];
+
+            // Clientes nuevos (según fecha seleccionada en el dashboard) - caché por 2 minutos
+            $baseDate = $range['from']->copy();
+            $today = $baseDate->toDateString();
+            $weekFrom = $baseDate->copy()->startOfWeek()->toDateString();
+            $weekTo = $baseDate->copy()->endOfWeek()->toDateString();
+            $monthFrom = $baseDate->copy()->startOfMonth()->toDateString();
+            $monthTo = $baseDate->copy()->endOfMonth()->toDateString();
+            $cacheKeyCN = 'dashboard_clientes_nuevos_'.$today;
+            $clientesNuevos = cache()->remember($cacheKeyCN, 120, function () use ($today, $weekFrom, $weekTo, $monthFrom, $monthTo) {
+                $dateExpr = 'COALESCE(fecha_contratacion, DATE(created_at))';
 
                 return [
-                    'clientes_activos' => $clientesActivos,
-                    'clientes_desactivados' => $clientesDesactivados,
-                    'clientes_activos_label' => 'Activado',
-                ];
-            });
-
-            // Clientes nuevos - caché por 2 minutos
-            $clientesNuevos = cache()->remember('dashboard_clientes_nuevos', 120, function () {
-                return [
-                    'day' => (int) Usuario::whereDate('created_at', now()->toDateString())->count(),
-                    'week' => (int) Usuario::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
-                    'month' => (int) Usuario::whereBetween('created_at', [now()->startOfMonth(), now()->endOfMonth()])->count(),
+                    'day' => (int) Usuario::whereRaw("{$dateExpr} = ?", [$today])->count(),
+                    'week' => (int) Usuario::whereRaw("{$dateExpr} between ? and ?", [$weekFrom, $weekTo])->count(),
+                    'month' => (int) Usuario::whereRaw("{$dateExpr} between ? and ?", [$monthFrom, $monthTo])->count(),
                 ];
             });
 

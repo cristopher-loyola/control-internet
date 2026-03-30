@@ -98,12 +98,21 @@
                 </div>
             </div>
 
-            <div>
-                <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Quién cobró</label>
-                <input type="text" placeholder="Nombre del cobrador"
-                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                    x-model="form.cobro" :disabled="readOnlyMode">
-            </div>
+           <div>
+    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
+        Quién cobró
+    </label>
+    <select
+        class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+        x-model="form.cobro"
+        :disabled="readOnlyMode">
+        <option value="">Selecciona...</option>
+        <option value="Luz">Luz</option>    
+        <option value="Jaime">Jaime</option>
+        <option value="Nancy">Nancy</option>
+        <option value="Ivan">Ivan</option>
+    </select>
+</div>
         </div>
     </div>
 
@@ -411,7 +420,7 @@
         .client-receipt{padding-top:8mm}
         .ref-number{position:absolute;top:2mm;left:6mm;font-weight:700;font-size:12px;color:#111;z-index:30}
         .id-band{background:#fde047;border:1px solid #eab308;border-radius:4px;padding:4px 8px;display:inline-flex;gap:10px;margin:10px 0;width:fit-content;max-width:60%}
-        .receipt-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font: size 12px;px}
+        .receipt-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:12px}
         .receipt-head img{max-height:120px;object-fit:contain}
         .logo-center{display:inline-block;max-width:680px;width:90%}
         .abs-img,.abs-text{position:absolute;pointer-events:none}

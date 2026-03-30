@@ -8,7 +8,18 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    $user = auth()->user();
+    if (! $user) {
+        abort(404);
+    }
+
+    return match ($user->role ?? null) {
+        'admin' => redirect()->route('admin.index'),
+        'tecnico' => redirect()->route('tecnico.index'),
+        'pagos' => redirect()->route('pagos.index'),
+        'contrataciones' => redirect()->route('contrataciones.index'),
+        default => abort(404),
+    };
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
