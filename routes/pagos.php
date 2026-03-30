@@ -21,6 +21,7 @@ Route::middleware(['auth', 'role:pagos'])
         Route::get('/dashboard/morosos', [DashboardController::class, 'morososIndex'])->name('dashboard.morosos');
         Route::get('/dashboard/pagos-adelantados', [DashboardController::class, 'prepayClientsIndex'])->name('dashboard.prepay.index');
         Route::get('/dashboard/pagos-adelantados/search', [DashboardController::class, 'prepayClientsSearch'])->name('dashboard.prepay.search');
+        Route::get('/recibos/prepay-status', [PagosController::class, 'recibosPrepayStatus'])->name('recibos.prepay.status');
 
         // Rutas módulo recibos
         Route::get('/recibos', [PagosController::class, 'recibos'])->name('recibos');

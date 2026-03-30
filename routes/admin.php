@@ -19,6 +19,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::delete('/cortes/cortadores/{id}', [CortesController::class, 'destroyCortador'])->name('cortes.cortadores.destroy');
 
         Route::get('/corte', [DashboardController::class, 'corteView'])->name('corte.view');
+        Route::get('/pagos/prepay-status', [AdminController::class, 'pagosPrepayStatus'])->name('pagos.prepay.status');
         Route::get('/dashboard/metrics', [DashboardController::class, 'metrics'])->name('dashboard.metrics');
         Route::get('/dashboard/cancelados/all', [DashboardController::class, 'allCancelados'])->name('dashboard.cancelados.all');
         Route::get('/dashboard/corte', [DashboardController::class, 'corteCaja'])->name('dashboard.corte');

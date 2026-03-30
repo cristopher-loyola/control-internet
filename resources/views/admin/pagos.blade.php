@@ -203,6 +203,20 @@
     </div>
 </div>
 
+<div x-show="prepayActivo" class="mt-4 mb-4 p-4 bg-green-50 border border-green-200 rounded-lg not-print">
+    <div class="flex items-center gap-2 mb-2">
+        <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+        </svg>
+        <h3 class="text-lg font-semibold text-green-800">Pago adelantado activo</h3>
+    </div>
+    <div class="text-sm text-green-700">
+        <p>
+            <strong>Este usuario ha adelantado su pago hasta</strong>
+            <span class="font-bold text-green-900" x-text="prepayHastaLabel || '—'"></span>
+        </p>
+    </div>
+</div>
 <br> 
                           {{-- <div class="flex items-end justify-end md:justify-start gap-2">
                              <button class="btn btn-secondary" @click="toggleEditor()"
@@ -511,6 +525,8 @@
             adeudoCobro: 0,
             saldoDespues: null,
             pagadoMesActual: false,
+            prepayActivo: false,
+            prepayHastaLabel: '',
             prepayConfig:{ enabled:{}, matrix:{} },
             prepayError:'',
             discountModalOpen: false,
@@ -1030,6 +1046,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 }
                 this.recalcular();
                 await this.fetchAdeudo();
+                await this.fetchPrepayStatus();
             },
             metodoValido(){
                 const m = String(this.form.metodo || '').trim();
@@ -1040,6 +1057,10 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 return true;
             },
             openConfirm(type = 'receipt'){ 
+                if(this.prepayActivo && !this.ref?.id){
+                    this.error = 'Pago adelantado vigente. No se puede generar un nuevo pago.';
+                    return;
+                }
                 this.printType = type;
                 this.saveConfirmOpen = true;
             },
@@ -1047,6 +1068,10 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 if(this.isSaving) return;
                 this.isSaving = true;
                 try {
+                    if (this.prepayActivo && !this.ref?.id) {
+                        this.error = 'Pago adelantado vigente. No se puede generar un nuevo pago.';
+                        return;
+                    }
                     if (!this.ref || !this.ref.id) {
                         await this.emitirFactura();
                     }
@@ -1102,6 +1127,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
             },
             async emitirFactura(){
                 try{
+                    if(this.prepayActivo && !this.ref?.id){ this.error = 'Pago adelantado vigente. No se puede generar un nuevo pago.'; return; }
                     const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
                     const r = await fetch('{{ route('admin.pagos.facturas.store') }}', {
                         method:'POST',
@@ -1139,11 +1165,15 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                         this.ref.created_at = new Date().toISOString();
                         await this.fetchPagoAnterior();
                         await this.fetchAdeudo();
+                        await this.fetchPrepayStatus();
+                    }else{
+                        if(j?.message){ this.error = j.message; }
                     }
                 }catch(_){}
             },
             async prepareAndPrint(){
                 try{
+                    if(this.prepayActivo && !this.ref?.id){ this.error = 'Pago adelantado vigente. No se puede generar un nuevo pago.'; return; }
                     const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
                     const r = await fetch('{{ route('admin.pagos.facturas.store') }}', {
                         method:'POST',
@@ -1179,9 +1209,30 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                         this.ref.numero = j.referencia;
                         this.ref.id = j.id;
                         this.ref.created_at = new Date().toISOString();
+                    }else{
+                        if(j?.message){ this.error = j.message; }
                     }
                 }catch(_){}
                 await this.doPrintOnce();
+            },
+            async fetchPrepayStatus(){
+                const numero = String(this.form.numero||'').trim();
+                if(!numero){ this.prepayActivo=false; this.prepayHastaLabel=''; return; }
+                try{
+                    const r = await fetch('{{ route('admin.pagos.prepay.status') }}?numero='+encodeURIComponent(numero), { headers:{'Accept':'application/json'} });
+                    const j = await r.json();
+                    if(r.ok && j?.ok){
+                        const d = j.data || {};
+                        this.prepayActivo = !!d.activo;
+                        this.prepayHastaLabel = d.hasta_label || '';
+                    }else{
+                        this.prepayActivo = false;
+                        this.prepayHastaLabel = '';
+                    }
+                }catch(_){
+                    this.prepayActivo = false;
+                    this.prepayHastaLabel = '';
+                }
             },
             async printThermal(){
                 if(!this.ref || !this.ref.id){

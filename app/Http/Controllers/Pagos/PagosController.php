@@ -8,6 +8,7 @@ use App\Models\Factura;
 use App\Models\HistorialUsuario;
 use App\Models\Usuario;
 use App\Services\MorosidadService;
+use App\Services\PrepayDashboardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -321,6 +322,29 @@ class PagosController extends Controller
             $periodo = now()->format('Y-m');
             $numero = $request->input('numero_servicio');
             $usuarioId = $request->input('usuario_id');
+            if ($numero) {
+                $prepay = Factura::whereNull('deleted_at')
+                    ->where('numero_servicio', $numero)
+                    ->where(function ($q) {
+                        $q->where('payload->prepay', 'si')
+                            ->orWhere('payload->prepay', true);
+                    })
+                    ->orderByDesc('id')
+                    ->first(['id', 'payload', 'created_at']);
+                if ($prepay) {
+                    $p = is_array($prepay->payload) ? $prepay->payload : (is_string($prepay->payload) ? @json_decode($prepay->payload, true) : []);
+                    $months = (int) (($p['prepay_months'] ?? 0) ?: 0);
+                    $from = $prepay->created_at ? \Illuminate\Support\Carbon::parse($prepay->created_at) : null;
+                    $venceAt = PrepayDashboardService::venceAt($from, $months);
+                    $estado = PrepayDashboardService::estadoPorVencimiento($venceAt, now());
+                    if ($venceAt && ! $estado['vencido']) {
+                        return response()->json([
+                            'ok' => false,
+                            'message' => 'Pago adelantado vigente hasta '.$venceAt->translatedFormat('F Y'),
+                        ], 409);
+                    }
+                }
+            }
             $row = DB::table('invoice_sequences')
                 ->where('name', 'facturas')
                 ->lockForUpdate()
@@ -512,6 +536,41 @@ class PagosController extends Controller
                 'id' => $factura->id,
             ]);
         });
+    }
+
+    public function recibosPrepayStatus(Request $request)
+    {
+        $numero = (string) $request->query('numero');
+        if ($numero === '' || ! ctype_digit($numero)) {
+            return response()->json(['ok' => false, 'message' => 'Número inválido'], 422);
+        }
+        $row = Factura::whereNull('deleted_at')
+            ->where('numero_servicio', $numero)
+            ->where(function ($q) {
+                $q->where('payload->prepay', 'si')
+                    ->orWhere('payload->prepay', true);
+            })
+            ->orderByDesc('id')
+            ->first(['id', 'numero_servicio', 'total', 'payload', 'created_at']);
+        if (! $row) {
+            return response()->json(['ok' => true, 'data' => ['activo' => false]]);
+        }
+        $p = is_array($row->payload) ? $row->payload : (is_string($row->payload) ? @json_decode($row->payload, true) : []);
+        $months = (int) (($p['prepay_months'] ?? 0) ?: 0);
+        $from = $row->created_at ? \Illuminate\Support\Carbon::parse($row->created_at) : null;
+        $venceAt = PrepayDashboardService::venceAt($from, $months);
+        $estado = PrepayDashboardService::estadoPorVencimiento($venceAt, now());
+        $label = $venceAt ? $venceAt->translatedFormat('F Y') : null;
+
+        return response()->json([
+            'ok' => true,
+            'data' => [
+                'activo' => ! $estado['vencido'] && $venceAt !== null,
+                'hasta_label' => $label,
+                'hasta_periodo' => $venceAt ? $venceAt->format('Y-m') : null,
+                'meses' => $months,
+            ],
+        ]);
     }
 
     public function recibosFacturasIndex(Request $request)

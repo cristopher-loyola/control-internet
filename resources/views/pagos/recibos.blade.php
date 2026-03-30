@@ -504,6 +504,8 @@
             adeudoCobro: 0,
             saldoDespues: null,
             pagadoMesActual: false,
+            prepayActivo: false,
+            prepayHastaLabel: '',
             prepayConfig:{ enabled:{}, matrix:{} },
             prepayError:'',
             discountModalOpen: false,
@@ -953,6 +955,10 @@
                 return true;
             },
             openConfirm(type = 'receipt'){ 
+                if(this.prepayActivo && !this.ref?.id){
+                    this.error = 'Pago adelantado vigente. No se puede generar un nuevo pago.';
+                    return;
+                }
                 this.printType = type;
                 this.saveConfirmOpen = true;
             },
@@ -960,6 +966,10 @@
                 if(this.isSaving) return;
                 this.isSaving = true;
                 try {
+                    if (this.prepayActivo && !this.ref?.id) {
+                        this.error = 'Pago adelantado vigente. No se puede generar un nuevo pago.';
+                        return;
+                    }
                     if (!this.ref || !this.ref.id) {
                         await this.emitirFactura();
                     }
@@ -1091,6 +1101,8 @@
                         this.ref.numero = j.referencia;
                         this.ref.id = j.id;
                         this.ref.created_at = new Date().toISOString();
+                    }else{
+                        if(j?.message){ this.error = j.message; }
                     }
                 }catch(_){}
                 await this.doPrintOnce();
@@ -1218,8 +1230,28 @@ html,body{ margin:0; padding:0 }
                     this.recalcular();
                     await this.fetchPagoAnterior();
                     await this.fetchAdeudo();
+                    await this.fetchPrepayStatus();
                 }catch(e){
                     this.error='Error de conexión';
+                }
+            },
+            async fetchPrepayStatus(){
+                const numero = String(this.form.numero||'').trim();
+                if(!numero){ this.prepayActivo=false; this.prepayHastaLabel=''; return; }
+                try{
+                    const r = await fetch('{{ route('pagos.recibos.prepay.status') }}?numero='+encodeURIComponent(numero), { headers:{'Accept':'application/json'} });
+                    const j = await r.json();
+                    if(r.ok && j?.ok){
+                        const d = j.data || {};
+                        this.prepayActivo = !!d.activo;
+                        this.prepayHastaLabel = d.hasta_label || '';
+                    }else{
+                        this.prepayActivo = false;
+                        this.prepayHastaLabel = '';
+                    }
+                }catch(_){
+                    this.prepayActivo = false;
+                    this.prepayHastaLabel = '';
                 }
             },
             prepayEnabledFor(val){
