@@ -106,7 +106,7 @@
             </div>
         </div>
     </div>      
-  <!-- <div class="flex items-end justify-end md:justify-start gap-2">
+                         <!-- <div class="flex items-end justify-end md:justify-start gap-2">
                             <button class="btn btn-secondary" @click="openHistorial()">Historial</button>
                             <button class="btn btn-secondary" @click="toggleEditor()"
                                 x-text="editMode ? 'Cerrar editor de plantilla' : 'Editar plantilla'"></button>
@@ -442,7 +442,7 @@
         .client-receipt{padding-top:8mm}
         .ref-number{position:absolute;top:2mm;left:6mm;font-weight:700;font-size:12px;color:#111;z-index:30}
         .id-band{background:#fde047;border:1px solid #eab308;border-radius:4px;padding:4px 8px;display:inline-flex;gap:10px;margin:10px 0;width:fit-content;max-width:60%}
-        .receipt-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:13px}
+        .receipt-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:12px}
         .receipt-head img{max-height:120px;object-fit:contain}
         .logo-center{display:inline-block;max-width:680px;width:90%}
         .abs-img,.abs-text{position:absolute;pointer-events:none}
