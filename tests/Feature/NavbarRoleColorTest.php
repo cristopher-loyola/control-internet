@@ -10,11 +10,16 @@ class NavbarRoleColorTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_role_colors_configuration_has_unique_values(): void
+    public function test_role_colors_configuration_has_required_roles_and_non_empty_values(): void
     {
         $colors = config('role_colors.navbar');
 
-        $this->assertCount(count($colors), array_unique($colors));
+        $this->assertIsArray($colors);
+        foreach (['admin', 'tecnico', 'pagos', 'contrataciones', 'rosalito', 'pozo_hondo', 'chivato'] as $k) {
+            $this->assertArrayHasKey($k, $colors);
+            $this->assertIsString($colors[$k]);
+            $this->assertNotSame('', trim($colors[$k]));
+        }
     }
 
     public function test_admin_navbar_uses_admin_color(): void

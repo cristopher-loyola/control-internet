@@ -6,58 +6,58 @@
     'payments' => [],
 ])
 
-<div class="min-h-[calc(100vh-4rem)] bg-black text-white">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+<div class="min-h-[calc(100vh-4rem)] bg-white">
+    <div class="w-full px-4 sm:px-6 lg:px-8 py-6">
         <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-                <div class="text-sm text-gray-400">Zona</div>
-                <div class="text-2xl font-semibold tracking-tight">{{ $title }}</div>
+                <div class="text-sm text-gray-500">Zona</div>
+                <div class="text-2xl font-semibold tracking-tight text-gray-900">{{ $title }}</div>
             </div>
             <div class="flex flex-col sm:flex-row gap-2">
                 <form method="GET" class="flex items-center gap-2 w-full sm:w-auto">
                     <input name="q" value="{{ request('q') }}" placeholder="Buscar cliente"
-                           class="w-full sm:w-72 rounded-lg bg-zinc-900 border border-zinc-700 px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500">
-                    <button class="px-4 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm font-medium">Buscar</button>
+                           class="w-full sm:w-72 rounded-lg bg-white border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-sm font-medium text-white">Buscar</button>
                 </form>
             </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">
-            <div class="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-                <div class="text-xs text-zinc-400">Clientes</div>
-                <div class="text-2xl font-semibold mt-1">{{ (int) ($stats['total'] ?? 0) }}</div>
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div class="text-xs text-gray-500">Clientes</div>
+                <div class="text-2xl font-semibold mt-1 text-gray-900">{{ (int) ($stats['total'] ?? 0) }}</div>
             </div>
-            <div class="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-                <div class="text-xs text-zinc-400">Activos</div>
-                <div class="text-2xl font-semibold mt-1">{{ (int) ($stats['activos'] ?? 0) }}</div>
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div class="text-xs text-gray-500">Activos</div>
+                <div class="text-2xl font-semibold mt-1 text-gray-900">{{ (int) ($stats['activos'] ?? 0) }}</div>
             </div>
-            <div class="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-                <div class="text-xs text-zinc-400">Pendientes</div>
-                <div class="text-2xl font-semibold mt-1">{{ (int) ($stats['pendientes'] ?? 0) }}</div>
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div class="text-xs text-gray-500">Pendientes</div>
+                <div class="text-2xl font-semibold mt-1 text-gray-900">{{ (int) ($stats['pendientes'] ?? 0) }}</div>
             </div>
-            <div class="rounded-xl border border-zinc-800 bg-zinc-950 p-4">
-                <div class="text-xs text-zinc-400">Desactivados</div>
-                <div class="text-2xl font-semibold mt-1">{{ (int) ($stats['desactivados'] ?? 0) }}</div>
+            <div class="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                <div class="text-xs text-gray-500">Desactivados</div>
+                <div class="text-2xl font-semibold mt-1 text-gray-900">{{ (int) ($stats['desactivados'] ?? 0) }}</div>
             </div>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-5 gap-4 mt-6">
-            <div class="lg:col-span-2 rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+            <div class="lg:col-span-2 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                 <div class="flex items-center justify-between mb-3">
-                    <div class="text-sm font-semibold">Clientes nuevos (7 días)</div>
+                    <div class="text-sm font-semibold text-gray-900">Clientes nuevos (7 días)</div>
                 </div>
                 <div class="h-52">
                     <canvas id="zonaClientesChart"></canvas>
                 </div>
             </div>
-            <div class="lg:col-span-3 rounded-xl border border-zinc-800 bg-zinc-950 p-4">
+            <div class="lg:col-span-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
                 <div class="flex items-center justify-between mb-3">
-                    <div class="text-sm font-semibold">Últimos pagos</div>
+                    <div class="text-sm font-semibold text-gray-900">Últimos pagos</div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead>
-                            <tr class="text-left text-zinc-400 border-b border-zinc-800">
+                            <tr class="text-left text-gray-500 border-b border-gray-200">
                                 <th class="py-2 font-medium">Folio</th>
                                 <th class="py-2 font-medium">Número</th>
                                 <th class="py-2 font-medium">Cliente</th>
@@ -65,17 +65,17 @@
                                 <th class="py-2 font-medium">Fecha</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-zinc-900">
+                        <tbody class="divide-y divide-gray-100">
                             @forelse($payments as $p)
-                                <tr class="hover:bg-zinc-900/60">
-                                    <td class="py-2">{{ $p['folio'] ?? '—' }}</td>
-                                    <td class="py-2 font-semibold">{{ $p['numero'] ?? '—' }}</td>
-                                    <td class="py-2">{{ $p['nombre'] ?? '—' }}</td>
-                                    <td class="py-2 text-right">${{ number_format((float) ($p['total'] ?? 0), 2) }}</td>
-                                    <td class="py-2 text-zinc-400">{{ $p['fecha'] ?? '—' }}</td>
+                                <tr class="hover:bg-gray-50">
+                                    <td class="py-2 text-gray-900">{{ $p['folio'] ?? '—' }}</td>
+                                    <td class="py-2 font-semibold text-gray-900">{{ $p['numero'] ?? '—' }}</td>
+                                    <td class="py-2 text-gray-700">{{ $p['nombre'] ?? '—' }}</td>
+                                    <td class="py-2 text-right text-gray-900">${{ number_format((float) ($p['total'] ?? 0), 2) }}</td>
+                                    <td class="py-2 text-gray-500">{{ $p['fecha'] ?? '—' }}</td>
                                 </tr>
                             @empty
-                                <tr><td colspan="5" class="py-10 text-center text-zinc-500 italic">Sin pagos recientes</td></tr>
+                                <tr><td colspan="5" class="py-10 text-center text-gray-400 italic">Sin pagos recientes</td></tr>
                             @endforelse
                         </tbody>
                     </table>
