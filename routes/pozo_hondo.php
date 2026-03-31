@@ -8,4 +8,5 @@ Route::middleware(['auth', 'role:pozo_hondo'])
     ->name('pozo_hondo.')
     ->group(function () {
         Route::get('/', [PozoHondoController::class, 'index'])->name('index');
+        Route::get('/pagos', [PozoHondoController::class, 'pagos'])->name('pagos');
     });

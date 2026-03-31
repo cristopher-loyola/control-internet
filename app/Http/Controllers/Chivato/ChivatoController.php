@@ -19,4 +19,9 @@ class ChivatoController extends Controller
             'payments' => ZonaDashboardService::recentPayments($zona, 10),
         ]);
     }
+
+    public function pagos(Request $request)
+    {
+        return view('chivato.pagos');
+    }
 }
