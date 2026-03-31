@@ -16,8 +16,13 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): View
     {
-        return view('profile.edit', [
-            'user' => $request->user(),
+        $user = $request->user();
+        $view = in_array($user->role, ['rosalito', 'pozo_hondo', 'chivato']) 
+            ? 'profile.edit-sidebar' 
+            : 'profile.edit';
+        
+        return view($view, [
+            'user' => $user,
         ]);
     }
 
