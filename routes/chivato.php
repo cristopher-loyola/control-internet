@@ -9,4 +9,5 @@ Route::middleware(['auth', 'role:chivato'])
     ->group(function () {
         Route::get('/', [ChivatoController::class, 'index'])->name('index');
         Route::get('/pagos', [ChivatoController::class, 'pagos'])->name('pagos');
+        Route::get('/corte', [ChivatoController::class, 'corte'])->name('corte');
     });

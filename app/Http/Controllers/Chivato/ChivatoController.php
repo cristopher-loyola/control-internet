@@ -24,4 +24,9 @@ class ChivatoController extends Controller
     {
         return view('chivato.pagos');
     }
+
+    public function corte(Request $request)
+    {
+        return view('chivato.corte');
+    }
 }

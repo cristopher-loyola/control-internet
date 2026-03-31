@@ -24,4 +24,9 @@ class PozoHondoController extends Controller
     {
         return view('pozo_hondo.pagos');
     }
+
+    public function corte(Request $request)
+    {
+        return view('pozo_hondo.corte');
+    }
 }

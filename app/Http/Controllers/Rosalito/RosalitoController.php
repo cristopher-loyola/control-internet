@@ -24,4 +24,9 @@ class RosalitoController extends Controller
     {
         return view('rosalito.pagos');
     }
+
+    public function corte(Request $request)
+    {
+        return view('rosalito.corte');
+    }
 }

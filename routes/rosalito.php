@@ -9,4 +9,5 @@ Route::middleware(['auth', 'role:rosalito'])
     ->group(function () {
         Route::get('/', [RosalitoController::class, 'index'])->name('index');
         Route::get('/pagos', [RosalitoController::class, 'pagos'])->name('pagos');
+        Route::get('/corte', [RosalitoController::class, 'corte'])->name('corte');
     });
