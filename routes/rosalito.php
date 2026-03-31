@@ -1,0 +1,11 @@
+<?php
+
+use App\Http\Controllers\Rosalito\RosalitoController;
+use Illuminate\Support\Facades\Route;
+
+Route::middleware(['auth', 'role:rosalito'])
+    ->prefix('rosalito')
+    ->name('rosalito.')
+    ->group(function () {
+        Route::get('/', [RosalitoController::class, 'index'])->name('index');
+    });

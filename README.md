@@ -11,6 +11,23 @@
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
 
+## Dashboards (Rosalito / Pozo Hondo / Chivato)
+
+Los dashboards de los perfiles `rosalito`, `pozo_hondo` y `chivato` están construidos con Tailwind CSS y siguen un layout responsive consistente.
+
+**Breakpoints**
+- 320px: layout de una columna (mobile).
+- 768px: ajustes de padding y distribución (tablet).
+- 1024px: tabla/gráfica en dos columnas (desktop).
+- 1440px+: grillas de tarjetas en 4 columnas (wide).
+
+**Clases base usadas**
+- Contenedor: `max-w-7xl mx-auto px-4 sm:px-6 lg:px-8`
+- Grilla de cards: `grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4`
+- Grilla de contenido: `grid grid-cols-1 lg:grid-cols-5 gap-4`
+- Tabla responsive: `overflow-x-auto` + `min-w-full`
+- Tema oscuro: `bg-black text-white` + `bg-zinc-950 border border-zinc-800`
+
 - [Simple, fast routing engine](https://laravel.com/docs/routing).
 - [Powerful dependency injection container](https://laravel.com/docs/container).
 - Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.

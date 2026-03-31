@@ -107,6 +107,8 @@
         x-model="form.cobro"
         :disabled="readOnlyMode">
         <option value="">Selecciona...</option>
+
+        
         <option value="Luz">Luz</option>
         <option value="Jaime">Jaime</option>
         <option value="Nancy">Nancy</option>

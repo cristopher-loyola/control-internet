@@ -35,6 +35,9 @@ class AuthenticatedSessionController extends Controller
             'tecnico' => route('tecnico.index', absolute: false),
             'pagos' => route('pagos.index', absolute: false),
             'contrataciones' => route('contrataciones.index', absolute: false),
+            'rosalito' => route('rosalito.index', absolute: false),
+            'pozo_hondo' => route('pozo_hondo.index', absolute: false),
+            'chivato' => route('chivato.index', absolute: false),
             default => route('dashboard', absolute: false),
         };
 

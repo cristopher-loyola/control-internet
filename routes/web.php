@@ -18,6 +18,9 @@ Route::get('/dashboard', function () {
         'tecnico' => redirect()->route('tecnico.index'),
         'pagos' => redirect()->route('pagos.index'),
         'contrataciones' => redirect()->route('contrataciones.index'),
+        'rosalito' => redirect()->route('rosalito.index'),
+        'pozo_hondo' => redirect()->route('pozo_hondo.index'),
+        'chivato' => redirect()->route('chivato.index'),
         default => abort(404),
     };
 })->middleware(['auth', 'verified'])->name('dashboard');
@@ -33,3 +36,6 @@ require __DIR__.'/admin.php';
 require __DIR__.'/tecnico.php';
 require __DIR__.'/pagos.php';
 require __DIR__.'/contrataciones.php';
+require __DIR__.'/rosalito.php';
+require __DIR__.'/pozo_hondo.php';
+require __DIR__.'/chivato.php';
