@@ -24,4 +24,14 @@ class Factura extends Model
     protected $casts = [
         'payload' => 'array',
     ];
+
+    public function usuario()
+    {
+        return $this->belongsTo(Usuario::class, 'usuario_id');
+    }
+
+    public function cajero()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }

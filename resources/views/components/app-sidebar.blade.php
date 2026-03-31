@@ -12,6 +12,7 @@
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
+        <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <style>
             [x-cloak] { display: none !important; }
         </style>
@@ -105,7 +106,15 @@
                             </svg>
                             <span class="text-sm font-medium">Corte</span>
                         </a>
-                        @endif
+
+                        <a href="{{ route(auth()->user()->role . '.historial') }}"
+                           @click="sidebarOpen = false"
+                           class="flex items-center gap-3 px-3 py-3 rounded-lg {{ request()->routeIs(auth()->user()->role . '.historial') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800' }}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span class="text-sm font-medium">Historial de Pagos</span>
+                        </a>
                     </nav>
                     <div class="p-3 border-t border-gray-800">
                         <form method="POST" action="{{ route('logout') }}">
@@ -149,7 +158,6 @@
                             <span class="text-sm font-medium">Perfil</span>
                         </a>
 
-                        @if(in_array(auth()->user()->role, ['chivato', 'pozo_hondo', 'rosalito']))
                         <a href="{{ route(auth()->user()->role . '.pagos') }}"
                            class="flex items-center gap-3 px-3 py-3 rounded-lg {{ request()->routeIs(auth()->user()->role . '.pagos') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800' }}">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,6 +172,14 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                             </svg>
                             <span class="text-sm font-medium">Corte</span>
+                        </a>
+
+                        <a href="{{ route(auth()->user()->role . '.historial') }}"
+                           class="flex items-center gap-3 px-3 py-3 rounded-lg {{ request()->routeIs(auth()->user()->role . '.historial') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800' }}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <span class="text-sm font-medium">Historial de Pagos</span>
                         </a>
                         @endif
                     </nav>
