@@ -33,7 +33,34 @@ class PozoHondoController extends Controller
 
     public function corte(Request $request)
     {
-        return view('pozo_hondo.corte');
+        // Obtener pagos exitosos (no cancelados) del perfil pozo_hondo
+        $pagos = Factura::whereNull('deleted_at')
+            ->whereNotNull('numero_servicio')
+            ->whereHas('cajero', function ($q) {
+                $q->where('role', 'pozo_hondo');
+            })
+            ->orderByDesc('created_at')
+            ->limit(100)
+            ->get(['id', 'reference_number', 'numero_servicio', 'periodo', 'total', 'payload', 'created_at']);
+
+        $items = $pagos->map(function ($f) {
+            $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+
+            return [
+                'id' => $f->id,
+                'reference_number' => $f->reference_number,
+                'numero_servicio' => $f->numero_servicio,
+                'periodo' => $f->periodo,
+                'total' => (float) $f->total,
+                'metodo' => $payload['metodo'] ?? ($payload['pago_metodo'] ?? '-'),
+                'cobro' => $payload['cobro'] ?? '-',
+                'nombre' => $payload['nombre'] ?? '-',
+                'fecha' => $f->created_at ? $f->created_at->toDateTimeString() : null,
+                'fecha_formateada' => $f->created_at ? $f->created_at->format('d/m/Y H:i') : null,
+            ];
+        });
+
+        return view('pozo_hondo.corte', ['pagos' => $items]);
     }
 
     public function historial(Request $request)
