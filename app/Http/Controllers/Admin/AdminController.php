@@ -1389,7 +1389,7 @@ class AdminController extends Controller
                 foreach ($header as $i => $h) $map[$normalize($fixEncoding($h))] = $i;
             }
 
-            $getVal = function($row, $keys) use ($map) {
+            $getVal = function ($row, $keys) use ($map) {
                 foreach ($keys as $k) {
                     if (isset($map[$k]) && isset($row[$map[$k]])) return trim($row[$map[$k]]);
                 }
@@ -1425,9 +1425,16 @@ class AdminController extends Controller
                         continue;
                     }
 
+                    $nombre = trim((string) $nombre);
+                    if ($nombre === '') {
+                        $report['skipped']++;
+                        $report['skipped_details'][] = "Línea $lineNumber: Nombre de cliente vacío para el número '$numero'";
+                        continue;
+                    }
+
                     $usuario = Usuario::where('numero_servicio', $numero)->first();
                     $updateData = [];
-                    if ($nombre) $updateData['nombre_cliente'] = $nombre;
+                    $updateData['nombre_cliente'] = $nombre;
                     if ($telefono) {
                         // Limitar teléfono a 20 caracteres para evitar SQL error
                         $updateData['telefono'] = substr($telefono, 0, 20);
@@ -1449,7 +1456,7 @@ class AdminController extends Controller
                         if ($est === 'SI' || $est === 'PAGADO' || $est === 'ACTIVADO') {
                             $updateData['estatus_servicio_id'] = 1;
                             $updateData['estado_id'] = 1;
-                        } else if ($est === 'NO' || $est === 'PENDIENTE' || $est === 'SUSPENDIDO') {
+                        } elseif ($est === 'NO' || $est === 'PENDIENTE' || $est === 'SUSPENDIDO') {
                             $updateData['estatus_servicio_id'] = 4;
                         }
                     }
@@ -1459,7 +1466,6 @@ class AdminController extends Controller
                         $report['updated']++;
                     } else {
                         $updateData['numero_servicio'] = $numero;
-                        if (!isset($updateData['nombre_cliente'])) $updateData['nombre_cliente'] = 'Importado';
                         if (!isset($updateData['domicilio'])) $updateData['domicilio'] = '-';
                         Usuario::create($updateData);
                         $report['created']++;

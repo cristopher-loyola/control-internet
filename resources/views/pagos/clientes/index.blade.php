@@ -178,7 +178,7 @@
                 </form>
 
                 <div class="flex gap-3">
-                    <button type="button" class="btn btn-success" style="background-color: #15803d; border-color: #15803d;" x-data x-on:click.prevent="$dispatch('open-modal', 'pagos-clientes-import-cartera')" title="Importar Cartera (Excel CSV)">Importar Cartera</button>
+                    {{-- <button type="button" class="btn btn-success" style="background-color: #15803d; border-color: #15803d;" x-data x-on:click.prevent="$dispatch('open-modal', 'pagos-clientes-import-cartera')" title="Importar Cartera (Excel CSV)">Importar Cartera</button> --}}
                     <button type="button" class="btn btn-primary" x-data x-on:click.prevent="$dispatch('open-modal', 'pagos-clientes-add-confirm')">Añadir</button>
                     <button type="button" class="btn btn-secondary" x-data x-on:click.prevent="$dispatch('open-modal', 'pagos-clientes-historial-buscar')">Buscar historial</button>
                     <button type="button" class="btn btn-info" x-data x-on:click.prevent="cargarNumerosDisponibles(); $dispatch('open-modal', 'pagos-clientes-numeros-disponibles')" title="Ver números de cliente disponibles">Números disponibles</button>

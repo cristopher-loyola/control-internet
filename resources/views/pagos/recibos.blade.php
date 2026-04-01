@@ -415,17 +415,17 @@
         }
          .print-sheet{position:relative;width:210mm;max-width:none;margin:0 calc(50% - 105mm);transform:none;height:297mm;background:#fff}       
         .sheet-abs{position:absolute;inset:0;z-index:20;pointer-events:none}
-        .receipt{position:relative;height:calc(33% + 20mm);border:1px solid #d1d5db;border-radius:8px;padding:2mm 6mm;background:#fff;overflow:hidden}
+        .receipt{position:relative;height:calc(33% + 20mm);border:1px solid #d1d5db;border-radius:8px;padding:4mm 6mm 2mm 6mm;background:#fff}
         .divider-line{height:0.6mm;background:#111;margin:0}
-        .client-receipt{height:calc(67% - 20mm);padding:15mm 10mm 10mm 10mm}
-        .ref-number{position:absolute;top:1mm;left:6mm;font-weight:700;font-size:11px;color:#111;z-index:30}
-        .client-receipt .ref-number{top:10mm;left:10mm;font-size:14px}
+        .client-receipt{height:calc(67% - 20mm);padding:17mm 10mm 10mm 10mm}
+        .ref-number{position:absolute;top:4mm;left:6mm;font-weight:700;font-size:11px;color:#111;z-index:30}
+        .client-receipt .ref-number{top:14mm;left:10mm;font-size:14px}
         .id-band{background:#fde047;border:1px solid #eab308;border-radius:4px;padding:2px 8px;display:inline-flex;gap:10px;margin:2px 0;width:fit-content;max-width:60%}
         .client-receipt .id-band{padding:6px 12px;margin:15px 0;font-size:16px}
         .receipt-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;font-size:13px;line-height:1.2}
         .client-receipt .receipt-grid{font-size:14px;gap:4px 24px;line-height:1.3}
         .client-receipt .receipt-grid.prepay-active{font-size:12px;gap:4px 24px;line-height:1.3}
-        .footer-note { position: absolute; bottom: 4mm; left: 0; right: 0; text-align: center; font-size: 10px; font-weight: 600; color: #4b5563; }
+        .footer-note { position: absolute; bottom: 8mm; left: 0; right: 0; text-align: center; font-size: 10px; font-weight: 600; color: #4b5563; }
         .cobro-row { padding-bottom: 2mm; }
         .receipt-head img{max-height:120px;object-fit:contain}
         .logo-center{display:inline-block;max-width:680px;width:90%}
