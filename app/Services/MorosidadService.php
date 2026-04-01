@@ -80,14 +80,20 @@ class MorosidadService
             $pagadoParcial = 0.0;
         }
         $pendiente = round(max(0.0, ($base + $recargo) - $pagadoParcial), 2);
-        $desdeMes = Carbon::createFromFormat('Y-m', $desdePeriodo)->translatedFormat('F Y');
+
+        // Si el usuario tiene adeudo manual (por importación de cartera), lo sumamos o lo usamos
+        if ($usuario->adeudo_monto > 0) {
+            $pendiente += (float) $usuario->adeudo_monto;
+        }
+
+        $desdeMes = $usuario->adeudo_descripcion ?: Carbon::createFromFormat('Y-m', $desdePeriodo)->translatedFormat('F Y');
         $hastaMes = $curStart->translatedFormat('F Y');
 
         return [
             'ok' => true,
             'numero' => $numero,
             'mensualidad' => round($mensualidad, 2),
-            'meses_adeudo' => (int) $mesesAdeudo,
+            'meses_adeudo' => (int) $mesesAdeudo + ($usuario->adeudo_monto > 0 ? 1 : 0), // Ajuste visual si hay adeudo manual
             'desde_periodo' => $desdePeriodo,
             'desde_mes_label' => $desdeMes,
             'hasta_periodo' => $periodo,
@@ -97,6 +103,8 @@ class MorosidadService
             'pagado_parcial' => round($pagadoParcial, 2),
             'pendiente' => $pendiente,
             'vencimiento' => $dueDate->toDateString(),
+            'adeudo_manual' => (float) $usuario->adeudo_monto,
+            'descripcion_manual' => $usuario->adeudo_descripcion
         ];
     }
 

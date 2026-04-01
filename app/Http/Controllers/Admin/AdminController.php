@@ -304,6 +304,8 @@ class AdminController extends Controller
                         $usuario->update([
                             'estatus_servicio_id' => 1, // Pagado
                             'estado_id' => 1,           // Activado
+                            'adeudo_monto' => 0,
+                            'adeudo_descripcion' => null,
                         ]);
                     }
                 } elseif ($request->input('numero_servicio')) {
@@ -312,6 +314,8 @@ class AdminController extends Controller
                         $usuario->update([
                             'estatus_servicio_id' => 1, // Pagado
                             'estado_id' => 1,           // Activado
+                            'adeudo_monto' => 0,
+                            'adeudo_descripcion' => null,
                         ]);
                     }
                 }
@@ -1129,7 +1133,7 @@ class AdminController extends Controller
             ->orderByDesc('captured_at')
             ->get()
             ->groupBy('numero_servicio')
-            ->map->first(); // tomar el más reciente por número
+            ->map->first();
 
         $activosNumeros = $activos->pluck('numero_servicio')->filter()->all();
 
@@ -1143,19 +1147,20 @@ class AdminController extends Controller
             ]);
         }
 
-        foreach ($eliminadosRaw as $num => $e) {
-            if (! $num || in_array($num, $activosNumeros, true)) {
-                continue;
+        if ($eliminadosRaw) {
+            foreach ($eliminadosRaw as $num => $e) {
+                if (! $num || in_array($num, $activosNumeros, true)) {
+                    continue;
+                }
+                $resultados->push((object) [
+                    'numero_servicio' => $e->numero_servicio,
+                    'nombre_cliente' => $e->nombre_cliente,
+                    'telefono' => $e->telefono,
+                    'estado' => 'Eliminado',
+                ]);
             }
-            $resultados->push((object) [
-                'numero_servicio' => $e->numero_servicio,
-                'nombre_cliente' => $e->nombre_cliente,
-                'telefono' => $e->telefono,
-                'estado' => 'Eliminado',
-            ]);
         }
 
-        // ordenar por nombre para consistencia
         $resultados = $resultados->sortBy('nombre_cliente')->values();
 
         return view('admin.clientes.historial_buscar', [
@@ -1188,41 +1193,33 @@ class AdminController extends Controller
             $first = fgets($handle);
             if ($first === false) {
                 fclose($handle);
-
                 return back()->withErrors(['file' => 'El archivo está vacío.']);
             }
             if (str_starts_with($first, "\xEF\xBB\xBF")) {
                 $first = substr($first, 3);
             }
             $fixEncoding = function ($s) {
-                if ($s === null) {
-                    return $s;
-                }
+                if ($s === null) return $s;
                 $s = (string) $s;
                 if (! mb_check_encoding($s, 'UTF-8')) {
                     $converted = @iconv('Windows-1252', 'UTF-8//IGNORE', $s);
                     if ($converted === false || $converted === '') {
                         $converted = @iconv('ISO-8859-1', 'UTF-8//IGNORE', $s);
                     }
-                    if ($converted && mb_check_encoding($converted, 'UTF-8')) {
-                        return $converted;
-                    }
+                    if ($converted && mb_check_encoding($converted, 'UTF-8')) return $converted;
                 }
-
                 return $s;
             };
             $first = $fixEncoding($first);
             $header = str_getcsv($first);
             if (! $header) {
                 fclose($handle);
-
                 return back()->withErrors(['file' => 'No se pudieron leer los encabezados (línea 1).']);
             }
 
             $normalize = function ($s) {
                 $s = strtolower(trim((string) $s));
                 $s = str_replace([' ', 'á', 'é', 'í', 'ó', 'ú', 'ñ', '#'], ['_', 'a', 'e', 'i', 'o', 'u', 'n', 'num'], $s);
-
                 return $s;
             };
             $map = [];
@@ -1230,23 +1227,8 @@ class AdminController extends Controller
                 $map[$i] = $normalize($fixEncoding($h));
             }
 
-            $hasPaqueteCol = false;
-            $paqKeys = ['paquete', 'plan', 'paquete_plan'];
-            foreach ($paqKeys as $pk) {
-                if (in_array($pk, $map)) {
-                    $hasPaqueteCol = true;
-                    break;
-                }
-            }
-
-            $hasTarifaCol = false;
-            $tarifaKeys = ['tarifa', 'costo', 'mensualidad', 'precio'];
-            foreach ($tarifaKeys as $tk) {
-                if (in_array($tk, $map)) {
-                    $hasTarifaCol = true;
-                    break;
-                }
-            }
+            $hasPaqueteCol = in_array('paquete', $map) || in_array('plan', $map);
+            $hasTarifaCol = in_array('tarifa', $map) || in_array('costo', $map);
 
             $lineNumber = 1;
             while (($row = fgetcsv($handle)) !== false) {
@@ -1254,288 +1236,276 @@ class AdminController extends Controller
                 try {
                     if (count(array_filter($row, fn ($v) => $v !== null && $v !== '')) === 0) {
                         $report['skipped']++;
-                        $report['errors'][] = "Línea $lineNumber: fila vacía";
-
                         continue;
                     }
                     $item = [];
                     foreach ($row as $i => $v) {
                         $item[$map[$i] ?? 'col_'.$i] = $fixEncoding($v);
                     }
-                    $numeroKeys = ['numero_servicio', 'numero', 'num_cliente', 'no_cliente', 'n_cliente', 'nro', 'nro_cliente', 'numero_de_servicio', 'no_de_servicio'];
-                    $nombreKeys = ['nombre_cliente', 'nombre', 'cliente', 'nombre_del_cliente', 'nombre_de_cliente'];
-                    $telKeys = ['telefono', 'tel', 'numero_telefono', 'numero_de_telefono', 'celular', 'cel'];
-                    $domicilioKeys = ['domicilio', 'direccion', 'direccion_1', 'direccion1', 'calle'];
-                    $paqKeys = ['paquete', 'plan', 'paquete_plan'];
-                    $tarifaKeys = ['tarifa', 'costo', 'mensualidad', 'precio'];
-                    $zonaKeys = ['zona', 'sector', 'zona_servicio'];
-                    $ipKeys = ['ip', 'ip_servicio', 'direccion_ip'];
-                    $macKeys = ['mac', 'mac_address', 'direccion_mac'];
+                    
                     $get = function ($arr, $keys) {
                         foreach ($keys as $k) {
-                            if (array_key_exists($k, $arr) && $arr[$k] !== '' && $arr[$k] !== null) {
-                                return $arr[$k];
-                            }
+                            if (array_key_exists($k, $arr) && $arr[$k] !== '' && $arr[$k] !== null) return $arr[$k];
                         }
-
                         return null;
                     };
-                    $numero = $get($item, $numeroKeys);
-                    $nombre = $get($item, $nombreKeys);
-                    $telefono = $get($item, $telKeys);
-                    $domicilio = $get($item, $domicilioKeys);
-                    $paquete = $get($item, $paqKeys);
-                    $tarifaRaw = $get($item, $tarifaKeys);
 
-                    // Si no hay tarifaRaw pero paquete tiene un número, lo usamos como tarifa
-                    if ($tarifaRaw === null && $paquete !== null) {
-                        $p_norm = str_replace(['$', ' ', ','], ['', '', '.'], (string) $paquete);
-                        if (is_numeric($p_norm)) {
-                            $tarifaRaw = $paquete;
-                        }
-                    }
-
-                    $zonaVal = $get($item, $zonaKeys);
-                    $ipVal = $get($item, $ipKeys);
-                    $macVal = $get($item, $macKeys);
+                    $numero = $get($item, ['numero_servicio', 'numero', 'num_cliente', 'no_cliente', 'n_cliente', 'nro', 'nro_cliente', 'numero_de_servicio', 'no_de_servicio']);
+                    $nombre = $get($item, ['nombre_cliente', 'nombre', 'cliente', 'nombre_del_cliente', 'nombre_de_cliente']);
+                    $telefono = $get($item, ['telefono', 'tel', 'numero_telefono', 'numero_de_telefono', 'celular', 'cel']);
+                    $domicilio = $get($item, ['domicilio', 'direccion', 'direccion_1', 'direccion1', 'calle']);
+                    $paquete = $get($item, ['paquete', 'plan', 'paquete_plan']);
+                    $tarifaRaw = $get($item, ['tarifa', 'costo', 'mensualidad', 'precio']);
+                    $zonaVal = $get($item, ['zona', 'sector', 'zona_servicio']);
+                    $ipVal = $get($item, ['ip', 'ip_servicio', 'direccion_ip']);
+                    $macVal = $get($item, ['mac', 'mac_address', 'direccion_mac']);
 
                     if ($numero === null || $nombre === null) {
                         $report['skipped']++;
                         $report['errors'][] = "Línea $lineNumber: falta numero_servicio o nombre_cliente";
-
                         continue;
                     }
 
                     $numero = preg_replace('/[^0-9]/', '', (string) $numero);
                     if ($numero === '') {
                         $report['skipped']++;
-                        $report['errors'][] = "Línea $lineNumber: numero_servicio inválido";
-
                         continue;
                     }
 
-                    $nombreVal = trim((string) $nombre);
-                    if ($nombreVal === '') {
-                        $report['skipped']++;
-                        $report['errors'][] = "Línea $lineNumber: el nombre del cliente está vacío";
-
-                        continue;
-                    }
-                    if (mb_strlen($nombreVal, 'UTF-8') > 150) {
-                        $report['skipped']++;
-                        $report['errors'][] = "Línea $lineNumber: el nombre del cliente supera 150 caracteres";
-
-                        continue;
-                    }
-
-                    $allowNullPhone = $request->boolean('telefono_nullable', true);
-                    $telValue = null;
-                    if ($telefono !== null) {
-                        $t = preg_replace('/\s+/', '', trim((string) $telefono));
-                        if ($t !== '') {
-                            $telValue = $t;
-                        } elseif (! $allowNullPhone) {
-                            $telValue = '';
-                        }
-                    }
-                    if ($telValue !== null && strlen($telValue) > 20) {
-                        $report['skipped']++;
-                        $report['errors'][] = "Línea $lineNumber: teléfono demasiado largo (máximo 20 caracteres)";
-
-                        continue;
-                    }
-                    $paqValue = '$300';
-                    if ($paquete !== null) {
-                        $p = trim((string) $paquete);
-                        if ($p !== '') {
-                            if (mb_strlen($p, 'UTF-8') > 100) {
-                                $report['skipped']++;
-                                $report['errors'][] = "Línea $lineNumber: paquete demasiado largo (máximo 100 caracteres)";
-
-                                continue;
-                            }
-                            $paqValue = $p;
-                        }
-                    }
-                    // Si el paquete solo es un número, le ponemos el signo de $ para que se vea bien
-                    if (is_numeric(str_replace(['$', ' ', ','], ['', '', '.'], $paqValue))) {
-                        $paqValue = '$'.number_format((float) str_replace(['$', ' ', ','], ['', '', '.'], $paqValue), 2);
-                    }
-                    $zonaValue = null;
-                    if ($zonaVal !== null) {
-                        $z = trim((string) $zonaVal);
-                        if ($z !== '') {
-                            if (mb_strlen($z, 'UTF-8') > 100) {
-                                $report['skipped']++;
-                                $report['errors'][] = "Línea $lineNumber: zona demasiado larga (máximo 100 caracteres)";
-
-                                continue;
-                            }
-                            $zonaValue = $z;
-                        }
-                    }
                     $tarifaValue = 300;
                     if ($tarifaRaw !== null) {
-                        $tr = trim((string) $tarifaRaw);
-                        if ($tr !== '') {
-                            $norm = str_replace(['$', ' ', ','], ['', '', '.'], $tr);
-                            if (is_numeric($norm)) {
-                                $t = round((float) $norm, 2);
-                                if ($t < 0) {
-                                    $report['skipped']++;
-                                    $report['errors'][] = "Línea $lineNumber: tarifa inválida (negativa)";
-
-                                    continue;
-                                }
-                                $tarifaValue = $t;
-                            } else {
-                                $report['skipped']++;
-                                $report['errors'][] = "Línea $lineNumber: tarifa inválida";
-
-                                continue;
-                            }
-                        }
+                        $norm = str_replace(['$', ' ', ','], ['', '', '.'], (string)$tarifaRaw);
+                        if (is_numeric($norm)) $tarifaValue = round((float)$norm, 2);
                     }
-                    $ipValue = null;
-                    if ($ipVal !== null) {
-                        $i = trim((string) $ipVal);
-                        if ($i !== '') {
-                            if (mb_strlen($i, 'UTF-8') > 45) {
-                                $report['skipped']++;
-                                $report['errors'][] = "Línea $lineNumber: IP demasiado larga (máximo 45 caracteres)";
 
-                                continue;
-                            }
-                            $ipValue = $i;
-                        }
-                    }
-                    $macValue = null;
-                    if ($macVal !== null) {
-                        $m = strtoupper(trim((string) $macVal));
-                        $m = str_replace(['-', ' '], ':', $m);
-                        $m = preg_replace('/:+/', ':', $m);
-                        if ($m !== '') {
-                            if (mb_strlen($m, 'UTF-8') > 20) {
-                                $report['skipped']++;
-                                $report['errors'][] = "Línea $lineNumber: MAC demasiado larga (máximo 20 caracteres)";
-
-                                continue;
-                            }
-                            $macValue = $m;
-                        }
-                    }
-                    $defText = function ($v) {
-                        $s = is_null($v) ? null : trim((string) $v);
-
-                        return ($s === null || $s === '') ? '-' : $s;
-                    };
-
-                    $defText = function ($v) {
-                        $s = is_null($v) ? null : trim((string) $v);
-
-                        return ($s === null || $s === '') ? '-' : $s;
-                    };
                     $tecByNumero = function ($n) {
                         $num = (int) $n;
-                        if ($num >= 6000 || ($num >= 5401 && $num <= 5499)) {
-                            return 'fod';
-                        }
-                        if (($num >= 4800 && $num <= 5400) || ($num >= 5500 && $num <= 5999)) {
-                            return 'foi';
-                        }
-                        if ($num >= 1000 && $num <= 4200) {
-                            return 'ina';
-                        }
-
+                        if ($num >= 6000 || ($num >= 5401 && $num <= 5499)) return 'fod';
+                        if (($num >= 4800 && $num <= 5400) || ($num >= 5500 && $num <= 5999)) return 'foi';
+                        if ($num >= 1000 && $num <= 4200) return 'ina';
                         return null;
                     };
+
                     $payload = [
-                        'nombre_cliente' => $nombreVal,
-                        'telefono' => $defText($telValue),
-                        'paquete' => $defText($paqValue),
-                        // tarifa es numérica: si no viene, queda null
+                        'nombre_cliente' => trim((string)$nombre),
+                        'telefono' => trim((string)$telefono) ?: '-',
+                        'paquete' => trim((string)$paquete) ?: '$300',
                         'tarifa' => $tarifaValue,
-                        'zona' => $defText($zonaValue),
-                        'ip' => $defText($ipValue),
-                        'mac' => $defText($macValue),
+                        'zona' => trim((string)$zonaVal) ?: '-',
+                        'ip' => trim((string)$ipVal) ?: '-',
+                        'mac' => trim((string)$macVal) ?: '-',
                         'tecnologia' => $tecByNumero($numero) ?? '-',
                     ];
 
                     $existing = Usuario::where('numero_servicio', $numero)->first();
                     if ($existing) {
-                        // Solo actualizamos campos si vienen presentes en el archivo.
-                        $update = [];
-                        if ($telefono !== null) {
-                            $update['telefono'] = $defText($telValue);
-                        }
-                        if ($hasPaqueteCol || $hasTarifaCol) {
-                            $update['paquete'] = $defText($paqValue);
-                            $update['tarifa'] = $tarifaValue;
-                        }
-                        if ($zonaVal !== null) {
-                            $update['zona'] = $defText($zonaValue);
-                        }
-                        if ($ipVal !== null) {
-                            $update['ip'] = $defText($ipValue);
-                        }
-                        if ($macVal !== null) {
-                            $update['mac'] = $defText($macValue);
-                        }
-                        if ($nombre !== null) {
-                            $update['nombre_cliente'] = $nombreVal;
-                        }
-                        if ($domicilio !== null) {
-                            $d = trim((string) $domicilio);
-                            $update['domicilio'] = ($d === '') ? '-' : $d;
-                        }
-                        if (! empty($update)) {
-                            $existing->update($update);
-                            $report['updated']++;
-                        } else {
-                            $report['skipped']++;
-                        }
+                        $existing->update($payload);
+                        $report['updated']++;
                     } else {
-                        // Para nuevas filas, domicilio es obligatorio: usa '-' si no viene o viene vacío
-                        $domValue = $domicilio !== null ? trim((string) $domicilio) : null;
-                        $domValue = ($domValue === null || $domValue === '') ? '-' : $domValue;
-                        Usuario::create(array_merge([
-                            'numero_servicio' => $numero,
-                            'domicilio' => $domValue,
-                        ], $payload));
+                        Usuario::create(array_merge(['numero_servicio' => $numero, 'domicilio' => trim((string)$domicilio) ?: '-'], $payload));
                         $report['created']++;
                     }
                 } catch (\Throwable $e) {
                     $report['skipped']++;
-                    $msg = $e->getMessage();
-                    $msgLower = strtolower($msg);
-                    if (str_contains($msgLower, 'data too long for column') && str_contains($msgLower, 'telefono')) {
-                        $msg = 'teléfono demasiado largo (máximo 20 caracteres)';
-                    } elseif (str_contains($msgLower, 'data too long for column') && str_contains($msgLower, 'paquete')) {
-                        $msg = 'paquete demasiado largo (máximo 100 caracteres)';
-                    } elseif (str_contains($msgLower, 'data too long for column') && str_contains($msgLower, 'zona')) {
-                        $msg = 'zona demasiado larga (máximo 100 caracteres)';
-                    } elseif (str_contains($msgLower, 'data too long for column') && str_contains($msgLower, 'ip')) {
-                        $msg = 'IP demasiado larga (máximo 45 caracteres)';
-                    } elseif (str_contains($msgLower, 'data too long for column') && str_contains($msgLower, 'mac')) {
-                        $msg = 'MAC demasiado larga (máximo 20 caracteres)';
-                    } elseif (str_contains($msgLower, 'incorrect string value')) {
-                        $msg = 'caracteres no válidos (codificación) en algún campo';
-                    } elseif (str_contains($msgLower, 'duplicate entry') && str_contains($msgLower, 'numero_servicio')) {
-                        $msg = 'número de servicio duplicado';
-                    }
-                    $report['errors'][] = "Línea $lineNumber: $msg";
+                    $report['errors'][] = "Línea $lineNumber: " . $e->getMessage();
                 }
             }
             fclose($handle);
         } catch (\Throwable $e) {
-            return back()->withErrors(['file' => 'Error procesando el archivo: '.$e->getMessage()]);
+            return back()->withErrors(['file' => 'Error: '.$e->getMessage()]);
         }
 
-        $summary = "Importación: {$report['created']} creados, {$report['updated']} actualizados, {$report['skipped']} omitidos";
+        return redirect()->route('admin.clientes.index')->with('status', "Importación: {$report['created']} creados, {$report['updated']} actualizados")->with('import_report', $report);
+    }
 
-        return redirect()
-            ->route('admin.clientes.index')
-            ->with('status', $summary)
-            ->with('import_report', $report);
+    private function logStructuredError($message, $severity = 'error', $context = [])
+    {
+        $logEntry = [
+            'timestamp' => now()->toIso8601String(),
+            'severity' => $severity,
+            'message' => $message,
+            'context' => $context,
+        ];
+
+        // Ensure logs directory exists
+        $logPath = storage_path('logs/import_cartera_structured.log');
+        @file_put_contents($logPath, json_encode($logEntry, JSON_UNESCAPED_UNICODE) . PHP_EOL, FILE_APPEND);
+    }
+
+    public function clientesImportCartera(Request $request)
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:csv,txt'],
+        ]);
+        $file = $request->file('file');
+        $path = $file->getRealPath();
+
+        $report = [
+            'created' => 0,
+            'updated' => 0,
+            'skipped' => 0,
+            'skipped_details' => [],
+            'errors' => [],
+        ];
+
+        try {
+            $handle = fopen($path, 'r');
+            if ($handle === false) {
+                $this->logStructuredError('No se pudo abrir el archivo de importación', 'error', ['path' => $path]);
+                return back()->withErrors(['file' => 'No se pudo abrir el archivo.']);
+            }
+
+            // Skip BOM if present
+            $first = fgets($handle);
+            if ($first === false) {
+                fclose($handle);
+                $this->logStructuredError('El archivo de importación está vacío', 'warning', ['path' => $path]);
+                return back()->withErrors(['file' => 'El archivo está vacío.']);
+            }
+            if (str_starts_with($first, "\xEF\xBB\xBF")) $first = substr($first, 3);
+
+            $fixEncoding = function ($s) {
+                if ($s === null) return $s;
+                $s = (string) $s;
+                if (!mb_check_encoding($s, 'UTF-8')) {
+                    $converted = @iconv('Windows-1252', 'UTF-8//IGNORE', $s);
+                    if ($converted === false || $converted === '') $converted = @iconv('ISO-8859-1', 'UTF-8//IGNORE', $s);
+                    if ($converted && mb_check_encoding($converted, 'UTF-8')) return $converted;
+                }
+                return $s;
+            };
+
+            $first = $fixEncoding($first);
+            $header = str_getcsv($first);
+            
+            $normalize = function ($s) {
+                $s = strtolower(trim((string) $s));
+                $s = str_replace([' ', 'á', 'é', 'í', 'ó', 'ú', 'ñ', '#'], ['_', 'a', 'e', 'i', 'o', 'u', 'n', 'num'], $s);
+                return $s;
+            };
+
+            $map = [];
+            if ($header) {
+                foreach ($header as $i => $h) $map[$normalize($fixEncoding($h))] = $i;
+            }
+
+            $getVal = function($row, $keys) use ($map) {
+                foreach ($keys as $k) {
+                    if (isset($map[$k]) && isset($row[$map[$k]])) return trim($row[$map[$k]]);
+                }
+                return null;
+            };
+
+            $lineNumber = 1;
+            while (($row = fgetcsv($handle)) !== false) {
+                $lineNumber++;
+                
+                try {
+                    $numero = $getVal($row, ['numero_de_cliente', 'numero_servicio', 'numero', 'num_cliente']);
+                    $nombre = $getVal($row, ['nombre', 'nombre_cliente', 'cliente']);
+                    $telefono = $getVal($row, ['numero_telefonico', 'telefono', 'tel', 'celular']);
+                    $megas = $getVal($row, ['megas', 'mbps', 'velocidad']);
+                    $tarifa = $getVal($row, ['tarifa', 'costo', 'paquete', 'mensualidad']);
+                    $estado = $getVal($row, ['estado', 'estatus']);
+                    $descripcionAdeudo = $getVal($row, ['descripcion', 'observaciones', 'nota']);
+                    $montoAdeudo = $getVal($row, ['cantidad', 'monto_adeudo', 'adeudo']);
+
+                    if (!$numero) $numero = trim($row[0] ?? '');
+                    if (!$nombre) $nombre = trim($row[1] ?? '');
+                    if (!$telefono) $telefono = trim($row[2] ?? '');
+                    if (!$megas) $megas = trim($row[3] ?? '');
+                    if (!$tarifa) $tarifa = trim($row[4] ?? '');
+                    if (!$descripcionAdeudo) $descripcionAdeudo = trim($row[5] ?? '');
+                    if (!$montoAdeudo) $montoAdeudo = trim($row[6] ?? '');
+                    if (!$estado) $estado = trim($row[10] ?? ''); 
+
+                    if (empty($numero) || !is_numeric($numero)) {
+                        $report['skipped']++;
+                        $report['skipped_details'][] = "Línea $lineNumber: Número de cliente inválido o vacío ('$numero')";
+                        continue;
+                    }
+
+                    $usuario = Usuario::where('numero_servicio', $numero)->first();
+                    $updateData = [];
+                    if ($nombre) $updateData['nombre_cliente'] = $nombre;
+                    if ($telefono) {
+                        // Limitar teléfono a 20 caracteres para evitar SQL error
+                        $updateData['telefono'] = substr($telefono, 0, 20);
+                    }
+                    if ($megas && is_numeric($megas)) $updateData['megas'] = (int)$megas;
+                    if ($tarifa) {
+                        $t = str_replace(['$', ' ', ','], ['', '', ''], $tarifa);
+                        if (is_numeric($t)) $updateData['tarifa'] = (float)$t;
+                    }
+
+                    if ($descripcionAdeudo !== null) $updateData['adeudo_descripcion'] = $descripcionAdeudo;
+                    if ($montoAdeudo !== null) {
+                        $ma = str_replace(['$', ' ', ','], ['', '', ''], $montoAdeudo);
+                        if (is_numeric($ma)) $updateData['adeudo_monto'] = (float)$ma;
+                    }
+
+                    if ($estado) {
+                        $est = strtoupper($estado);
+                        if ($est === 'SI' || $est === 'PAGADO' || $est === 'ACTIVADO') {
+                            $updateData['estatus_servicio_id'] = 1;
+                            $updateData['estado_id'] = 1;
+                        } else if ($est === 'NO' || $est === 'PENDIENTE' || $est === 'SUSPENDIDO') {
+                            $updateData['estatus_servicio_id'] = 4;
+                        }
+                    }
+
+                    if ($usuario) {
+                        $usuario->update($updateData);
+                        $report['updated']++;
+                    } else {
+                        $updateData['numero_servicio'] = $numero;
+                        if (!isset($updateData['nombre_cliente'])) $updateData['nombre_cliente'] = 'Importado';
+                        if (!isset($updateData['domicilio'])) $updateData['domicilio'] = '-';
+                        Usuario::create($updateData);
+                        $report['created']++;
+                    }
+                } catch (\Throwable $e) {
+                    $msg = $e->getMessage();
+                    // Limpiar mensajes SQL comunes
+                    if (str_contains($msg, 'Data too long for column \'telefono\'')) {
+                        $msg = "El número telefónico es demasiado largo (máx 20 caracteres).";
+                    } elseif (str_contains($msg, 'Data too long for column \'nombre_cliente\'')) {
+                        $msg = "El nombre del cliente es demasiado largo.";
+                    } elseif (str_contains($msg, 'doesn\'t have a default value')) {
+                        $col = explode("'", $msg)[1] ?? 'desconocida';
+                        $msg = "Falta el campo obligatorio: $col";
+                    }
+
+                    $errorInfo = [
+                        'type' => get_class($e),
+                        'line' => $e->getLine(),
+                        'file' => $e->getFile(),
+                        'name' => $e->getMessage(),
+                        'stack' => $e->getTraceAsString(),
+                        'variables' => [
+                            'lineNumber' => $lineNumber,
+                            'numero_servicio' => $numero ?? 'N/A',
+                            'nombre_cliente' => $nombre ?? 'N/A',
+                            'row_data' => $row
+                        ]
+                    ];
+                    $this->logStructuredError("Error procesando línea $lineNumber (Cliente $numero)", 'error', $errorInfo);
+                    $report['errors'][] = "Línea $lineNumber (Cliente $numero): " . $msg;
+                }
+            }
+            fclose($handle);
+        } catch (\Throwable $e) {
+            $errorInfo = [
+                'type' => get_class($e),
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'name' => $e->getMessage(),
+                'stack' => $e->getTraceAsString()
+            ];
+            $this->logStructuredError('Error general en importación de cartera', 'error', $errorInfo);
+            $report['errors'][] = "Error general: " . $e->getMessage();
+        }
+
+        return back()->with('import_report', $report);
     }
 }

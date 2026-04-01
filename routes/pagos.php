@@ -37,6 +37,7 @@ Route::middleware(['auth', 'role:pagos'])
 
         // Ruta de clientes (solo lectura y edición para pagos, sin crear ni eliminar)
         Route::get('/clientes', [PagosController::class, 'clientes'])->name('clientes.index');
+        Route::post('/clientes/import-cartera', [PagosController::class, 'clientesImportCartera'])->name('clientes.import-cartera');
         Route::post('/clientes/editar', [PagosController::class, 'clientesEditStore'])->name('clientes.edit');
         Route::get('/clientes/historial/buscar', [PagosController::class, 'clientesHistorialBuscar'])->name('clientes.historial.buscar');
         Route::get('/clientes/numeros-disponibles', [PagosController::class, 'numerosDisponibles'])->name('clientes.numeros-disponibles');

@@ -487,6 +487,8 @@ class PagosController extends Controller
                         $usuario->update([
                             'estatus_servicio_id' => 1, // Pagado
                             'estado_id' => 1,           // Activado
+                            'adeudo_monto' => 0,
+                            'adeudo_descripcion' => null,
                         ]);
                     }
                 } elseif ($request->input('numero_servicio')) {
@@ -495,6 +497,8 @@ class PagosController extends Controller
                         $usuario->update([
                             'estatus_servicio_id' => 1, // Pagado
                             'estado_id' => 1,           // Activado
+                            'adeudo_monto' => 0,
+                            'adeudo_descripcion' => null,
                         ]);
                     }
                 }
@@ -1033,5 +1037,196 @@ thead th{ background:#2e7d32; color:#fff; }
     public function destroy(int $id)
     {
         return response('Pagos destroy '.$id);
+    }
+
+    private function logStructuredError($message, $severity = 'error', $context = [])
+    {
+        $logEntry = [
+            'timestamp' => now()->toIso8601String(),
+            'severity' => $severity,
+            'message' => $message,
+            'context' => $context,
+        ];
+
+        // Ensure logs directory exists
+        $logPath = storage_path('logs/import_cartera_structured.log');
+        @file_put_contents($logPath, json_encode($logEntry, JSON_UNESCAPED_UNICODE) . PHP_EOL, FILE_APPEND);
+    }
+
+    public function clientesImportCartera(Request $request)
+    {
+        $request->validate([
+            'file' => ['required', 'file', 'mimes:csv,txt'],
+        ]);
+        $file = $request->file('file');
+        $path = $file->getRealPath();
+
+        $report = [
+            'created' => 0,
+            'updated' => 0,
+            'skipped' => 0,
+            'skipped_details' => [],
+            'errors' => [],
+        ];
+
+        try {
+            $handle = fopen($path, 'r');
+            if ($handle === false) {
+                $this->logStructuredError('No se pudo abrir el archivo de importación', 'error', ['path' => $path]);
+                return back()->withErrors(['file' => 'No se pudo abrir el archivo.']);
+            }
+
+            // Skip BOM if present
+            $first = fgets($handle);
+            if ($first === false) {
+                fclose($handle);
+                $this->logStructuredError('El archivo de importación está vacío', 'warning', ['path' => $path]);
+                return back()->withErrors(['file' => 'El archivo está vacío.']);
+            }
+            if (str_starts_with($first, "\xEF\xBB\xBF")) $first = substr($first, 3);
+
+            $fixEncoding = function ($s) {
+                if ($s === null) return $s;
+                $s = (string) $s;
+                if (!mb_check_encoding($s, 'UTF-8')) {
+                    $converted = @iconv('Windows-1252', 'UTF-8//IGNORE', $s);
+                    if ($converted === false || $converted === '') $converted = @iconv('ISO-8859-1', 'UTF-8//IGNORE', $s);
+                    if ($converted && mb_check_encoding($converted, 'UTF-8')) return $converted;
+                }
+                return $s;
+            };
+
+            $first = $fixEncoding($first);
+            $header = str_getcsv($first);
+            
+            $normalize = function ($s) {
+                $s = strtolower(trim((string) $s));
+                $s = str_replace([' ', 'á', 'é', 'í', 'ó', 'ú', 'ñ', '#'], ['_', 'a', 'e', 'i', 'o', 'u', 'n', 'num'], $s);
+                return $s;
+            };
+
+            $map = [];
+            if ($header) {
+                foreach ($header as $i => $h) $map[$normalize($fixEncoding($h))] = $i;
+            }
+
+            $getVal = function($row, $keys) use ($map) {
+                foreach ($keys as $k) {
+                    if (isset($map[$k]) && isset($row[$map[$k]])) return trim($row[$map[$k]]);
+                }
+                return null;
+            };
+
+            $lineNumber = 1;
+            while (($row = fgetcsv($handle)) !== false) {
+                $lineNumber++;
+                
+                try {
+                    $numero = $getVal($row, ['numero_de_cliente', 'numero_servicio', 'numero', 'num_cliente']);
+                    $nombre = $getVal($row, ['nombre', 'nombre_cliente', 'cliente']);
+                    $telefono = $getVal($row, ['numero_telefonico', 'telefono', 'tel', 'celular']);
+                    $megas = $getVal($row, ['megas', 'mbps', 'velocidad']);
+                    $tarifa = $getVal($row, ['tarifa', 'costo', 'paquete', 'mensualidad']);
+                    $estado = $getVal($row, ['estado', 'estatus']);
+                    $descripcionAdeudo = $getVal($row, ['descripcion', 'observaciones', 'nota']);
+                    $montoAdeudo = $getVal($row, ['cantidad', 'monto_adeudo', 'adeudo']);
+
+                    if (!$numero) $numero = trim($row[0] ?? '');
+                    if (!$nombre) $nombre = trim($row[1] ?? '');
+                    if (!$telefono) $telefono = trim($row[2] ?? '');
+                    if (!$megas) $megas = trim($row[3] ?? '');
+                    if (!$tarifa) $tarifa = trim($row[4] ?? '');
+                    if (!$descripcionAdeudo) $descripcionAdeudo = trim($row[5] ?? '');
+                    if (!$montoAdeudo) $montoAdeudo = trim($row[6] ?? '');
+                    if (!$estado) $estado = trim($row[10] ?? ''); 
+
+                    if (empty($numero) || !is_numeric($numero)) {
+                        $report['skipped']++;
+                        $report['skipped_details'][] = "Línea $lineNumber: Número de cliente inválido o vacío ('$numero')";
+                        continue;
+                    }
+
+                    $usuario = Usuario::where('numero_servicio', $numero)->first();
+                    $updateData = [];
+                    if ($nombre) $updateData['nombre_cliente'] = $nombre;
+                    if ($telefono) {
+                        // Limitar teléfono a 20 caracteres para evitar SQL error
+                        $updateData['telefono'] = substr($telefono, 0, 20);
+                    }
+                    if ($megas && is_numeric($megas)) $updateData['megas'] = (int)$megas;
+                    if ($tarifa) {
+                        $t = str_replace(['$', ' ', ','], ['', '', ''], $tarifa);
+                        if (is_numeric($t)) $updateData['tarifa'] = (float)$t;
+                    }
+
+                    if ($descripcionAdeudo !== null) $updateData['adeudo_descripcion'] = $descripcionAdeudo;
+                    if ($montoAdeudo !== null) {
+                        $ma = str_replace(['$', ' ', ','], ['', '', ''], $montoAdeudo);
+                        if (is_numeric($ma)) $updateData['adeudo_monto'] = (float)$ma;
+                    }
+
+                    if ($estado) {
+                        $est = strtoupper($estado);
+                        if ($est === 'SI' || $est === 'PAGADO' || $est === 'ACTIVADO') {
+                            $updateData['estatus_servicio_id'] = 1;
+                            $updateData['estado_id'] = 1;
+                        } else if ($est === 'NO' || $est === 'PENDIENTE' || $est === 'SUSPENDIDO') {
+                            $updateData['estatus_servicio_id'] = 4;
+                        }
+                    }
+
+                    if ($usuario) {
+                        $usuario->update($updateData);
+                        $report['updated']++;
+                    } else {
+                        $updateData['numero_servicio'] = $numero;
+                        if (!isset($updateData['nombre_cliente'])) $updateData['nombre_cliente'] = 'Importado';
+                        if (!isset($updateData['domicilio'])) $updateData['domicilio'] = '-';
+                        Usuario::create($updateData);
+                        $report['created']++;
+                    }
+                } catch (\Throwable $e) {
+                    $msg = $e->getMessage();
+                    // Limpiar mensajes SQL comunes
+                    if (str_contains($msg, 'Data too long for column \'telefono\'')) {
+                        $msg = "El número telefónico es demasiado largo (máx 20 caracteres).";
+                    } elseif (str_contains($msg, 'Data too long for column \'nombre_cliente\'')) {
+                        $msg = "El nombre del cliente es demasiado largo.";
+                    } elseif (str_contains($msg, 'doesn\'t have a default value')) {
+                        $col = explode("'", $msg)[1] ?? 'desconocida';
+                        $msg = "Falta el campo obligatorio: $col";
+                    }
+
+                    $errorInfo = [
+                        'type' => get_class($e),
+                        'line' => $e->getLine(),
+                        'file' => $e->getFile(),
+                        'name' => $e->getMessage(),
+                        'stack' => $e->getTraceAsString(),
+                        'variables' => [
+                            'lineNumber' => $lineNumber,
+                            'numero_servicio' => $numero ?? 'N/A',
+                            'nombre_cliente' => $nombre ?? 'N/A',
+                            'row_data' => $row
+                        ]
+                    ];
+                    $this->logStructuredError("Error procesando línea $lineNumber (Cliente $numero)", 'error', $errorInfo);
+                    $report['errors'][] = "Línea $lineNumber (Cliente $numero): " . $msg;
+                }
+            }
+            fclose($handle);
+        } catch (\Throwable $e) {
+            $errorInfo = [
+                'type' => get_class($e),
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+                'name' => $e->getMessage(),
+                'stack' => $e->getTraceAsString()
+            ];
+            $this->logStructuredError('Error general en importación de cartera', 'error', $errorInfo);
+            $report['errors'][] = "Error general: " . $e->getMessage();
+        }
+
+        return back()->with('import_report', $report);
     }
 }

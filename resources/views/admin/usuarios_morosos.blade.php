@@ -13,12 +13,16 @@
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 rounded shadow p-4">
-                <form method="get" class="flex items-end gap-3 mb-3">
+                <form method="get" class="flex flex-wrap items-end gap-3 mb-3">
                     <div>
-                        <label class="block text-xs text-gray-600">Mes</label>
-                        <input type="month" name="month" value="{{ $month }}" class="rounded border-gray-300 text-sm" />
+                        <label class="block text-xs text-gray-600 font-bold uppercase mb-1">Buscar cliente</label>
+                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Número o nombre..." class="rounded border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500 w-64" />
                     </div>
-                    <button class="btn btn-primary">Filtrar</button>
+                    <div>
+                        <label class="block text-xs text-gray-600 font-bold uppercase mb-1">Mes</label>
+                        <input type="month" name="month" value="{{ $month }}" class="rounded border-gray-300 text-sm focus:ring-blue-500 focus:border-blue-500" />
+                    </div>
+                    <button class="btn btn-primary px-6">Filtrar</button>
                     <div class="ml-auto flex gap-2">
                         <a href="{{ route($routePrefix . '.index') }}" class="btn btn-primary">Volver a inicio</a>
                     </div>

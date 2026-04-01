@@ -88,9 +88,19 @@ class DashboardController extends Controller
     public function morososIndex(Request $request)
     {
         $month = $request->query('month', now()->format('Y-m'));
+        $search = $request->query('search');
         $onlyRecargo = (bool) $request->boolean('only_recargo', false);
         $data = $this->computeMorosos($month);
         $items = collect($data['items']);
+
+        if ($search) {
+            $search = strtolower($search);
+            $items = $items->filter(function ($r) use ($search) {
+                return str_contains(strtolower((string) ($r['numero'] ?? '')), $search) ||
+                       str_contains(strtolower((string) ($r['nombre'] ?? '')), $search);
+            });
+        }
+
         if ($onlyRecargo) {
             $items = $items->filter(fn ($r) => ($r['recargo'] ?? 0) > 0);
         }
@@ -120,9 +130,19 @@ class DashboardController extends Controller
     {
         $format = strtolower((string) $request->query('format', 'excel'));
         $month = $request->query('month', now()->format('Y-m'));
+        $search = $request->query('search');
         $onlyRecargo = (bool) $request->boolean('only_recargo', false);
         $data = $this->computeMorosos($month);
         $items = collect($data['items']);
+
+        if ($search) {
+            $search = strtolower($search);
+            $items = $items->filter(function ($r) use ($search) {
+                return str_contains(strtolower((string) ($r['numero'] ?? '')), $search) ||
+                       str_contains(strtolower((string) ($r['nombre'] ?? '')), $search);
+            });
+        }
+
         if ($onlyRecargo) {
             $items = $items->filter(fn ($r) => ($r['recargo'] ?? 0) > 0);
         }
@@ -696,7 +716,7 @@ class DashboardController extends Controller
 
     private function computeMorosos(string $periodo): array
     {
-        $usuarios = Usuario::query()->get(['numero_servicio', 'nombre_cliente', 'tarifa']);
+        $usuarios = Usuario::query()->get(['numero_servicio', 'nombre_cliente', 'tarifa', 'adeudo_descripcion', 'adeudo_monto']);
         $pagados = Factura::whereNull('deleted_at')
             ->where('periodo', $periodo)
             ->pluck('numero_servicio')
@@ -787,7 +807,14 @@ class DashboardController extends Controller
                 $recargoUnaVez = max($recargoUnaVez, (float) $mora[$num]);
             }
             $pendiente = round(($mensualidad * $mesesAdeudo) + $recargoUnaVez, 2);
-            if ($pendiente <= 0 || $mesesAdeudo <= 0) {
+
+            // Integrar adeudo manual (importado)
+            if ($u->adeudo_monto > 0) {
+                $pendiente += (float) $u->adeudo_monto;
+                $mesesAdeudo += 1; // Ajuste visual
+            }
+
+            if ($pendiente <= 0 || ($mesesAdeudo <= 0 && $u->adeudo_monto <= 0)) {
                 continue;
             }
 
@@ -801,7 +828,7 @@ class DashboardController extends Controller
                 'vencimiento' => $dueDate->toDateString(),
                 'dias_retraso' => $diasRetraso,
                 'meses_adeudo' => $mesesAdeudo,
-                'desde_periodo' => $desdePeriodo,
+                'desde_periodo' => $u->adeudo_descripcion ?: $desdePeriodo,
                 'moroso' => $pendiente > 0,
             ];
         }

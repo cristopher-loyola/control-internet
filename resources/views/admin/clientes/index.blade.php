@@ -207,6 +207,16 @@
                     </button>
                     <button
                         type="button"
+                        class="btn btn-success"
+                        style="background-color: #15803d; border-color: #15803d;"
+                        x-data
+                        x-on:click.prevent="$dispatch('open-modal', 'admin-clientes-import-cartera')"
+                        title="Importar Cartera (Excel CSV)"
+                    >
+                        Importar Cartera
+                    </button>
+                    <button
+                        type="button"
                         class="btn btn-secondary"
                         x-data
                         x-on:click.prevent="$dispatch('open-modal', 'admin-clientes-historial-buscar')"
@@ -529,6 +539,24 @@
         </div>
         </x-modal>
 
+        <x-modal name="admin-clientes-import-cartera" maxWidth="sm" focusable>
+        <form method="POST" action="{{ route('admin.clientes.import-cartera') }}" enctype="multipart/form-data" class="p-6">
+            @csrf
+            <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Importar Cartera</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Sube un archivo CSV con las columnas de Cartera de Clientes. Se actualizarán los datos de los clientes existentes.</p>
+            <div>
+                <input type="file" name="file" accept=".csv,text/csv" class="block w-full text-sm">
+                @if ($errors->has('file'))
+                    <div class="mt-2 text-sm text-red-600">{{ $errors->first('file') }}</div>
+                @endif
+            </div>
+            <div class="mt-5 flex justify-end gap-2">
+                <button type="button" class="btn btn-secondary" x-on:click="$dispatch('close')">Cancelar</button>
+                <button type="submit" class="btn btn-success" style="background-color: #15803d; border-color: #15803d;">Importar Cartera</button>
+            </div>
+        </form>
+        </x-modal>
+
         <x-modal name="admin-clientes-import" maxWidth="sm" focusable>
         <form method="POST" action="{{ route('admin.clientes.import') }}" enctype="multipart/form-data" class="p-6">
             @csrf
@@ -558,25 +586,44 @@
                 <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Resultado de la importación</h3>
                 <div class="text-sm text-gray-700 dark:text-gray-300 mb-3">
                     Resumen:
-                    <span class="ms-2">Creados: <strong>{{ $rep['created'] ?? 0 }}</strong></span>,
-                    <span class="ms-2">Actualizados: <strong>{{ $rep['updated'] ?? 0 }}</strong></span>,
-                    <span class="ms-2">Omitidos: <strong>{{ $rep['skipped'] ?? 0 }}</strong></span>
+                    <span class="ms-2">Creados: <strong class="text-green-600">{{ $rep['created'] ?? 0 }}</strong></span>,
+                    <span class="ms-2">Actualizados: <strong class="text-blue-600">{{ $rep['updated'] ?? 0 }}</strong></span>,
+                    <span class="ms-2">Omitidos: <strong class="text-amber-600">{{ $rep['skipped'] ?? 0 }}</strong></span>
                 </div>
-                @if (!empty($rep['errors']))
-                    <div class="max-h-64 overflow-auto rounded border border-gray-200 dark:border-gray-700 p-3 bg-white dark:bg-gray-800">
-                        <div class="text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">Errores (máx. 200):</div>
-                        <ul class="list-disc ms-5 text-xs text-gray-700 dark:text-gray-300 space-y-1">
-                            @foreach (array_slice($rep['errors'], 0, 200) as $err)
-                                <li>{{ $err }}</li>
-                            @endforeach
-                            @if (count($rep['errors']) > 200)
-                                <li>… y {{ count($rep['errors']) - 200 }} más</li>
-                            @endif
-                        </ul>
-                    </div>
-                @else
-                    <p class="text-sm text-gray-700 dark:text-gray-300">No hubo errores.</p>
-                @endif
+
+                <div class="space-y-4">
+                    @if (!empty($rep['skipped_details']))
+                        <div class="max-h-40 overflow-auto rounded border border-amber-200 dark:border-amber-900/50 p-3 bg-amber-50 dark:bg-amber-900/10">
+                            <div class="text-xs font-bold mb-2 text-amber-800 dark:text-amber-400 uppercase tracking-wider">Registros omitidos:</div>
+                            <ul class="list-disc ms-5 text-xs text-amber-700 dark:text-amber-300 space-y-1">
+                                @foreach ($rep['skipped_details'] as $skip)
+                                    <li>{{ $skip }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
+                    @if (!empty($rep['errors']))
+                        <div class="max-h-64 overflow-auto rounded border border-red-200 dark:border-red-900/50 p-3 bg-red-50 dark:bg-red-900/10">
+                            <div class="text-xs font-bold mb-2 text-red-800 dark:text-red-400 uppercase tracking-wider">Errores detectados (máx. 200):</div>
+                            <ul class="list-disc ms-5 text-xs text-red-700 dark:text-red-300 space-y-1">
+                                @foreach (array_slice($rep['errors'], 0, 200) as $err)
+                                    <li>{{ $err }}</li>
+                                @endforeach
+                                @if (count($rep['errors']) > 200)
+                                    <li class="font-bold">… y {{ count($rep['errors']) - 200 }} más</li>
+                                @endif
+                            </ul>
+                        </div>
+                    @else
+                        <p class="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                            <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            No se detectaron errores de procesamiento.
+                        </p>
+                    @endif
+                </div>
                 <div class="mt-4 flex justify-end">
                     <button type="button" class="btn btn-primary" x-on:click="$dispatch('close')">Cerrar</button>
                 </div>

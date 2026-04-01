@@ -140,7 +140,7 @@
     <div class="text-sm text-red-700">
         <p class="mb-1">
             <strong>Cliente con adeudos:</strong> 
-            <span x-text="`Adeuda desde ${new Date(adeudo.desde_label).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`"></span>
+            <span x-text="adeudo.desde_label && (adeudo.desde_label.toLowerCase().includes('adeuda') || adeudo.desde_label.toLowerCase().includes('abril')) ? adeudo.desde_label : `Adeuda desde ${adeudo.desde_label}`"></span>
         </p>
         <p class="mb-1">
             <strong>Total a pagar incluyendo adeudos:</strong> 
@@ -350,7 +350,7 @@
                                 <div>Total a pagar en número</div><div x-text="moneda(totales.total)"></div>
                                 <div class="col-span-1">Total a pagar en letra</div><div class="col-span-1" x-text="totales.letra"></div>
                                 <div>Método de pago</div><div x-text="form.metodo || '—'"></div>
-                                <div>Cobro</div><div x-text="form.cobro || '—'"></div>
+                                <div class="cobro-row">Cobro</div><div class="cobro-row" x-text="form.cobro || '—'"></div>
                                 <div>Fecha</div><div x-text="fecha()"></div>
                                 <div>Hora</div><div x-text="hora()"></div>
                             </div>
@@ -368,7 +368,7 @@
                                 <span class="font-bold">ID</span>
                                 <span class="font-bold" x-text="form.numero || '—'"></span>
                             </div>
-                            <div class="receipt-grid">
+                            <div class="receipt-grid" :class="form.prepay === 'si' ? 'prepay-active' : ''">
                                 <div>Nombre</div><div x-text="datos.nombre || '—'"></div>
                                 <div>Mes</div><div x-text="mesEnCursoCompleto()"></div>
                                 <div>Mensualidad de Internet</div><div x-text="moneda(datos.mensualidad)"></div>
@@ -387,12 +387,12 @@
                                 <div>Total a pagar en número</div><div x-text="moneda(totales.total)"></div>
                                 <div class="col-span-1">Total a pagar en letra</div><div class="col-span-1" x-text="totales.letra"></div>
                                 <div>Método de pago</div><div x-text="form.metodo || '—'"></div>
-                                <div>Cobro</div><div x-text="form.cobro || '—'"></div>
+                                <div class="cobro-row">Cobro</div><div class="cobro-row" x-text="form.cobro || '—'"></div>
                                 <div>Fecha</div><div x-text="fecha()"></div>
                                 <div>Hora</div><div x-text="hora()"></div>
                             </div>
-                            <div class="mt-4 text-center text-xs font-semibold text-gray-600 border-t pt-2">
-                                <p>Recuerda que del 1 al 7 de mes se realizan los pagos correctamente, posterior a eso se cobrarán cargos por costo de reconexión.</p>
+                            <div class="footer-note">
+                                Recuerda que del 1 al 7 de mes se realizan los pagos correctamente, posterior a eso se cobrarán cargos por costo de reconexión.
                             </div>
                         </div>
                     </div>
@@ -411,16 +411,22 @@
             .shadow-sm,.sm\:rounded-lg,.overflow-hidden{box-shadow:none!important;border-radius:0!important;overflow:visible!important}
             .receipt{border:0!important;border-radius:0!important}
             .divider-line{display:none!important}
-            .print-sheet::after{content:'';position:absolute;left:0;right:0;top:calc(50% - 0.3mm);height:0.6mm;background:#111;z-index:50}
+            .print-sheet::after{content:'';position:absolute;left:0;right:0;top:calc(33% + 20mm);height:0.6mm;background:#111;z-index:50}
         }
          .print-sheet{position:relative;width:210mm;max-width:none;margin:0 calc(50% - 105mm);transform:none;height:297mm;background:#fff}       
         .sheet-abs{position:absolute;inset:0;z-index:20;pointer-events:none}
-        .receipt{position:relative;height:calc((297mm - 0.6mm)/2);border:1px solid #d1d5db;border-radius:8px;padding:6mm;background:#fff;overflow:hidden}
+        .receipt{position:relative;height:calc(33% + 20mm);border:1px solid #d1d5db;border-radius:8px;padding:2mm 6mm;background:#fff;overflow:hidden}
         .divider-line{height:0.6mm;background:#111;margin:0}
-        .client-receipt{padding-top:8mm}
-        .ref-number{position:absolute;top:2mm;left:6mm;font-weight:700;font-size:12px;color:#111;z-index:30}
-        .id-band{background:#fde047;border:1px solid #eab308;border-radius:4px;padding:4px 8px;display:inline-flex;gap:10px;margin:10px 0;width:fit-content;max-width:60%}
-        .receipt-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:12px}
+        .client-receipt{height:calc(67% - 20mm);padding:15mm 10mm 10mm 10mm}
+        .ref-number{position:absolute;top:1mm;left:6mm;font-weight:700;font-size:11px;color:#111;z-index:30}
+        .client-receipt .ref-number{top:10mm;left:10mm;font-size:14px}
+        .id-band{background:#fde047;border:1px solid #eab308;border-radius:4px;padding:2px 8px;display:inline-flex;gap:10px;margin:2px 0;width:fit-content;max-width:60%}
+        .client-receipt .id-band{padding:6px 12px;margin:15px 0;font-size:16px}
+        .receipt-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;font-size:13px;line-height:1.2}
+        .client-receipt .receipt-grid{font-size:14px;gap:4px 24px;line-height:1.3}
+        .client-receipt .receipt-grid.prepay-active{font-size:12px;gap:4px 24px;line-height:1.3}
+        .footer-note { position: absolute; bottom: 4mm; left: 0; right: 0; text-align: center; font-size: 10px; font-weight: 600; color: #4b5563; }
+        .cobro-row { padding-bottom: 2mm; }
         .receipt-head img{max-height:120px;object-fit:contain}
         .logo-center{display:inline-block;max-width:680px;width:90%}
         .abs-img,.abs-text{position:absolute;pointer-events:none}

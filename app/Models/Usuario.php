@@ -37,6 +37,8 @@ class Usuario extends Model
         'cortador_id',
         'estado_corte',
         'fecha_corte',
+        'adeudo_descripcion',
+        'adeudo_monto',
     ];
 
     public function estado()
