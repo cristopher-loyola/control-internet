@@ -195,6 +195,10 @@
                     <x-text-input id="edit_telefono" name="telefono" type="text" class="mt-1 block w-full" value="{{ $cliente->telefono }}" />
                 </div>
                 <div>
+                    <x-input-label for="edit_ip" value="Dirección IP" />
+                    <x-text-input id="edit_ip" name="ip" type="text" class="mt-1 block w-full" value="{{ $cliente->ip }}" placeholder="192.168.1.1" />
+                </div>
+                <div>
                     <x-input-label for="edit_uso" value="Uso" />
                     <select id="edit_uso" name="uso" class="form-select mt-1 w-full">
                         <option value="">Selecciona una opción</option>

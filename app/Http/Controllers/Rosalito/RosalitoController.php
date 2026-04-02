@@ -227,7 +227,7 @@ class RosalitoController extends Controller
         $from = $row->created_at ? \Illuminate\Support\Carbon::parse($row->created_at) : null;
         $venceAt = PrepayDashboardService::venceAt($from, $months);
         $estado = PrepayDashboardService::estadoPorVencimiento($venceAt, now());
-        $label = $venceAt ? $venceAt->translatedFormat('F Y') : null;
+        $label = $venceAt ? $venceAt->locale('es')->translatedFormat('F Y') : null;
 
         return response()->json([
             'ok' => true,
@@ -281,7 +281,7 @@ class RosalitoController extends Controller
                     if ($venceAt && ! $estado['vencido']) {
                         return response()->json([
                             'ok' => false,
-                            'message' => 'Pago adelantado vigente hasta '.$venceAt->translatedFormat('F Y'),
+                            'message' => 'Pago adelantado vigente hasta '.$venceAt->locale('es')->translatedFormat('F Y'),
                         ], 409);
                     }
                 }

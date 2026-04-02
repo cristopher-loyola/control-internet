@@ -70,7 +70,7 @@
                         x-model="form.otro" :disabled="readOnlyMode" @change="validarOtro($event)">
                         <option value="no">No</option>
                         <option value="cancelacion">Cancelación de servicio</option>
-                        <option value="baja_temporal" :disabled="hasAdeudos()">Baja temporal</option>
+                        <option value="baja_temporal">Baja temporal</option>
                     </select>
                     <p x-show="otroError" x-text="otroError" class="text-xs text-red-600 mt-1"></p>
                 </div>
@@ -842,7 +842,11 @@
                 
                 if (this.form.otro === 'baja_temporal') {
                     this.totales.prepay_total = 0;
-                    total = this.bajaTemporalImporte();
+                    const meses = Number(this.adeudo && this.adeudo.meses ? this.adeudo.meses : 0);
+                    const recargoSrv = Number(this.adeudo && this.adeudo.recargo ? this.adeudo.recargo : 0);
+                    const sumToAdeudo = (isFinite(meses) && meses > 1) || (isFinite(recargoSrv) && recargoSrv > 0);
+                    const adeudoPendiente = Number(this.adeudoCobro || (this.adeudo && this.adeudo.pendiente ? Number(this.adeudo.pendiente) : 0) || 0);
+                    total = Math.round(((sumToAdeudo ? adeudoPendiente : 0) + this.bajaTemporalImporte()) * 100) / 100;
                 } else if(this.form.prepay === 'si'){
                     const months = Number(this.form.prepay_months||6);
                     const pkg = mensualidad;
@@ -887,12 +891,6 @@
             validarOtro(e) {
                 const selected = e.target.value;
                 if (selected === 'baja_temporal') {
-                    const tieneAdeudos = this.hasAdeudos();
-                    if (tieneAdeudos) {
-                        this.otroError = 'No se puede aplicar baja temporal: el cliente tiene adeudos pendientes';
-                        this.form.otro = 'no';
-                        return;
-                    }
                     this.form.prepay = 'no';
                     this.form.recargo = 'no';
                     if (!this.form.baja_temporal_months) this.form.baja_temporal_months = 1;
@@ -933,10 +931,6 @@
                         } else {
                             this.adeudoCobro = Number(this.adeudo?.pendiente || 0);
                             this.saldoDespues = null;
-                        }
-                        if (this.form.otro === 'baja_temporal' && this.hasAdeudos()) {
-                            this.otroError = 'No se puede aplicar baja temporal: el cliente tiene adeudos pendientes';
-                            this.form.otro = 'no';
                         }
                         this.recalcular();
                     }

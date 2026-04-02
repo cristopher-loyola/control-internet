@@ -52,7 +52,7 @@ class BajaTemporalTest extends TestCase
         ]);
     }
 
-    public function test_admin_baja_temporal_rechaza_si_tiene_adeudos(): void
+    public function test_admin_baja_temporal_con_adeudos_suma_costo_a_adeudo_y_registra_baja_temporal(): void
     {
         Carbon::setTestNow(Carbon::create(2026, 4, 1, 10, 0, 0));
         [$estadoId, $estatusId, $servicioId] = $this->seedCatalogs();
@@ -87,8 +87,20 @@ class BajaTemporalTest extends TestCase
             ],
         ]);
 
-        $resp->assertStatus(409)->assertJson(['ok' => false]);
-        $this->assertDatabaseCount('facturas', 0);
+        $resp->assertOk()->assertJson(['ok' => true]);
+
+        $this->assertDatabaseCount('facturas', 1);
+        $this->assertDatabaseHas('facturas', [
+            'numero_servicio' => '9001',
+            'total' => 0.00,
+        ]);
+
+        $u = Usuario::where('numero_servicio', 9001)->first();
+        $this->assertNotNull($u);
+        $this->assertEquals(110.0, (float) $u->adeudo_monto);
+
+        $estatusNombre = DB::table('estatus_servicios')->where('id', $u->estatus_servicio_id)->value('nombre');
+        $this->assertEquals('Baja temporal', $estatusNombre);
     }
 
     public function test_pagos_baja_temporal_calcula_total_20_por_ciento_por_mes(): void

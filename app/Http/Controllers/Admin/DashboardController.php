@@ -888,7 +888,7 @@ class DashboardController extends Controller
             $request->validate(['month' => ['required', 'date_format:Y-m']]);
             $month = Carbon::createFromFormat('Y-m', $request->query('month'));
             $range = ['from' => $month->copy()->startOfMonth(), 'to' => $month->copy()->endOfMonth()];
-            $title = 'Resumen del mes '.$month->translatedFormat('F Y');
+            $title = 'Resumen del mes '.$month->locale('es')->translatedFormat('F Y');
             $fileBase = 'resumen-mensual-'.$month->format('Y-m');
         }
 

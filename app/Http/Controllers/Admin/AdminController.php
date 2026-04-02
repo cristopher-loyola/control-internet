@@ -114,7 +114,7 @@ class AdminController extends Controller
         $from = $row->created_at ? \Illuminate\Support\Carbon::parse($row->created_at) : null;
         $venceAt = PrepayDashboardService::venceAt($from, $months);
         $estado = PrepayDashboardService::estadoPorVencimiento($venceAt, now());
-        $label = $venceAt ? $venceAt->translatedFormat('F Y') : null;
+        $label = $venceAt ? $venceAt->locale('es')->translatedFormat('F Y') : null;
 
         return response()->json([
             'ok' => true,
@@ -161,7 +161,7 @@ class AdminController extends Controller
                     if ($venceAt && ! $estado['vencido']) {
                         return response()->json([
                             'ok' => false,
-                            'message' => 'Pago adelantado vigente hasta '.$venceAt->translatedFormat('F Y'),
+                            'message' => 'Pago adelantado vigente hasta '.$venceAt->locale('es')->translatedFormat('F Y'),
                         ], 409);
                     }
                 }
@@ -190,9 +190,7 @@ class AdminController extends Controller
                 if (! ($adeudo['ok'] ?? false)) {
                     return response()->json(['ok' => false, 'message' => $adeudo['message'] ?? 'No se pudo validar adeudos'], 409);
                 }
-                if ((float) ($adeudo['pendiente'] ?? 0) > 0) {
-                    return response()->json(['ok' => false, 'message' => 'No se puede aplicar baja temporal: el cliente tiene adeudos pendientes'], 409);
-                }
+                $adeudoPendiente = round((float) ($adeudo['pendiente'] ?? 0), 2);
 
                 $months = (int) ($payload['baja_temporal_months'] ?? 0);
                 if ($months < 1 || $months > 6) {
@@ -200,16 +198,11 @@ class AdminController extends Controller
                 }
 
                 $mensualidad = 0.0;
-                if (! empty($usuarioId)) {
-                    $u = Usuario::find($usuarioId);
-                    if ($u && $u->tarifa !== null) {
-                        $mensualidad = (float) $u->tarifa;
-                    }
-                } else {
-                    $u = Usuario::where('numero_servicio', (string) $numero)->first();
-                    if ($u && $u->tarifa !== null) {
-                        $mensualidad = (float) $u->tarifa;
-                    }
+                $u = ! empty($usuarioId)
+                    ? Usuario::find($usuarioId)
+                    : Usuario::where('numero_servicio', (string) $numero)->first();
+                if ($u && $u->tarifa !== null) {
+                    $mensualidad = (float) $u->tarifa;
                 }
                 if ($mensualidad <= 0) {
                     $mensualidad = (float) preg_replace('/[^\d.]/', '', (string) ($payload['mensualidad'] ?? 0));
@@ -225,12 +218,60 @@ class AdminController extends Controller
                 $payload['prepay'] = 'no';
                 $payload['prepay_months'] = null;
                 $payload['prepay_total'] = null;
-                $payload['adeudo_pendiente'] = 0;
+                $payload['adeudo_pendiente'] = $adeudoPendiente;
                 $payload['baja_temporal_months'] = $months;
                 $payload['baja_temporal_total'] = $bajaTotal;
+                $payload['adeudo_prev'] = $adeudoPendiente;
+                $payload['adeudo_nuevo'] = round($adeudoPendiente + $bajaTotal, 2);
 
                 $descuento = round((float) ($payload['descuento'] ?? 0), 2);
-                $total = round(max(0, $bajaTotal - $descuento), 2);
+                $mesesAdeudo = (int) ($adeudo['meses_adeudo'] ?? 0);
+                $recargoSrv = (float) ($adeudo['recargo'] ?? 0);
+                $tieneAdeudoReal = (($u?->adeudo_monto ?? 0) > 0) || ($mesesAdeudo > 1) || ($recargoSrv > 0);
+
+                if ($tieneAdeudoReal) {
+                    if ($u) {
+                        $prev = [
+                            'adeudo_monto' => (float) ($u->adeudo_monto ?? 0),
+                            'adeudo_descripcion' => $u->adeudo_descripcion,
+                        ];
+
+                        $newAdeudoMonto = round((float) ($u->adeudo_monto ?? 0) + $bajaTotal, 2);
+                        $desc = trim((string) ($u->adeudo_descripcion ?? ''));
+                        if ($desc === '') {
+                            $desc = 'Baja temporal';
+                        } elseif (! str_contains(mb_strtolower($desc), 'baja temporal')) {
+                            $desc = trim($desc.' + Baja temporal');
+                        }
+                        $desc = mb_substr($desc, 0, 190);
+
+                        $u->update([
+                            'adeudo_monto' => $newAdeudoMonto,
+                            'adeudo_descripcion' => $desc,
+                        ]);
+
+                        \Illuminate\Support\Facades\DB::table('audit_logs')->insert([
+                            'actor_user_id' => $request->user()?->id,
+                            'actor_role' => $request->user()?->role,
+                            'actor_name' => $request->user()?->name,
+                            'action' => 'usuario_baja_temporal_sumar_adeudo',
+                            'table_name' => 'usuarios',
+                            'entity_type' => \App\Models\Usuario::class,
+                            'entity_id' => (string) $u->id,
+                            'prev_values' => json_encode($prev),
+                            'new_values' => json_encode(['adeudo_monto' => $newAdeudoMonto, 'adeudo_descripcion' => $desc]),
+                            'ip' => $request->ip(),
+                            'user_agent' => (string) $request->userAgent(),
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+
+                    $total = 0.0;
+                } else {
+                    $payload['adeudo_pendiente'] = 0;
+                    $total = round(max(0, $bajaTotal - $descuento), 2);
+                }
             }
 
             $periodoFactura = $isBajaTemporal ? null : $periodo;
@@ -1015,6 +1056,7 @@ class AdminController extends Controller
                 'domicilio' => ['nullable', 'string', 'max:255'],
                 'comunidad' => ['nullable', 'string', 'max:100'],
                 'telefono' => ['nullable', 'string', 'max:20'],
+                'ip' => ['nullable', 'string', 'max:50'],
                 'uso' => ['nullable', 'string', 'max:50'],
                 'megas' => ['nullable', 'integer', 'min:0'],
                 'tecnologia' => ['nullable', 'string', 'in:ina,foi,fod'],
@@ -1038,6 +1080,7 @@ class AdminController extends Controller
                 'domicilio' => 'domicilio',
                 'comunidad' => 'comunidad',
                 'telefono' => 'número telefónico',
+                'ip' => 'dirección IP',
                 'uso' => 'uso',
                 'megas' => 'megas',
                 'tarifa' => 'paquete',
@@ -1115,6 +1158,7 @@ class AdminController extends Controller
             'nombre_cliente' => $request->nombre_cliente,
             'domicilio' => $textOrDash($request->domicilio),
             'telefono' => $textOrDash($request->telefono),
+            'ip' => $textOrDash($request->ip),
             'paquete' => $request->uso ? ($request->uso.($request->tecnologia ? " {$request->tecnologia}" : '').(($megasAsignados ?? $request->megas) ? ' '.($megasAsignados ?? $request->megas).'Mbps' : '')) : null,
             'comunidad' => $textOrDash($request->comunidad),
             'uso' => $textOrDash($request->uso),
