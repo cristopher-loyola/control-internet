@@ -18,6 +18,7 @@ Route::middleware(['auth', 'role:pagos'])
         Route::get('/dashboard/cancelados', [DashboardController::class, 'canceladosIndex'])->name('dashboard.cancelados');
         Route::get('/dashboard/desactivados', [DashboardController::class, 'desactivadosIndex'])->name('dashboard.desactivados');
         Route::get('/dashboard/activos/pagados', [DashboardController::class, 'activosPagadosIndex'])->name('dashboard.activos.pagados');
+        Route::get('/dashboard/baja-temporal', [DashboardController::class, 'bajaTemporalIndex'])->name('dashboard.baja-temporal');
         Route::get('/dashboard/morosos', [DashboardController::class, 'morososIndex'])->name('dashboard.morosos');
         Route::get('/dashboard/pagos-adelantados', [DashboardController::class, 'prepayClientsIndex'])->name('dashboard.prepay.index');
         Route::get('/dashboard/pagos-adelantados/search', [DashboardController::class, 'prepayClientsSearch'])->name('dashboard.prepay.search');

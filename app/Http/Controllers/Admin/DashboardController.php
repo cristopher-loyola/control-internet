@@ -85,6 +85,18 @@ class DashboardController extends Controller
         return view('admin.usuarios_activos_pagados', compact('usuarios'));
     }
 
+    public function bajaTemporalIndex(Request $request)
+    {
+        $usuarios = Usuario::with(['estado', 'estatusServicio'])
+            ->whereHas('estatusServicio', function ($q) {
+                $q->where('nombre', 'Baja temporal');
+            })
+            ->orderBy('updated_at', 'desc')
+            ->paginate(50);
+
+        return view('admin.usuarios_baja_temporal', compact('usuarios'));
+    }
+
     public function morososIndex(Request $request)
     {
         $month = $request->query('month', now()->format('Y-m'));
@@ -502,6 +514,10 @@ class DashboardController extends Controller
                 ->limit(10)
                 ->get(['id', 'numero_servicio', 'nombre_cliente', 'updated_at']);
 
+            $bajaTemporalCount = (int) Usuario::whereHas('estatusServicio', function ($q) {
+                $q->where('nombre', 'Baja temporal');
+            })->count();
+
             // Top productos - optimizado con la misma consulta de ventas
             $topProductos = $ventasData
                 ->map(function ($f) {
@@ -578,6 +594,7 @@ class DashboardController extends Controller
                 'ventas_series' => $ventasSeries,
                 'cancelados_count' => $canceladosCount,
                 'cancelados' => $cancelados,
+                'baja_temporal_count' => $bajaTemporalCount,
                 'top_productos' => $topProductos,
                 'morosos' => $morososPreview,
                 'morosos_count' => $morososData['count'],

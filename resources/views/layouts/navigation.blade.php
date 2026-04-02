@@ -72,7 +72,7 @@
 
     $pagosActive = request()->routeIs('admin.pagos.*');
     $recibosActive = request()->routeIs('pagos.recibos*');
-    $cortePagosActive = request()->routeIs('pagos.corte*');
+    $cortePagosActive = request()->routeIs('pagos.corte') || request()->routeIs('pagos.corte.*');
     $cortesPagosActive = request()->routeIs('pagos.cortes*');
     $reactivacionesPagosActive = request()->routeIs('pagos.reactivaciones*');
     $cortesTecnicoActive = request()->routeIs('tecnico.cortes*');

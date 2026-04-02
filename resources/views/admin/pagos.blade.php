@@ -67,10 +67,12 @@
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Otro</label>
                     <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
-                        x-model="form.otro" :disabled="readOnlyMode" @change="inputChanged()">
+                        x-model="form.otro" :disabled="readOnlyMode" @change="validarOtro($event)">
                         <option value="no">No</option>
                         <option value="cancelacion">Cancelación de servicio</option>
+                        <option value="baja_temporal" :disabled="hasAdeudos()">Baja temporal</option>
                     </select>
+                    <p x-show="otroError" x-text="otroError" class="text-xs text-red-600 mt-1"></p>
                 </div>
                 <div x-show="form.prepay==='si'" x-cloak>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Meses (1–12)</label>
@@ -96,6 +98,18 @@
                         :value="moneda(totales.prepay_total || 0)">
                     <p class="text-[11px]" :class="prepayError ? 'text-red-600' : 'text-gray-500'" x-text="prepayError || prepayLegend"></p>
                 </div>
+                <div x-show="form.otro==='baja_temporal'" x-cloak>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Meses baja (1–6)</label>
+                    <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
+                        x-model.number="form.baja_temporal_months" :disabled="readOnlyMode || form.otro!=='baja_temporal'" @change="inputChanged()">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                    </select>
+                </div>
             </div>
 
            <div>
@@ -117,7 +131,7 @@
 </div>
         </div>
     </div>      
-                            {{-- <div class="flex items-end justify-end md:justify-start gap-2">
+                             {{-- <div class="flex items-end justify-end md:justify-start gap-2">
                                 <button class="btn btn-secondary" @click="openHistorial()">Historial</button>
                                 <button class="btn btn-secondary" @click="toggleEditor()"
                                     x-text="editMode ? 'Cerrar editor de plantilla' : 'Editar plantilla'"></button>
@@ -368,8 +382,8 @@
                                 <div>Nombre</div><div x-text="datos.nombre || '—'"></div>
                                 <div>Mes</div><div x-text="mesEnCursoCompleto()"></div>
                                 <div>Mensualidad de Internet</div><div x-text="moneda(datos.mensualidad)"></div>
-                                <div>Otros</div><div x-text="form.otro === 'cancelacion' ? 'Cancelación de servicio' : 'No'"></div>
-                                <div>Importe</div><div x-text="moneda(0)"></div>
+                                <div>Otros</div><div x-text="otroLabel()"></div>
+                                <div>Importe</div><div x-text="moneda(bajaTemporalImporte())"></div>
                                 <div x-show="appliedDiscount > 0">Descuento</div><div x-show="appliedDiscount > 0" x-text="moneda(appliedDiscount)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
@@ -405,8 +419,8 @@
                                 <div>Nombre</div><div x-text="datos.nombre || '—'"></div>
                                 <div>Mes</div><div x-text="mesEnCursoCompleto()"></div>
                                 <div>Mensualidad de Internet</div><div x-text="moneda(datos.mensualidad)"></div>
-                                <div>Otros</div><div x-text="form.otro === 'cancelacion' ? 'Cancelación de servicio' : 'No'"></div>
-                                <div>Importe</div><div x-text="moneda(0)"></div>
+                                <div>Otros</div><div x-text="otroLabel()"></div>
+                                <div>Importe</div><div x-text="moneda(bajaTemporalImporte())"></div>
                                 <div x-show="appliedDiscount > 0">Descuento</div><div x-show="appliedDiscount > 0" x-text="moneda(appliedDiscount)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
@@ -534,7 +548,8 @@
         })();
         return {
             readOnlyMode: false,
-            form:{ numero:'', recargo:'no', pago_anterior:0, metodo:'', cobro:'', prepay:'no', prepay_months:6, otro:'no' },
+            otroError: '',
+            form:{ numero:'', recargo:'no', pago_anterior:0, metodo:'', cobro:'', prepay:'no', prepay_months:6, otro:'no', baja_temporal_months:1 },
             pagoAnteriorFecha:'',
             datos:{ nombre:'', mensualidad:0 },
             totales:{ total:0, letra:'', prepay_total:0 },
@@ -585,6 +600,27 @@
             _moveB:null, _upB:null, _moveTouchB:null,
             resizing:false, resizeKey:null, resizeStart:{x:0,w:0}, _resizeB:null, _resizeTouchB:null,
             moneda(v){ return new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'}).format(v||0) },
+            hasAdeudos(){
+                const a = this.adeudo;
+                const pendiente = Number(this.adeudoCobro || (a && a.pendiente ? Number(a.pendiente) : 0) || 0);
+                const meses = Number(a && a.meses ? a.meses : 0);
+                return (isFinite(pendiente) && pendiente > 0) || (isFinite(meses) && meses > 0);
+            },
+            bajaTemporalImporte(){
+                if (this.form.otro !== 'baja_temporal') return 0;
+                const mensualidad = Number(this.datos.mensualidad) || 0;
+                const months = Number(this.form.baja_temporal_months || 1);
+                const total = mensualidad * 0.2 * Math.min(6, Math.max(1, months));
+                return Math.round(total * 100) / 100;
+            },
+            otroLabel(){
+                if (this.form.otro === 'cancelacion') return 'Cancelación de servicio';
+                if (this.form.otro === 'baja_temporal') {
+                    const m = Number(this.form.baja_temporal_months || 1);
+                    return `Baja temporal (${m} ${m === 1 ? 'mes' : 'meses'})`;
+                }
+                return 'No';
+            },
             mesEnCurso(){ return new Date().toLocaleDateString('es-MX',{month:'long'}).charAt(0).toUpperCase() + new Date().toLocaleDateString('es-MX',{month:'long'}).slice(1) },
             mesEnCursoCompleto(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleDateString('es-MX',{month:'long'})+' de '+d.getFullYear() },
             fecha(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) },
@@ -725,6 +761,7 @@
                                 this.form.metodo = p.metodo || '';
                                 this.form.cobro = p.cobro || '';
                                 this.form.otro = p.otro || 'no';
+                        this.form.baja_temporal_months = p.baja_temporal_months || 1;
                                 this.form.prepay = p.prepay || 'no';
                                 this.form.prepay_months = p.prepay_months || null;
                                 this.totales.prepay_total = Number(p.prepay_total)||0;
@@ -905,7 +942,10 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 const rec = this.form.recargo==='si'?50:0;
                 let total = 0;
                 
-                if(this.form.prepay === 'si'){
+                if (this.form.otro === 'baja_temporal') {
+                    this.totales.prepay_total = 0;
+                    total = this.bajaTemporalImporte();
+                } else if(this.form.prepay === 'si'){
                     const months = Number(this.form.prepay_months||6);
                     const pkg = mensualidad;
                     
@@ -947,6 +987,27 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 }
                 this.recalcular();
             },
+            validarOtro(e){
+                const valor = e.target.value;
+                this.otroError = '';
+                
+                // Si selecciona baja temporal, verificar que no tenga adeudos
+                if(valor === 'baja_temporal'){
+                    const tieneAdeudos = this.hasAdeudos();
+                    if(tieneAdeudos){
+                        this.otroError = 'No se puede aplicar baja temporal: el cliente tiene adeudos pendientes.';
+                        this.form.otro = 'no';
+                        return;
+                    }
+                    this.form.prepay = 'no';
+                    this.form.recargo = 'no';
+                    if (!this.form.baja_temporal_months) this.form.baja_temporal_months = 1;
+                } else {
+                    this.form.baja_temporal_months = 1;
+                }
+                
+                this.inputChanged();
+            },
             async fetchAdeudo(){
                 this.adeudo = null;
                 const numero = String(this.form.numero||'').trim();
@@ -978,6 +1039,10 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                         } else {
                             this.adeudoCobro = Number(this.adeudo?.pendiente || 0);
                             this.saldoDespues = null;
+                        }
+                        if (this.form.otro === 'baja_temporal' && this.hasAdeudos()) {
+                            this.otroError = 'No se puede aplicar baja temporal: el cliente tiene adeudos pendientes.';
+                            this.form.otro = 'no';
                         }
                         this.recalcular();
                     }
@@ -1128,6 +1193,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 this.form.metodo = p.metodo || '';
                                 this.form.cobro = p.cobro || '';
                                 this.form.otro = p.otro || 'no';
+                                this.form.baja_temporal_months = p.baja_temporal_months || 1;
                                 this.form.prepay = p.prepay || 'no';
                                 this.form.prepay_months = p.prepay_months || null;
                                 this.totales.prepay_total = Number(p.prepay_total)||0;
@@ -1144,6 +1210,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
             },
             async emitirFactura(){
                 try{
+                    if (this.ref && this.ref.id) return;
                     if(this.prepayActivo && !this.ref?.id){ this.error = 'Pago adelantado vigente. No se puede generar un nuevo pago.'; return; }
                     const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
                     const r = await fetch('{{ route('admin.pagos.facturas.store') }}', {
@@ -1169,6 +1236,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 metodo: this.form.metodo,
                                 cobro: this.form.cobro,
                                 otro: this.form.otro,
+                                baja_temporal_months: this.form.otro==='baja_temporal' ? this.form.baja_temporal_months : null,
+                                baja_temporal_total: this.form.otro==='baja_temporal' ? this.bajaTemporalImporte() : null,
                                 fecha: this.fecha(),
                                 hora: this.hora(),
                                 descuento: this.appliedDiscount || 0
@@ -1189,6 +1258,10 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 }catch(_){}
             },
             async prepareAndPrint(){
+                if (this.ref && this.ref.id) {
+                    await this.doPrintOnce();
+                    return;
+                }
                 try{
                     if(this.prepayActivo && !this.ref?.id){ this.error = 'Pago adelantado vigente. No se puede generar un nuevo pago.'; return; }
                     const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
@@ -1215,6 +1288,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 metodo: this.form.metodo,
                                 cobro: this.form.cobro,
                                 otro: this.form.otro,
+                                baja_temporal_months: this.form.otro==='baja_temporal' ? this.form.baja_temporal_months : null,
+                                baja_temporal_total: this.form.otro==='baja_temporal' ? this.bajaTemporalImporte() : null,
                                 fecha: this.fecha(),
                                 hora: this.hora(),
                                 descuento: this.appliedDiscount || 0
@@ -1262,8 +1337,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 const nombre = this.datos.nombre || '—';
                 const id = this.form.numero || '—';
                 const mes = this.mesEnCursoCompleto();
-                const otros = '—';
-                const importe = this.moneda(0);
+                const otros = this.otroLabel();
+                const importe = this.moneda(this.bajaTemporalImporte());
                 const recargo = this.form.recargo === 'si' ? 'SI' : 'NO';
                 const totalNum = this.moneda(this.totales.total);
                 const totalLetra = this.totales.letra || '';

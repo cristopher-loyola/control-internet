@@ -147,8 +147,8 @@
                 </div>
             </div>
 
-            {{-- Clientes activos y desactivados --}}
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {{-- Clientes activos, desactivados y baja temporal --}}
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="bg-white dark:bg-gray-800 rounded shadow p-4">
                     <div class="flex items-center justify-between">
                         <div class="font-semibold mb-2">Clientes activos</div>
@@ -166,6 +166,14 @@
                     </div>
                     <div class="text-3xl font-bold" x-text="metrics.clientes_desactivados ?? 0"></div>
                     <div class="text-sm text-gray-500 mt-1">Estado: Desactivado/Inactivo/Suspendido</div>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded shadow p-4">
+                    <div class="flex items-center justify-between">
+                        <div class="font-semibold mb-2">Baja temporal</div>
+                        <a href="{{ route('pagos.dashboard.baja-temporal') }}" class="btn btn-primary">Ver todos</a>
+                    </div>
+                    <div class="text-3xl font-bold" x-text="metrics.baja_temporal_count ?? 0"></div>
+                    <div class="text-sm text-gray-500 mt-1">Estatus: Baja temporal</div>
                 </div>
             </div>
 
@@ -264,7 +272,7 @@
             weekTo: null,
             monthVal: null,
             validWeek: true,
-            metrics: { metodos: [], clientes_nuevos: {day:0,week:0,month:0}, ventas_series: {labels:[], values:[]}, prepay_clients: [], cancelados_count: 0, cancelados: [], morosos: [], morosos_count: 0 },
+            metrics: { metodos: [], clientes_nuevos: {day:0,week:0,month:0}, ventas_series: {labels:[], values:[]}, prepay_clients: [], cancelados_count: 0, cancelados: [], morosos: [], morosos_count: 0, baja_temporal_count: 0 },
             chartMetodos: null,
             chartClientes: null,
             metodoColors: ['#16a34a','#0ea5e9','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16'],

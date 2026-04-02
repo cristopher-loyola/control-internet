@@ -67,10 +67,12 @@
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Otro</label>
                     <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
-                        x-model="form.otro" :disabled="readOnlyMode" @change="inputChanged()">
+                        x-model="form.otro" :disabled="readOnlyMode" @change="validarOtro($event)">
                         <option value="no">No</option>
                         <option value="cancelacion">Cancelación de servicio</option>
+                        <option value="baja_temporal" :disabled="hasAdeudos()">Baja temporal</option>
                     </select>
+                    <p x-show="otroError" x-text="otroError" class="text-xs text-red-600 mt-1"></p>
                 </div>
                 <div x-show="form.prepay==='si'" x-cloak>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Meses (1–12)</label>
@@ -95,6 +97,18 @@
                     <input type="text" readonly class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
                         :value="moneda(totales.prepay_total || 0)">
                     <p class="text-[11px]" :class="prepayError ? 'text-red-600' : 'text-gray-500'" x-text="prepayLegend"></p>
+                </div>
+                <div x-show="form.otro==='baja_temporal'" x-cloak>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Meses baja (1–6)</label>
+                    <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
+                        x-model.number="form.baja_temporal_months" :disabled="readOnlyMode || form.otro!=='baja_temporal'" @change="inputChanged()">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                    </select>
                 </div>
             </div>
 
@@ -335,8 +349,8 @@
                                 <div>Nombre</div><div x-text="datos.nombre || '—'"></div>
                                 <div>Mes</div><div x-text="mesEnCursoCompleto()"></div>
                                 <div>Mensualidad de Internet</div><div x-text="moneda(datos.mensualidad)"></div>
-                                <div>Otros</div><div x-text="form.otro === 'cancelacion' ? 'Cancelación de servicio' : 'No'"></div>
-                                <div>Importe</div><div x-text="moneda(0)"></div>
+                                <div>Otros</div><div x-text="otroLabel()"></div>
+                                <div>Importe</div><div x-text="moneda(bajaTemporalImporte())"></div>
                                 <div x-show="appliedDiscount > 0">Descuento</div><div x-show="appliedDiscount > 0" x-text="moneda(appliedDiscount)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
@@ -372,8 +386,8 @@
                                 <div>Nombre</div><div x-text="datos.nombre || '—'"></div>
                                 <div>Mes</div><div x-text="mesEnCursoCompleto()"></div>
                                 <div>Mensualidad de Internet</div><div x-text="moneda(datos.mensualidad)"></div>
-                                <div>Otros</div><div x-text="form.otro === 'cancelacion' ? 'Cancelación de servicio' : 'No'"></div>
-                                <div>Importe</div><div x-text="moneda(0)"></div>
+                                <div>Otros</div><div x-text="otroLabel()"></div>
+                                <div>Importe</div><div x-text="moneda(bajaTemporalImporte())"></div>
                                 <div x-show="appliedDiscount > 0">Descuento</div><div x-show="appliedDiscount > 0" x-text="moneda(appliedDiscount)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
@@ -511,7 +525,7 @@
         })();
         return {
             readOnlyMode: false,
-            form:{ numero:'', recargo:'no', pago_anterior:0, metodo:'', cobro:'', prepay:'no', prepay_months:6, otro:'no' },
+            form:{ numero:'', recargo:'no', pago_anterior:0, metodo:'', cobro:'', prepay:'no', prepay_months:6, otro:'no', baja_temporal_months:1 },
             pagoAnteriorFecha:'',
             datos:{ nombre:'', mensualidad:0 },
             totales:{ total:0, letra:'', prepay_total:0 },
@@ -523,6 +537,7 @@
             prepayHastaLabel: '',
             prepayConfig:{ enabled:{}, matrix:{} },
             prepayError:'',
+            otroError: '',
             discountModalOpen: false,
             discountAmount: 0,
             appliedDiscount: 0, // Nueva variable para almacenar el descuento aplicado
@@ -561,6 +576,27 @@
             _moveB:null, _upB:null, _moveTouchB:null,
             resizing:false, resizeKey:null, resizeStart:{x:0,w:0}, _resizeB:null, _resizeTouchB:null,
             moneda(v){ return new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'}).format(v||0) },
+            hasAdeudos(){
+                const a = this.adeudo;
+                const pendiente = Number(this.adeudoCobro || (a && a.pendiente ? Number(a.pendiente) : 0) || 0);
+                const meses = Number(a && a.meses ? a.meses : 0);
+                return (isFinite(pendiente) && pendiente > 0) || (isFinite(meses) && meses > 0);
+            },
+            bajaTemporalImporte(){
+                if (this.form.otro !== 'baja_temporal') return 0;
+                const mensualidad = Number(this.datos.mensualidad) || 0;
+                const months = Number(this.form.baja_temporal_months || 1);
+                const total = mensualidad * 0.2 * Math.min(6, Math.max(1, months));
+                return Math.round(total * 100) / 100;
+            },
+            otroLabel(){
+                if (this.form.otro === 'cancelacion') return 'Cancelación de servicio';
+                if (this.form.otro === 'baja_temporal') {
+                    const m = Number(this.form.baja_temporal_months || 1);
+                    return `Baja temporal (${m} ${m === 1 ? 'mes' : 'meses'})`;
+                }
+                return 'No';
+            },
             mesEnCurso(){ return new Date().toLocaleDateString('es-MX',{month:'long'}).charAt(0).toUpperCase() + new Date().toLocaleDateString('es-MX',{month:'long'}).slice(1) },
             mesEnCursoCompleto(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleDateString('es-MX',{month:'long'})+' de '+d.getFullYear() },
             fecha(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) },
@@ -804,7 +840,10 @@
                 const rec = this.form.recargo==='si'?50:0;
                 let total = 0;
                 
-                if(this.form.prepay === 'si'){
+                if (this.form.otro === 'baja_temporal') {
+                    this.totales.prepay_total = 0;
+                    total = this.bajaTemporalImporte();
+                } else if(this.form.prepay === 'si'){
                     const months = Number(this.form.prepay_months||6);
                     const pkg = mensualidad;
                     
@@ -840,11 +879,28 @@
             },
             async inputChanged(){
                 if(this.readOnlyMode) return;
-                // Solo resetear el folio si no existe uno (no después de emitir factura)
                 if(!this.ref.numero) {
                     this.ref = { numero: null, id: null, created_at: null };
                 }
                 this.recalcular();
+            },
+            validarOtro(e) {
+                const selected = e.target.value;
+                if (selected === 'baja_temporal') {
+                    const tieneAdeudos = this.hasAdeudos();
+                    if (tieneAdeudos) {
+                        this.otroError = 'No se puede aplicar baja temporal: el cliente tiene adeudos pendientes';
+                        this.form.otro = 'no';
+                        return;
+                    }
+                    this.form.prepay = 'no';
+                    this.form.recargo = 'no';
+                    if (!this.form.baja_temporal_months) this.form.baja_temporal_months = 1;
+                } else {
+                    this.form.baja_temporal_months = 1;
+                }
+                this.otroError = '';
+                this.inputChanged();
             },
             async fetchAdeudo(){
                 this.adeudo = null;
@@ -877,6 +933,10 @@
                         } else {
                             this.adeudoCobro = Number(this.adeudo?.pendiente || 0);
                             this.saldoDespues = null;
+                        }
+                        if (this.form.otro === 'baja_temporal' && this.hasAdeudos()) {
+                            this.otroError = 'No se puede aplicar baja temporal: el cliente tiene adeudos pendientes';
+                            this.form.otro = 'no';
                         }
                         this.recalcular();
                     }
@@ -1023,6 +1083,7 @@
                         this.form.metodo = p.metodo || '';
                         this.form.cobro = p.cobro || '';
                         this.form.otro = p.otro || 'no';
+                        this.form.baja_temporal_months = p.baja_temporal_months || 1;
                                 this.form.prepay = p.prepay || 'no';
                                 this.form.prepay_months = p.prepay_months || null;
                         this.totales.prepay_total = Number(p.prepay_total)||0;
@@ -1038,6 +1099,56 @@
                 }catch(_){}
             },
             async emitirFactura(){
+                try{
+                    if (this.ref && this.ref.id) return;
+                    const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
+                    const r = await fetch('{{ route('pagos.recibos.facturas.store') }}', {
+                        method:'POST',
+                        headers:{
+                            'Content-Type':'application/json',
+                            'Accept':'application/json',
+                            'X-CSRF-TOKEN': token
+                        },
+                        body: JSON.stringify({
+                            numero_servicio: this.form.numero || null,
+                            usuario_id: null,
+                            total: this.totales.total || 0,
+                            payload: {
+                                nombre: this.datos.nombre,
+                                mensualidad: this.datos.mensualidad,
+                                recargo: this.form.recargo,
+                                prepay: this.form.prepay,
+                                prepay_months: this.form.prepay==='si'? this.form.prepay_months : null,
+                                prepay_total: this.form.prepay==='si'? this.totales.prepay_total : null,
+                                adeudo_pendiente: Number(this.adeudoCobro || 0),
+                                pago_anterior: this.form.pago_anterior,
+                                metodo: this.form.metodo,
+                                cobro: this.form.cobro,
+                                otro: this.form.otro,
+                                baja_temporal_months: this.form.otro==='baja_temporal' ? this.form.baja_temporal_months : null,
+                                baja_temporal_total: this.form.otro==='baja_temporal' ? this.bajaTemporalImporte() : null,
+                                fecha: this.fecha(),
+                                hora: this.hora(),
+                                descuento: this.appliedDiscount || 0
+                            }
+                        })
+                    });
+                    const j = await r.json();
+                    if(r.ok && j?.ok){
+                        this.ref.numero = j.referencia;
+                        this.ref.id = j.id;
+                        this.ref.created_at = new Date().toISOString();
+                        await this.fetchPagoAnterior();
+                    }
+                }catch(_){}
+            },
+            async prepareAndPrint(){
+                // Asegura plantilla más reciente antes de imprimir
+                if(this.loadServerLayout){ await this.loadServerLayout(); }
+                if (this.ref && this.ref.id) {
+                    await this.doPrintOnce();
+                    return;
+                }
                 try{
                     const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
                     const r = await fetch('{{ route('pagos.recibos.facturas.store') }}', {
@@ -1063,48 +1174,8 @@
                                 metodo: this.form.metodo,
                                 cobro: this.form.cobro,
                                 otro: this.form.otro,
-                                fecha: this.fecha(),
-                                hora: this.hora(),
-                                descuento: this.appliedDiscount || 0
-                            }
-                        })
-                    });
-                    const j = await r.json();
-                    if(r.ok && j?.ok){
-                        this.ref.numero = j.referencia;
-                        this.ref.id = j.id;
-                        this.ref.created_at = new Date().toISOString();
-                        await this.fetchPagoAnterior();
-                    }
-                }catch(_){}
-            },
-            async prepareAndPrint(){
-                // Asegura plantilla más reciente antes de imprimir
-                if(this.loadServerLayout){ await this.loadServerLayout(); }
-                try{
-                    const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
-                    const r = await fetch('{{ route('pagos.recibos.facturas.store') }}', {
-                        method:'POST',
-                        headers:{
-                            'Content-Type':'application/json',
-                            'Accept':'application/json',
-                            'X-CSRF-TOKEN': token
-                        },
-                        body: JSON.stringify({
-                            numero_servicio: this.form.numero || null,
-                            usuario_id: null,
-                            total: this.totales.total || 0,
-                            payload: {
-                                nombre: this.datos.nombre,
-                                mensualidad: this.datos.mensualidad,
-                                recargo: this.form.recargo,
-                                prepay: this.form.prepay,
-                                prepay_months: this.form.prepay==='si'? this.form.prepay_months : null,
-                                prepay_total: this.form.prepay==='si'? this.totales.prepay_total : null,
-                                adeudo_pendiente: Number(this.adeudoCobro || 0),
-                                pago_anterior: this.form.pago_anterior,
-                                metodo: this.form.metodo,
-                                cobro: this.form.cobro,
+                                baja_temporal_months: this.form.otro==='baja_temporal' ? this.form.baja_temporal_months : null,
+                                baja_temporal_total: this.form.otro==='baja_temporal' ? this.bajaTemporalImporte() : null,
                                 fecha: this.fecha(),
                                 hora: this.hora(),
                                 descuento: this.appliedDiscount || 0
@@ -1133,8 +1204,8 @@
                 const nombre = this.datos.nombre || '—';
                 const id = this.form.numero || '—';
                 const mes = this.mesEnCursoCompleto();
-                const otros = '—';
-                const importe = this.moneda(0);
+                const otros = this.otroLabel();
+                const importe = this.moneda(this.bajaTemporalImporte());
                 const recargo = this.form.recargo === 'si' ? 'SI' : 'NO';
                 const totalNum = this.moneda(this.totales.total);
                 const totalLetra = this.totales.letra || '';
@@ -1227,6 +1298,7 @@ html,body{ margin:0; padding:0 }
                 this.form.metodo = '';
                 this.form.prepay = 'no';
                 this.form.otro = 'no';
+                this.otroError = '';
                 
                 try{
                     const r = await fetch('{{ route('pagos.recibos.lookup') }}?numero='+encodeURIComponent(this.form.numero));

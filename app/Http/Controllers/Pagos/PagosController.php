@@ -309,7 +309,7 @@ class PagosController extends Controller
         ]);
     }
 
-    public function recibosFacturaStore(Request $request)
+    public function recibosFacturaStore(Request $request, MorosidadService $service)
     {
         $request->validate([
             'numero_servicio' => ['nullable', 'string'],
@@ -318,11 +318,14 @@ class PagosController extends Controller
             'payload' => ['nullable', 'array'],
         ]);
 
-        return DB::transaction(function () use ($request) {
+        return DB::transaction(function () use ($request, $service) {
             $periodo = now()->format('Y-m');
             $numero = $request->input('numero_servicio');
             $usuarioId = $request->input('usuario_id');
-            if ($numero) {
+            $payload = $request->input('payload', []);
+            $isBajaTemporal = ($payload['otro'] ?? null) === 'baja_temporal';
+
+            if ($numero && ! $isBajaTemporal) {
                 $prepay = Factura::whereNull('deleted_at')
                     ->where('numero_servicio', $numero)
                     ->where(function ($q) {
@@ -358,110 +361,167 @@ class PagosController extends Controller
                 ]);
                 $row = (object) ['current_value' => 0];
             }
-            $payload = $request->input('payload', []);
+            $total = round((float) $request->input('total', 0), 2);
+
+            if (($payload['otro'] ?? null) === 'baja_temporal') {
+                if (! $numero || ! ctype_digit((string) $numero)) {
+                    return response()->json(['ok' => false, 'message' => 'Número inválido'], 422);
+                }
+
+                $adeudo = $service->calcularAdeudoUsuario((string) $numero, null);
+                if (! ($adeudo['ok'] ?? false)) {
+                    return response()->json(['ok' => false, 'message' => $adeudo['message'] ?? 'No se pudo validar adeudos'], 409);
+                }
+                if ((float) ($adeudo['pendiente'] ?? 0) > 0) {
+                    return response()->json(['ok' => false, 'message' => 'No se puede aplicar baja temporal: el cliente tiene adeudos pendientes'], 409);
+                }
+
+                $months = (int) ($payload['baja_temporal_months'] ?? 0);
+                if ($months < 1 || $months > 6) {
+                    return response()->json(['ok' => false, 'message' => 'Meses de baja temporal inválidos (1–6)'], 422);
+                }
+
+                $mensualidad = 0.0;
+                if (! empty($usuarioId)) {
+                    $u = Usuario::find($usuarioId);
+                    if ($u && $u->tarifa !== null) {
+                        $mensualidad = (float) $u->tarifa;
+                    }
+                } else {
+                    $u = Usuario::where('numero_servicio', (string) $numero)->first();
+                    if ($u && $u->tarifa !== null) {
+                        $mensualidad = (float) $u->tarifa;
+                    }
+                }
+                if ($mensualidad <= 0) {
+                    $mensualidad = (float) preg_replace('/[^\d.]/', '', (string) ($payload['mensualidad'] ?? 0));
+                }
+                if ($mensualidad <= 0) {
+                    return response()->json(['ok' => false, 'message' => 'No se pudo determinar la mensualidad para calcular la baja temporal'], 422);
+                }
+
+                $bajaTotal = round($mensualidad * 0.2 * $months, 2);
+                $payload['mensualidad'] = $mensualidad;
+                $payload['otro'] = 'baja_temporal';
+                $payload['recargo'] = 'no';
+                $payload['prepay'] = 'no';
+                $payload['prepay_months'] = null;
+                $payload['prepay_total'] = null;
+                $payload['adeudo_pendiente'] = 0;
+                $payload['baja_temporal_months'] = $months;
+                $payload['baja_temporal_total'] = $bajaTotal;
+
+                $descuento = round((float) ($payload['descuento'] ?? 0), 2);
+                $total = round(max(0, $bajaTotal - $descuento), 2);
+            }
+
+            $periodoFactura = $isBajaTemporal ? null : $periodo;
+            $payloadJson = json_encode($payload);
             $fingerprintData = [
                 'numero_servicio' => $request->input('numero_servicio'),
-                'periodo' => $periodo,
-                'total' => round((float) $request->input('total', 0), 2),
+                'periodo' => $periodoFactura,
+                'total' => $total,
                 'nombre' => $payload['nombre'] ?? null,
                 'mensualidad' => $payload['mensualidad'] ?? null,
                 'recargo' => $payload['recargo'] ?? null,
                 'pago_anterior' => $payload['pago_anterior'] ?? null,
                 'metodo' => $payload['metodo'] ?? 'Efectivo',
             ];
-            $fingerprint = hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            $fingerprint = $isBajaTemporal ? null : hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
-            $existing = Factura::where(function ($q) use ($fingerprint) {
-                $q->where('fingerprint', $fingerprint);
-            })
-                ->orWhere(function ($q) use ($request, $periodo) {
-                    $q->where('numero_servicio', $request->input('numero_servicio'))
-                        ->where('periodo', $periodo)
-                        ->where('total', $request->input('total', 0))
-                        ->whereRaw('payload = ?', [json_encode($request->input('payload', []))]);
+            if (! $isBajaTemporal) {
+                $existing = Factura::where(function ($q) use ($fingerprint) {
+                    $q->where('fingerprint', $fingerprint);
                 })
-                ->orderBy('id', 'desc')
-                ->first();
-            if ($existing) {
-                // Auditar reuso (consideramos éxito sin crear nuevo registro)
-                DB::table('payment_attempts')->insert([
-                    'usuario_id' => $usuarioId,
-                    'numero_servicio' => $numero,
-                    'periodo' => $periodo,
-                    'status' => 'success',
-                    'reason' => 'Reimpresión / reuso de factura',
-                    'created_by' => optional($request->user())->id,
-                    'payload' => json_encode($request->input('payload', [])),
-                    'attempted_at' => now(),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-
-                return response()->json([
-                    'ok' => true,
-                    'referencia' => $existing->reference_number,
-                    'id' => $existing->id,
-                    'reused' => true,
-                ]);
-            }
-
-            $trashedByFingerprint = Factura::withTrashed()->where('fingerprint', $fingerprint)->first();
-            if ($trashedByFingerprint) {
-                DB::table('payment_attempts')->insert([
-                    'usuario_id' => $usuarioId,
-                    'numero_servicio' => $numero,
-                    'periodo' => $periodo,
-                    'status' => 'success',
-                    'reason' => 'Reimpresión / reuso de factura (trashed)',
-                    'created_by' => optional($request->user())->id,
-                    'payload' => json_encode($request->input('payload', [])),
-                    'attempted_at' => now(),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-
-                return response()->json([
-                    'ok' => true,
-                    'referencia' => $trashedByFingerprint->reference_number,
-                    'id' => $trashedByFingerprint->id,
-                    'reused' => true,
-                ]);
-            }
-            // Validar duplicados por periodo (numero_servicio o usuario_id) SOLO si no es reimpresión
-            if (($numero !== null && $numero !== '') || ! empty($usuarioId)) {
-                $dup = Factura::where('periodo', $periodo)
-                    ->where(function ($q) use ($numero, $usuarioId) {
-                        if ($numero !== null && $numero !== '') {
-                            $q->where('numero_servicio', $numero);
-                        }
-                        if (! empty($usuarioId)) {
-                            $q->orWhere('usuario_id', $usuarioId);
-                        }
+                    ->orWhere(function ($q) use ($request, $periodoFactura, $total, $payloadJson) {
+                        $q->where('numero_servicio', $request->input('numero_servicio'))
+                            ->where('periodo', $periodoFactura)
+                            ->where('total', $total)
+                            ->whereRaw('payload = ?', [$payloadJson]);
                     })
+                    ->orderBy('id', 'desc')
                     ->first();
-            } else {
-                $dup = null;
-            }
-            if ($dup) {
-                DB::table('payment_attempts')->insert([
-                    'usuario_id' => $usuarioId,
-                    'numero_servicio' => $numero,
-                    'periodo' => $periodo,
-                    'status' => 'duplicate',
-                    'reason' => 'Pago ya registrado para este periodo',
-                    'created_by' => optional($request->user())->id,
-                    'payload' => json_encode($request->input('payload', [])),
-                    'attempted_at' => now(),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                if ($existing) {
+                    DB::table('payment_attempts')->insert([
+                        'usuario_id' => $usuarioId,
+                        'numero_servicio' => $numero,
+                        'periodo' => $periodoFactura,
+                        'status' => 'success',
+                        'reason' => 'Reimpresión / reuso de factura',
+                        'created_by' => optional($request->user())->id,
+                        'payload' => json_encode($request->input('payload', [])),
+                        'attempted_at' => now(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
 
-                return response()->json([
-                    'ok' => false,
-                    'message' => 'Ya existe un pago registrado para este periodo',
-                    'referencia' => $dup->reference_number,
-                    'periodo' => $periodo,
-                ], 409);
+                    return response()->json([
+                        'ok' => true,
+                        'referencia' => $existing->reference_number,
+                        'id' => $existing->id,
+                        'reused' => true,
+                    ]);
+                }
+
+                $trashedByFingerprint = Factura::withTrashed()->where('fingerprint', $fingerprint)->first();
+                if ($trashedByFingerprint) {
+                    DB::table('payment_attempts')->insert([
+                        'usuario_id' => $usuarioId,
+                        'numero_servicio' => $numero,
+                        'periodo' => $periodoFactura,
+                        'status' => 'success',
+                        'reason' => 'Reimpresión / reuso de factura (trashed)',
+                        'created_by' => optional($request->user())->id,
+                        'payload' => json_encode($request->input('payload', [])),
+                        'attempted_at' => now(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    return response()->json([
+                        'ok' => true,
+                        'referencia' => $trashedByFingerprint->reference_number,
+                        'id' => $trashedByFingerprint->id,
+                        'reused' => true,
+                    ]);
+                }
+
+                // Validar duplicados por periodo (numero_servicio o usuario_id) SOLO si no es reimpresión
+                if (($numero !== null && $numero !== '') || ! empty($usuarioId)) {
+                    $dup = Factura::where('periodo', $periodoFactura)
+                        ->where(function ($q) use ($numero, $usuarioId) {
+                            if ($numero !== null && $numero !== '') {
+                                $q->where('numero_servicio', $numero);
+                            }
+                            if (! empty($usuarioId)) {
+                                $q->orWhere('usuario_id', $usuarioId);
+                            }
+                        })
+                        ->first();
+                } else {
+                    $dup = null;
+                }
+                if ($dup) {
+                    DB::table('payment_attempts')->insert([
+                        'usuario_id' => $usuarioId,
+                        'numero_servicio' => $numero,
+                        'periodo' => $periodoFactura,
+                        'status' => 'duplicate',
+                        'reason' => 'Pago ya registrado para este periodo',
+                        'created_by' => optional($request->user())->id,
+                        'payload' => json_encode($request->input('payload', [])),
+                        'attempted_at' => now(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    return response()->json([
+                        'ok' => false,
+                        'message' => 'Ya existe un pago registrado para este periodo',
+                        'referencia' => $dup->reference_number,
+                        'periodo' => $periodoFactura,
+                    ], 409);
+                }
             }
             $next = (int) $row->current_value + 1;
             DB::table('invoice_sequences')
@@ -473,33 +533,47 @@ class PagosController extends Controller
                 $factura->reference_number = $next;
                 $factura->usuario_id = $request->input('usuario_id');
                 $factura->numero_servicio = $request->input('numero_servicio');
-                $factura->periodo = $periodo;
-                $factura->total = $request->input('total', 0);
+                $factura->periodo = $periodoFactura;
+                $factura->total = $total;
                 $factura->payload = $payload;
                 $factura->created_by = $request->user()?->id;
                 $factura->fingerprint = $fingerprint;
                 $factura->save();
 
                 // Al registrar un pago exitoso, actualizar el estatus del cliente a Pagado/Activado
-                if ($request->input('usuario_id')) {
-                    $usuario = Usuario::find($request->input('usuario_id'));
-                    if ($usuario) {
-                        $usuario->update([
-                            'estatus_servicio_id' => 1, // Pagado
-                            'estado_id' => 1,           // Activado
-                            'adeudo_monto' => 0,
-                            'adeudo_descripcion' => null,
-                        ]);
+                if (! $isBajaTemporal) {
+                    if ($request->input('usuario_id')) {
+                        $usuario = Usuario::find($request->input('usuario_id'));
+                        if ($usuario) {
+                            $usuario->update([
+                                'estatus_servicio_id' => 1, // Pagado
+                                'estado_id' => 1,           // Activado
+                                'adeudo_monto' => 0,
+                                'adeudo_descripcion' => null,
+                            ]);
+                        }
+                    } elseif ($request->input('numero_servicio')) {
+                        $usuario = Usuario::where('numero_servicio', $request->input('numero_servicio'))->first();
+                        if ($usuario) {
+                            $usuario->update([
+                                'estatus_servicio_id' => 1, // Pagado
+                                'estado_id' => 1,           // Activado
+                                'adeudo_monto' => 0,
+                                'adeudo_descripcion' => null,
+                            ]);
+                        }
                     }
-                } elseif ($request->input('numero_servicio')) {
-                    $usuario = Usuario::where('numero_servicio', $request->input('numero_servicio'))->first();
-                    if ($usuario) {
-                        $usuario->update([
-                            'estatus_servicio_id' => 1, // Pagado
-                            'estado_id' => 1,           // Activado
-                            'adeudo_monto' => 0,
-                            'adeudo_descripcion' => null,
-                        ]);
+                } else {
+                    $bajaId = (int) (\App\Models\EstatusServicio::where('nombre', 'Baja temporal')->value('id') ?: 0);
+                    if ($bajaId > 0) {
+                        if ($request->input('usuario_id')) {
+                            $usuario = Usuario::find($request->input('usuario_id'));
+                        } else {
+                            $usuario = Usuario::where('numero_servicio', $request->input('numero_servicio'))->first();
+                        }
+                        if ($usuario) {
+                            $usuario->update(['estatus_servicio_id' => $bajaId]);
+                        }
                     }
                 }
             } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
@@ -508,7 +582,7 @@ class PagosController extends Controller
                 // para que el usuario reciba un error o se gestione de otra forma.
                 // En la práctica, ya renombramos los cancelados, así que esto solo
                 // debería ocurrir en condiciones de carrera de inserción real.
-                $c = Factura::withTrashed()->where('fingerprint', $fingerprint)->first();
+                $c = $fingerprint ? Factura::withTrashed()->where('fingerprint', $fingerprint)->first() : null;
                 if ($c) {
                     return response()->json([
                         'ok' => true,
@@ -524,7 +598,7 @@ class PagosController extends Controller
             DB::table('payment_attempts')->insert([
                 'usuario_id' => $usuarioId,
                 'numero_servicio' => $numero,
-                'periodo' => $periodo,
+                'periodo' => $periodoFactura,
                 'status' => 'success',
                 'reason' => 'Factura creada',
                 'created_by' => optional($request->user())->id,
@@ -1050,7 +1124,7 @@ thead th{ background:#2e7d32; color:#fff; }
 
         // Ensure logs directory exists
         $logPath = storage_path('logs/import_cartera_structured.log');
-        @file_put_contents($logPath, json_encode($logEntry, JSON_UNESCAPED_UNICODE) . PHP_EOL, FILE_APPEND);
+        @file_put_contents($logPath, json_encode($logEntry, JSON_UNESCAPED_UNICODE).PHP_EOL, FILE_APPEND);
     }
 
     public function clientesImportCartera(Request $request)
@@ -1073,6 +1147,7 @@ thead th{ background:#2e7d32; color:#fff; }
             $handle = fopen($path, 'r');
             if ($handle === false) {
                 $this->logStructuredError('No se pudo abrir el archivo de importación', 'error', ['path' => $path]);
+
                 return back()->withErrors(['file' => 'No se pudo abrir el archivo.']);
             }
 
@@ -1081,46 +1156,62 @@ thead th{ background:#2e7d32; color:#fff; }
             if ($first === false) {
                 fclose($handle);
                 $this->logStructuredError('El archivo de importación está vacío', 'warning', ['path' => $path]);
+
                 return back()->withErrors(['file' => 'El archivo está vacío.']);
             }
-            if (str_starts_with($first, "\xEF\xBB\xBF")) $first = substr($first, 3);
+            if (str_starts_with($first, "\xEF\xBB\xBF")) {
+                $first = substr($first, 3);
+            }
 
             $fixEncoding = function ($s) {
-                if ($s === null) return $s;
-                $s = (string) $s;
-                if (!mb_check_encoding($s, 'UTF-8')) {
-                    $converted = @iconv('Windows-1252', 'UTF-8//IGNORE', $s);
-                    if ($converted === false || $converted === '') $converted = @iconv('ISO-8859-1', 'UTF-8//IGNORE', $s);
-                    if ($converted && mb_check_encoding($converted, 'UTF-8')) return $converted;
+                if ($s === null) {
+                    return $s;
                 }
+                $s = (string) $s;
+                if (! mb_check_encoding($s, 'UTF-8')) {
+                    $converted = @iconv('Windows-1252', 'UTF-8//IGNORE', $s);
+                    if ($converted === false || $converted === '') {
+                        $converted = @iconv('ISO-8859-1', 'UTF-8//IGNORE', $s);
+                    }
+                    if ($converted && mb_check_encoding($converted, 'UTF-8')) {
+                        return $converted;
+                    }
+                }
+
                 return $s;
             };
 
             $first = $fixEncoding($first);
             $header = str_getcsv($first);
-            
+
             $normalize = function ($s) {
                 $s = strtolower(trim((string) $s));
                 $s = str_replace([' ', 'á', 'é', 'í', 'ó', 'ú', 'ñ', '#'], ['_', 'a', 'e', 'i', 'o', 'u', 'n', 'num'], $s);
+
                 return $s;
             };
 
             $map = [];
             if ($header) {
-                foreach ($header as $i => $h) $map[$normalize($fixEncoding($h))] = $i;
+                foreach ($header as $i => $h) {
+                    $map[$normalize($fixEncoding($h))] = $i;
+                }
             }
 
             $getVal = function ($row, $keys) use ($map) {
                 foreach ($keys as $k) {
-                    if (isset($map[$k]) && isset($row[$map[$k]])) return trim($row[$map[$k]]);
+                    if (isset($map[$k]) && isset($row[$map[$k]])) {
+                        return trim($row[$map[$k]]);
+                    }
                 }
+
                 return null;
             };
 
             $lineNumber = 1;
             while (($row = fgetcsv($handle)) !== false) {
                 $lineNumber++;
-                
+
                 try {
                     $numero = $getVal($row, ['numero_de_cliente', 'numero_servicio', 'numero', 'num_cliente']);
                     $nombre = $getVal($row, ['nombre', 'nombre_cliente', 'cliente']);
@@ -1131,18 +1222,35 @@ thead th{ background:#2e7d32; color:#fff; }
                     $descripcionAdeudo = $getVal($row, ['descripcion', 'observaciones', 'nota']);
                     $montoAdeudo = $getVal($row, ['cantidad', 'monto_adeudo', 'adeudo']);
 
-                    if (!$numero) $numero = trim($row[0] ?? '');
-                    if (!$nombre) $nombre = trim($row[1] ?? '');
-                    if (!$telefono) $telefono = trim($row[2] ?? '');
-                    if (!$megas) $megas = trim($row[3] ?? '');
-                    if (!$tarifa) $tarifa = trim($row[4] ?? '');
-                    if (!$descripcionAdeudo) $descripcionAdeudo = trim($row[5] ?? '');
-                    if (!$montoAdeudo) $montoAdeudo = trim($row[6] ?? '');
-                    if (!$estado) $estado = trim($row[10] ?? ''); 
+                    if (! $numero) {
+                        $numero = trim($row[0] ?? '');
+                    }
+                    if (! $nombre) {
+                        $nombre = trim($row[1] ?? '');
+                    }
+                    if (! $telefono) {
+                        $telefono = trim($row[2] ?? '');
+                    }
+                    if (! $megas) {
+                        $megas = trim($row[3] ?? '');
+                    }
+                    if (! $tarifa) {
+                        $tarifa = trim($row[4] ?? '');
+                    }
+                    if (! $descripcionAdeudo) {
+                        $descripcionAdeudo = trim($row[5] ?? '');
+                    }
+                    if (! $montoAdeudo) {
+                        $montoAdeudo = trim($row[6] ?? '');
+                    }
+                    if (! $estado) {
+                        $estado = trim($row[10] ?? '');
+                    }
 
-                    if (empty($numero) || !is_numeric($numero)) {
+                    if (empty($numero) || ! is_numeric($numero)) {
                         $report['skipped']++;
                         $report['skipped_details'][] = "Línea $lineNumber: Número de cliente inválido o vacío ('$numero')";
+
                         continue;
                     }
 
@@ -1150,6 +1258,7 @@ thead th{ background:#2e7d32; color:#fff; }
                     if ($nombre === '') {
                         $report['skipped']++;
                         $report['skipped_details'][] = "Línea $lineNumber: Nombre de cliente vacío para el número '$numero'";
+
                         continue;
                     }
 
@@ -1160,16 +1269,24 @@ thead th{ background:#2e7d32; color:#fff; }
                         // Limitar teléfono a 20 caracteres para evitar SQL error
                         $updateData['telefono'] = substr($telefono, 0, 20);
                     }
-                    if ($megas && is_numeric($megas)) $updateData['megas'] = (int)$megas;
+                    if ($megas && is_numeric($megas)) {
+                        $updateData['megas'] = (int) $megas;
+                    }
                     if ($tarifa) {
                         $t = str_replace(['$', ' ', ','], ['', '', ''], $tarifa);
-                        if (is_numeric($t)) $updateData['tarifa'] = (float)$t;
+                        if (is_numeric($t)) {
+                            $updateData['tarifa'] = (float) $t;
+                        }
                     }
 
-                    if ($descripcionAdeudo !== null) $updateData['adeudo_descripcion'] = $descripcionAdeudo;
+                    if ($descripcionAdeudo !== null) {
+                        $updateData['adeudo_descripcion'] = $descripcionAdeudo;
+                    }
                     if ($montoAdeudo !== null) {
                         $ma = str_replace(['$', ' ', ','], ['', '', ''], $montoAdeudo);
-                        if (is_numeric($ma)) $updateData['adeudo_monto'] = (float)$ma;
+                        if (is_numeric($ma)) {
+                            $updateData['adeudo_monto'] = (float) $ma;
+                        }
                     }
 
                     if ($estado) {
@@ -1187,7 +1304,9 @@ thead th{ background:#2e7d32; color:#fff; }
                         $report['updated']++;
                     } else {
                         $updateData['numero_servicio'] = $numero;
-                        if (!isset($updateData['domicilio'])) $updateData['domicilio'] = '-';
+                        if (! isset($updateData['domicilio'])) {
+                            $updateData['domicilio'] = '-';
+                        }
                         Usuario::create($updateData);
                         $report['created']++;
                     }
@@ -1195,9 +1314,9 @@ thead th{ background:#2e7d32; color:#fff; }
                     $msg = $e->getMessage();
                     // Limpiar mensajes SQL comunes
                     if (str_contains($msg, 'Data too long for column \'telefono\'')) {
-                        $msg = "El número telefónico es demasiado largo (máx 20 caracteres).";
+                        $msg = 'El número telefónico es demasiado largo (máx 20 caracteres).';
                     } elseif (str_contains($msg, 'Data too long for column \'nombre_cliente\'')) {
-                        $msg = "El nombre del cliente es demasiado largo.";
+                        $msg = 'El nombre del cliente es demasiado largo.';
                     } elseif (str_contains($msg, 'doesn\'t have a default value')) {
                         $col = explode("'", $msg)[1] ?? 'desconocida';
                         $msg = "Falta el campo obligatorio: $col";
@@ -1213,11 +1332,11 @@ thead th{ background:#2e7d32; color:#fff; }
                             'lineNumber' => $lineNumber,
                             'numero_servicio' => $numero ?? 'N/A',
                             'nombre_cliente' => $nombre ?? 'N/A',
-                            'row_data' => $row
-                        ]
+                            'row_data' => $row,
+                        ],
                     ];
                     $this->logStructuredError("Error procesando línea $lineNumber (Cliente $numero)", 'error', $errorInfo);
-                    $report['errors'][] = "Línea $lineNumber (Cliente $numero): " . $msg;
+                    $report['errors'][] = "Línea $lineNumber (Cliente $numero): ".$msg;
                 }
             }
             fclose($handle);
@@ -1227,10 +1346,10 @@ thead th{ background:#2e7d32; color:#fff; }
                 'line' => $e->getLine(),
                 'file' => $e->getFile(),
                 'name' => $e->getMessage(),
-                'stack' => $e->getTraceAsString()
+                'stack' => $e->getTraceAsString(),
             ];
             $this->logStructuredError('Error general en importación de cartera', 'error', $errorInfo);
-            $report['errors'][] = "Error general: " . $e->getMessage();
+            $report['errors'][] = 'Error general: '.$e->getMessage();
         }
 
         return back()->with('import_report', $report);

@@ -20,6 +20,7 @@ Artisan::command('usuarios:cleanup-importado {--dry-run : Solo muestra los regis
 
     if ((bool) $this->option('dry-run')) {
         $this->warn('Dry-run: no se eliminó nada.');
+
         return 0;
     }
 
