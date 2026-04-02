@@ -151,7 +151,7 @@
 
     <button class="btn btn-warning w-full shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150"
         :disabled="readOnlyMode" @click="toggleManualEdit()"
-        x-text="manualEditEnabled ? '🔒 Deshabilitar edición' : '✏️ Habilitar edición'"></button>
+        x-text="manualEditEnabled ? '🔒 Modificar total' : '✏️ Modificar total'"></button>
 
     <div class="w-full" x-show="manualEditEnabled" x-cloak>
         <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Total (editable)</label>
