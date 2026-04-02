@@ -87,9 +87,13 @@ class DashboardController extends Controller
 
     public function bajaTemporalIndex(Request $request)
     {
+        $bajaId = (int) (\App\Models\EstatusServicio::whereRaw('LOWER(nombre) = ?', ['baja temporal'])->value('id') ?: 0);
+
         $usuarios = Usuario::with(['estado', 'estatusServicio'])
-            ->whereHas('estatusServicio', function ($q) {
-                $q->where('nombre', 'Baja temporal');
+            ->when($bajaId > 0, function ($q) use ($bajaId) {
+                $q->where('estatus_servicio_id', $bajaId);
+            }, function ($q) {
+                $q->whereRaw('1 = 0');
             })
             ->orderBy('updated_at', 'desc')
             ->paginate(50);
@@ -514,9 +518,8 @@ class DashboardController extends Controller
                 ->limit(10)
                 ->get(['id', 'numero_servicio', 'nombre_cliente', 'updated_at']);
 
-            $bajaTemporalCount = (int) Usuario::whereHas('estatusServicio', function ($q) {
-                $q->where('nombre', 'Baja temporal');
-            })->count();
+            $bajaId = (int) (\App\Models\EstatusServicio::whereRaw('LOWER(nombre) = ?', ['baja temporal'])->value('id') ?: 0);
+            $bajaTemporalCount = $bajaId > 0 ? (int) Usuario::where('estatus_servicio_id', $bajaId)->count() : 0;
 
             // Top productos - optimizado con la misma consulta de ventas
             $topProductos = $ventasData

@@ -382,16 +382,39 @@ class AdminController extends Controller
                         }
                     }
                 } else {
-                    $bajaId = (int) (\App\Models\EstatusServicio::where('nombre', 'Baja temporal')->value('id') ?: 0);
-                    if ($bajaId > 0) {
-                        if ($request->input('usuario_id')) {
-                            $usuario = \App\Models\Usuario::find($request->input('usuario_id'));
-                        } else {
-                            $usuario = \App\Models\Usuario::where('numero_servicio', $request->input('numero_servicio'))->first();
-                        }
-                        if ($usuario) {
-                            $usuario->update(['estatus_servicio_id' => $bajaId]);
-                        }
+                    $baja = \App\Models\EstatusServicio::whereRaw('LOWER(nombre) = ?', ['baja temporal'])->first();
+                    if (! $baja) {
+                        $baja = \App\Models\EstatusServicio::create(['nombre' => 'Baja temporal']);
+                    }
+
+                    if ($request->input('usuario_id')) {
+                        $usuario = \App\Models\Usuario::find($request->input('usuario_id'));
+                    } else {
+                        $usuario = \App\Models\Usuario::where('numero_servicio', $request->input('numero_servicio'))->first();
+                    }
+
+                    if ($usuario) {
+                        $prev = [
+                            'estatus_servicio_id' => $usuario->estatus_servicio_id,
+                        ];
+
+                        $usuario->update(['estatus_servicio_id' => $baja->id]);
+
+                        \Illuminate\Support\Facades\DB::table('audit_logs')->insert([
+                            'actor_user_id' => $request->user()?->id,
+                            'actor_role' => $request->user()?->role,
+                            'actor_name' => $request->user()?->name,
+                            'action' => 'usuario_baja_temporal',
+                            'table_name' => 'usuarios',
+                            'entity_type' => \App\Models\Usuario::class,
+                            'entity_id' => (string) $usuario->id,
+                            'prev_values' => json_encode($prev),
+                            'new_values' => json_encode(['estatus_servicio_id' => $baja->id]),
+                            'ip' => $request->ip(),
+                            'user_agent' => (string) $request->userAgent(),
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
                     }
                 }
             } catch (\Illuminate\Database\QueryException $e) {

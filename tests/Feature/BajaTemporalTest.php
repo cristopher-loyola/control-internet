@@ -36,6 +36,22 @@ class BajaTemporalTest extends TestCase
         return [$estadoId, $estatusId, $servicioId];
     }
 
+    private function ensureBajaTemporalStatus(): int
+    {
+        $now = now();
+
+        $id = DB::table('estatus_servicios')->whereRaw('LOWER(nombre) = ?', ['baja temporal'])->value('id');
+        if ($id) {
+            return (int) $id;
+        }
+
+        return (int) DB::table('estatus_servicios')->insertGetId([
+            'nombre' => 'Baja temporal',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+    }
+
     public function test_admin_baja_temporal_rechaza_si_tiene_adeudos(): void
     {
         Carbon::setTestNow(Carbon::create(2026, 4, 1, 10, 0, 0));
@@ -179,5 +195,59 @@ class BajaTemporalTest extends TestCase
 
         $this->assertNotEquals($mensual['referencia'], $baja['referencia']);
         $this->assertDatabaseCount('facturas', 2);
+    }
+
+    public function test_admin_dashboard_baja_temporal_muestra_clientes(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 4, 1, 10, 0, 0));
+        [$estadoId, $estatusPagadoId, $servicioId] = $this->seedCatalogs();
+        $bajaId = $this->ensureBajaTemporalStatus();
+
+        Usuario::create([
+            'numero_servicio' => 9010,
+            'nombre_cliente' => 'Cliente BT',
+            'domicilio' => '-',
+            'estado_id' => $estadoId,
+            'estatus_servicio_id' => $bajaId,
+            'servicio_id' => $servicioId,
+            'tarifa' => 300,
+            'adeudo_descripcion' => null,
+            'adeudo_monto' => 0,
+        ]);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $this->actingAs($admin);
+
+        $this->get(route('admin.dashboard.baja-temporal'))
+            ->assertOk()
+            ->assertSee('Clientes en baja temporal')
+            ->assertSee('9010');
+    }
+
+    public function test_pagos_dashboard_baja_temporal_muestra_clientes(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 4, 1, 10, 0, 0));
+        [$estadoId, $estatusPagadoId, $servicioId] = $this->seedCatalogs();
+        $bajaId = $this->ensureBajaTemporalStatus();
+
+        Usuario::create([
+            'numero_servicio' => 9011,
+            'nombre_cliente' => 'Cliente BT 2',
+            'domicilio' => '-',
+            'estado_id' => $estadoId,
+            'estatus_servicio_id' => $bajaId,
+            'servicio_id' => $servicioId,
+            'tarifa' => 300,
+            'adeudo_descripcion' => null,
+            'adeudo_monto' => 0,
+        ]);
+
+        $pagos = User::factory()->create(['role' => 'pagos']);
+        $this->actingAs($pagos);
+
+        $this->get(route('pagos.dashboard.baja-temporal'))
+            ->assertOk()
+            ->assertSee('Clientes en baja temporal')
+            ->assertSee('9011');
     }
 }
