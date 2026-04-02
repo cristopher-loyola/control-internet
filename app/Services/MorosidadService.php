@@ -86,8 +86,8 @@ class MorosidadService
             $pendiente += (float) $usuario->adeudo_monto;
         }
 
-        $desdeMes = $usuario->adeudo_descripcion ?: Carbon::createFromFormat('Y-m', $desdePeriodo)->translatedFormat('F Y');
-        $hastaMes = $curStart->translatedFormat('F Y');
+        $desdeMes = $usuario->adeudo_descripcion ?: Carbon::createFromFormat('Y-m', $desdePeriodo)->locale('es')->translatedFormat('F Y');
+        $hastaMes = $curStart->locale('es')->translatedFormat('F Y');
 
         return [
             'ok' => true,

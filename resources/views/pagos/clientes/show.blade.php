@@ -54,7 +54,15 @@
                         </div>
                         <div>
                             <dt class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">IP</dt>
-                            <dd class="text-sm">{{ $cliente->ip ?? '—' }}</dd>
+                            <dd class="text-sm">
+                                @if($cliente->ip && $cliente->ip !== '-')
+                                    <a href="http://{{ $cliente->ip }}" target="_blank" class="text-indigo-600 hover:text-indigo-800 hover:underline">
+                                        {{ $cliente->ip }}
+                                    </a>
+                                @else
+                                    {{ $cliente->ip ?? '—' }}
+                                @endif
+                            </dd>
                         </div>
                         <div>
                             <dt class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">MAC</dt>
@@ -192,7 +200,11 @@
                 </div>
                 <div>
                     <x-input-label for="edit_ip" value="Dirección IP" />
-                    <x-text-input id="edit_ip" name="ip" type="text" class="mt-1 block w-full" value="{{ $cliente->ip }}" placeholder="192.168.1.1" />
+                    <x-text-input id="edit_ip" name="ip" type="text" class="mt-1 block w-full" value="{{ $cliente->ip }}" />
+                </div>
+                <div>
+                    <x-input-label for="edit_mac" value="MAC Address" />
+                    <x-text-input id="edit_mac" name="mac" type="text" class="mt-1 block w-full" value="{{ $cliente->mac }}" />
                 </div>
                 <div>
                     <x-input-label for="edit_uso" value="Uso" />

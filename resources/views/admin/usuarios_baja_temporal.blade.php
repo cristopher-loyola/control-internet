@@ -23,6 +23,7 @@
                             <tr class="text-left text-gray-600">
                                 <th class="py-2">Número</th>
                                 <th class="py-2">Nombre</th>
+                                <th class="py-2">IP</th>
                                 <th class="py-2">Estatus</th>
                                 <th class="py-2">Estado</th>
                                 <th class="py-2">Actualizado</th>
@@ -34,6 +35,15 @@
                                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30">
                                     <td class="py-2">{{ $u->numero_servicio }}</td>
                                     <td class="py-2">{{ $u->nombre_cliente }}</td>
+                                    <td class="py-2">
+                                        @if($u->ip && $u->ip !== '-')
+                                            <a href="http://{{ $u->ip }}" target="_blank" class="text-indigo-600 hover:text-indigo-800 hover:underline">
+                                                {{ $u->ip }}
+                                            </a>
+                                        @else
+                                            {{ $u->ip }}
+                                        @endif
+                                    </td>
                                     <td class="py-2">{{ optional($u->estatusServicio)->nombre }}</td>
                                     <td class="py-2">{{ optional($u->estado)->nombre }}</td>
                                     <td class="py-2 text-gray-500">{{ optional($u->updated_at)->format('Y-m-d') }}</td>
@@ -45,7 +55,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="py-8 text-center text-gray-400 italic">
+                                    <td colspan="7" class="py-8 text-center text-gray-400 italic">
                                         No hay clientes en baja temporal
                                     </td>
                                 </tr>

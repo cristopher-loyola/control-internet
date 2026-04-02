@@ -149,6 +149,23 @@
 
     <button class="btn btn-success w-full shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150" @click="openDiscountModal()">🏷️ Aplicar Descuento</button>
 
+    <button class="btn btn-warning w-full shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150"
+        :disabled="readOnlyMode" @click="toggleManualEdit()"
+        x-text="manualEditEnabled ? '🔒 Deshabilitar edición' : '✏️ Habilitar edición'"></button>
+
+    <div class="w-full" x-show="manualEditEnabled" x-cloak>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Total (editable)</label>
+        <input type="number" step="0.01" min="0"
+            class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            x-model.number="manualTotal" :disabled="readOnlyMode" @input="applyManualTotal()">
+
+        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1 mt-3">Motivo</label>
+        <input type="text" maxlength="250" placeholder="Especifica el motivo..."
+            class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+            x-model.trim="manualReason" :disabled="readOnlyMode" @input="manualEditError = ''">
+        <p class="text-xs text-red-600 mt-1" x-show="manualEditError" x-text="manualEditError"></p>
+    </div>
+
     <button class="btn btn-primary w-full shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150" @click="metodoValido() && openConfirm('ticket')">🧾 Imprimir Ticket</button>
 
     <button class="btn btn-danger w-full shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150" @click="metodoValido() && openConfirm('receipt')">🖨️ Imprimir Recibo</button>
@@ -550,6 +567,11 @@
             readOnlyMode: false,
             otroError: '',
             form:{ numero:'', recargo:'no', pago_anterior:0, metodo:'', cobro:'', prepay:'no', prepay_months:6, otro:'no', baja_temporal_months:1 },
+            manualEditEnabled: false,
+            manualTotal: 0,
+            manualReason: '',
+            manualReasonSaved: '',
+            manualEditError: '',
             pagoAnteriorFecha:'',
             datos:{ nombre:'', mensualidad:0 },
             totales:{ total:0, letra:'', prepay_total:0 },
@@ -613,13 +635,23 @@
                 const total = mensualidad * 0.2 * Math.min(6, Math.max(1, months));
                 return Math.round(total * 100) / 100;
             },
+            manualReasonForPrint(){
+                const r = this.manualEditEnabled ? this.manualReason : this.manualReasonSaved;
+                const s = String(r || '').trim();
+                if (!s) return '';
+                return s.length > 40 ? (s.slice(0, 40) + '…') : s;
+            },
             otroLabel(){
-                if (this.form.otro === 'cancelacion') return 'Cancelación de servicio';
+                let base = 'No';
+                if (this.form.otro === 'cancelacion') base = 'Cancelación de servicio';
                 if (this.form.otro === 'baja_temporal') {
                     const m = Number(this.form.baja_temporal_months || 1);
-                    return `Baja temporal (${m} ${m === 1 ? 'mes' : 'meses'})`;
+                    base = `Baja temporal (${m} ${m === 1 ? 'mes' : 'meses'})`;
                 }
-                return 'No';
+                const motivo = this.manualReasonForPrint();
+                if (!motivo) return base;
+                if (base === 'No') return motivo;
+                return `${base} - ${motivo}`;
             },
             mesEnCurso(){ return new Date().toLocaleDateString('es-MX',{month:'long'}).charAt(0).toUpperCase() + new Date().toLocaleDateString('es-MX',{month:'long'}).slice(1) },
             mesEnCursoCompleto(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleDateString('es-MX',{month:'long'})+' de '+d.getFullYear() },
@@ -761,6 +793,7 @@
                                 this.form.metodo = p.metodo || '';
                                 this.form.cobro = p.cobro || '';
                                 this.form.otro = p.otro || 'no';
+                                this.manualReasonSaved = String(p.manual_total_reason || '').trim();
                         this.form.baja_temporal_months = p.baja_temporal_months || 1;
                                 this.form.prepay = p.prepay || 'no';
                                 this.form.prepay_months = p.prepay_months || null;
@@ -938,6 +971,12 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
             },
             recalcular(){
                 if(this.ref && this.ref.id) return;
+                if (this.manualEditEnabled) {
+                    const v = Number(this.manualTotal) || 0;
+                    this.totales.total = Math.max(0, Math.round(v * 100) / 100);
+                    this.totales.letra = toWords(this.totales.total);
+                    return;
+                }
                 const mensualidad = Number(this.datos.mensualidad)||0;
                 const rec = this.form.recargo==='si'?50:0;
                 let total = 0;
@@ -1062,6 +1101,9 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 // Aplicar el descuento al total
                 this.totales.total = Math.max(0, this.totales.total - discount);
                 this.totales.letra = toWords(this.totales.total);
+                if (this.manualEditEnabled) {
+                    this.manualTotal = this.totales.total;
+                }
                 
                 // Guardar el descuento aplicado de forma persistente
                 this.appliedDiscount = discount;
@@ -1143,8 +1185,50 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                     this.error = 'Pago adelantado vigente. No se puede generar un nuevo pago.';
                     return;
                 }
+                if (this.manualEditEnabled) {
+                    const reason = String(this.manualReason || '').trim();
+                    const total = Number(this.manualTotal);
+                    if (!reason) {
+                        this.manualEditError = 'Especifica el motivo para habilitar la edición.';
+                        return;
+                    }
+                    if (!isFinite(total) || total < 0) {
+                        this.manualEditError = 'Total inválido.';
+                        return;
+                    }
+                }
                 this.printType = type;
                 this.saveConfirmOpen = true;
+            },
+            toggleManualEdit(){
+                if (this.readOnlyMode) return;
+                this.manualEditError = '';
+                this.manualEditEnabled = !this.manualEditEnabled;
+                if (this.manualEditEnabled) {
+                    this.manualTotal = Number(this.totales.total) || 0;
+                } else {
+                    this.manualReasonSaved = String(this.manualReason || '').trim();
+                    this.manualReason = '';
+                    this.recalcular();
+                }
+            },
+            applyManualTotal(){
+                if (!this.manualEditEnabled) return;
+                const v = Number(this.manualTotal);
+                if (!isFinite(v) || v < 0) {
+                    this.manualEditError = 'Total inválido.';
+                    return;
+                }
+                this.manualEditError = '';
+                this.totales.total = Math.max(0, Math.round(v * 100) / 100);
+                this.totales.letra = toWords(this.totales.total);
+            },
+            clearManualEdit(){
+                this.manualEditEnabled = false;
+                this.manualTotal = 0;
+                this.manualReason = '';
+                this.manualReasonSaved = '';
+                this.manualEditError = '';
             },
             async confirmSaveYes(){
                 if(this.isSaving) return;
@@ -1163,6 +1247,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                     } else {
                         await this.doPrintOnce();
                     }
+
+                    this.clearManualEdit();
                 } catch(e) {
                     console.error(e);
                 } finally {
@@ -1193,6 +1279,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 this.form.metodo = p.metodo || '';
                                 this.form.cobro = p.cobro || '';
                                 this.form.otro = p.otro || 'no';
+                                this.manualReasonSaved = String(p.manual_total_reason || '').trim();
                                 this.form.baja_temporal_months = p.baja_temporal_months || 1;
                                 this.form.prepay = p.prepay || 'no';
                                 this.form.prepay_months = p.prepay_months || null;
@@ -1223,7 +1310,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                         body: JSON.stringify({
                             numero_servicio: this.form.numero || null,
                             usuario_id: null,
-                            total: this.totales.total || 0,
+                            total: (this.manualEditEnabled ? (Number(this.manualTotal) || 0) : (this.totales.total || 0)),
                             payload: {
                                 nombre: this.datos.nombre,
                                 mensualidad: this.datos.mensualidad,
@@ -1238,6 +1325,9 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 otro: this.form.otro,
                                 baja_temporal_months: this.form.otro==='baja_temporal' ? this.form.baja_temporal_months : null,
                                 baja_temporal_total: this.form.otro==='baja_temporal' ? this.bajaTemporalImporte() : null,
+                                manual_total_enabled: this.manualEditEnabled,
+                                manual_total_value: this.manualEditEnabled ? (Number(this.manualTotal) || 0) : null,
+                                manual_total_reason: this.manualEditEnabled ? (String(this.manualReason || '').trim()) : null,
                                 fecha: this.fecha(),
                                 hora: this.hora(),
                                 descuento: this.appliedDiscount || 0
@@ -1275,7 +1365,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                         body: JSON.stringify({
                             numero_servicio: this.form.numero || null,
                             usuario_id: null,
-                            total: this.totales.total || 0,
+                            total: (this.manualEditEnabled ? (Number(this.manualTotal) || 0) : (this.totales.total || 0)),
                             payload: {
                                 nombre: this.datos.nombre,
                                 mensualidad: this.datos.mensualidad,
@@ -1290,6 +1380,9 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 otro: this.form.otro,
                                 baja_temporal_months: this.form.otro==='baja_temporal' ? this.form.baja_temporal_months : null,
                                 baja_temporal_total: this.form.otro==='baja_temporal' ? this.bajaTemporalImporte() : null,
+                                manual_total_enabled: this.manualEditEnabled,
+                                manual_total_value: this.manualEditEnabled ? (Number(this.manualTotal) || 0) : null,
+                                manual_total_reason: this.manualEditEnabled ? (String(this.manualReason || '').trim()) : null,
                                 fecha: this.fecha(),
                                 hora: this.hora(),
                                 descuento: this.appliedDiscount || 0
@@ -1432,6 +1525,7 @@ html,body{ margin:0; padding:0 }
                 if(!this.form.numero){ this.error='Ingresa el ID'; return }
                 
                 // Reset states for the new client search
+                this.clearManualEdit();
                 this.ref = { numero: null, id: null, created_at: null };
                 this.adeudo = null;
                 this.adeudoCobro = 0;

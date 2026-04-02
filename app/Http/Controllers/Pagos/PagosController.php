@@ -76,6 +76,7 @@ class PagosController extends Controller
             'domicilio' => ['nullable', 'string', 'max:255'],
             'telefono' => ['nullable', 'string', 'max:20'],
             'ip' => ['nullable', 'string', 'max:50'],
+            'mac' => ['nullable', 'string', 'max:50'],
             'uso' => ['nullable', 'string', 'max:50'],
             'megas' => ['nullable', 'integer', 'min:0'],
             'tecnologia' => ['nullable', 'string', 'in:ina,foi,fod'],
@@ -127,6 +128,7 @@ class PagosController extends Controller
             'domicilio' => $textOrDash($request->domicilio),
             'telefono' => $textOrDash($request->telefono),
             'ip' => $textOrDash($request->ip),
+            'mac' => $textOrDash($request->mac),
             'paquete' => $request->uso ? ($request->uso.($request->tecnologia ? " {$request->tecnologia}" : '').(($megasAsignados ?? $request->megas) ? ' '.($megasAsignados ?? $request->megas).'Mbps' : '')) : null,
             'comunidad' => $textOrDash($request->comunidad),
             'uso' => $textOrDash($request->uso),
@@ -458,6 +460,31 @@ class PagosController extends Controller
                 }
             }
 
+            $manualOverride = null;
+            if (($payload['manual_total_enabled'] ?? false) && (($payload['otro'] ?? null) !== 'baja_temporal')) {
+                $reason = trim((string) ($payload['manual_total_reason'] ?? ''));
+                if ($reason === '') {
+                    return response()->json(['ok' => false, 'message' => 'Motivo requerido para editar el total'], 422);
+                }
+                $manualValue = $payload['manual_total_value'] ?? null;
+                if (! is_numeric($manualValue)) {
+                    return response()->json(['ok' => false, 'message' => 'Total manual inválido'], 422);
+                }
+                $manualValue = round((float) $manualValue, 2);
+                if ($manualValue < 0) {
+                    return response()->json(['ok' => false, 'message' => 'Total manual inválido'], 422);
+                }
+                $manualOverride = [
+                    'prev_total' => $total,
+                    'new_total' => $manualValue,
+                    'reason' => mb_substr($reason, 0, 250),
+                ];
+                $total = $manualValue;
+                $payload['manual_total_enabled'] = true;
+                $payload['manual_total_value'] = $manualValue;
+                $payload['manual_total_reason'] = $manualOverride['reason'];
+            }
+
             $periodoFactura = $isBajaTemporal ? null : $periodo;
             $payloadJson = json_encode($payload);
             $fingerprintData = [
@@ -582,6 +609,24 @@ class PagosController extends Controller
                 $factura->created_by = $request->user()?->id;
                 $factura->fingerprint = $fingerprint;
                 $factura->save();
+
+                if ($manualOverride) {
+                    DB::table('audit_logs')->insert([
+                        'actor_user_id' => $request->user()?->id,
+                        'actor_role' => $request->user()?->role,
+                        'actor_name' => $request->user()?->name,
+                        'action' => 'factura_total_override',
+                        'table_name' => 'facturas',
+                        'entity_type' => Factura::class,
+                        'entity_id' => (string) $factura->id,
+                        'prev_values' => json_encode(['total' => $manualOverride['prev_total']]),
+                        'new_values' => json_encode(['total' => $manualOverride['new_total'], 'reason' => $manualOverride['reason']]),
+                        'ip' => $request->ip(),
+                        'user_agent' => (string) $request->userAgent(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
 
                 // Al registrar un pago exitoso, actualizar el estatus del cliente a Pagado/Activado
                 if (! $isBajaTemporal) {

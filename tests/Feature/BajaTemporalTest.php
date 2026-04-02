@@ -262,4 +262,96 @@ class BajaTemporalTest extends TestCase
             ->assertSee('Clientes en baja temporal')
             ->assertSee('9011');
     }
+
+    public function test_pagos_requiere_motivo_si_se_edita_total(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 4, 1, 10, 0, 0));
+        [$estadoId, $estatusId, $servicioId] = $this->seedCatalogs();
+
+        Usuario::create([
+            'numero_servicio' => 9020,
+            'nombre_cliente' => 'Cliente 20',
+            'domicilio' => '-',
+            'estado_id' => $estadoId,
+            'estatus_servicio_id' => $estatusId,
+            'servicio_id' => $servicioId,
+            'tarifa' => 300,
+            'adeudo_descripcion' => null,
+            'adeudo_monto' => 0,
+        ]);
+
+        $pagos = User::factory()->create(['role' => 'pagos']);
+        $this->actingAs($pagos);
+
+        $this->postJson(route('pagos.recibos.facturas.store'), [
+            'numero_servicio' => '9020',
+            'usuario_id' => null,
+            'total' => 123.45,
+            'payload' => [
+                'nombre' => 'Cliente 20',
+                'mensualidad' => 300,
+                'recargo' => 'no',
+                'pago_anterior' => 0,
+                'metodo' => 'Efectivo',
+                'cobro' => 'Ivan',
+                'otro' => 'no',
+                'manual_total_enabled' => true,
+                'manual_total_value' => 123.45,
+                'manual_total_reason' => '',
+            ],
+        ])->assertStatus(422);
+    }
+
+    public function test_pagos_guarda_total_editado_y_audita_override(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 4, 1, 10, 0, 0));
+        [$estadoId, $estatusId, $servicioId] = $this->seedCatalogs();
+
+        Usuario::create([
+            'numero_servicio' => 9021,
+            'nombre_cliente' => 'Cliente 21',
+            'domicilio' => '-',
+            'estado_id' => $estadoId,
+            'estatus_servicio_id' => $estatusId,
+            'servicio_id' => $servicioId,
+            'tarifa' => 300,
+            'adeudo_descripcion' => null,
+            'adeudo_monto' => 0,
+        ]);
+
+        $pagos = User::factory()->create(['role' => 'pagos']);
+        $this->actingAs($pagos);
+
+        $resp = $this->postJson(route('pagos.recibos.facturas.store'), [
+            'numero_servicio' => '9021',
+            'usuario_id' => null,
+            'total' => 111.11,
+            'payload' => [
+                'nombre' => 'Cliente 21',
+                'mensualidad' => 300,
+                'recargo' => 'no',
+                'pago_anterior' => 0,
+                'metodo' => 'Efectivo',
+                'cobro' => 'Ivan',
+                'otro' => 'no',
+                'manual_total_enabled' => true,
+                'manual_total_value' => 111.11,
+                'manual_total_reason' => 'Ajuste autorizado',
+            ],
+        ]);
+
+        $resp->assertOk()->assertJson(['ok' => true]);
+        $this->assertDatabaseHas('facturas', [
+            'numero_servicio' => '9021',
+            'total' => 111.11,
+        ]);
+
+        $facturaId = $resp->json('id');
+        $this->assertNotEmpty($facturaId);
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'factura_total_override',
+            'table_name' => 'facturas',
+            'entity_id' => (string) $facturaId,
+        ]);
+    }
 }
