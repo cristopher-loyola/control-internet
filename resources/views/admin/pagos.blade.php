@@ -30,7 +30,7 @@
             <div>
                 <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Recargo</label>
                 <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                    x-model="form.recargo" :disabled="readOnlyMode" @change="inputChanged()">
+                    x-model="form.recargo" :disabled="readOnlyMode" @change="inputChanged(true)">
                     <option value="no">No</option>
                     <option value="si">Sí</option>
                 </select>
@@ -40,13 +40,13 @@
                 <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pago anterior</label>
                 <input type="number" step="1" placeholder="0.00"
                     class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                    x-model.number="form.pago_anterior" :disabled="readOnlyMode" @input="inputChanged()">
+                    x-model.number="form.pago_anterior" :disabled="readOnlyMode" @input="inputChanged(true)">
             </div>
 
             <div>
                 <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Método de pago</label>
                 <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                    x-model="form.metodo" :disabled="readOnlyMode" required @change="inputChanged()">
+                    x-model="form.metodo" :disabled="readOnlyMode" required @change="inputChanged(true)">
                     <option value="">Selecciona...</option>
                     <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
                     <option value="Cheque">Cheque</option>
@@ -59,7 +59,7 @@
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pago por adelantado</label>
                     <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
-                        x-model="form.prepay" :disabled="readOnlyMode" @change="inputChanged()">
+                        x-model="form.prepay" :disabled="readOnlyMode" @change="inputChanged(true)">
                         <option value="no">No</option>
                         <option value="si">Sí</option>
                     </select>
@@ -70,7 +70,7 @@
                         x-model="form.otro" :disabled="readOnlyMode" @change="validarOtro($event)">
                         <option value="no">No</option>
                         <option value="cancelacion">Cancelación de servicio</option>
-                        <option value="baja_temporal" :disabled="hasAdeudos()">Baja temporal</option>
+                        <option value="baja_temporal">Baja temporal</option>
                     </select>
                     <p x-show="otroError" x-text="otroError" class="text-xs text-red-600 mt-1"></p>
                 </div>
@@ -565,6 +565,8 @@
         })();
         return {
             readOnlyMode: false,
+            loadingClient: false,
+            recargoManual: false,
             otroError: '',
             form:{ numero:'', recargo:'no', pago_anterior:0, metodo:'', cobro:'', prepay:'no', prepay_months:6, otro:'no', baja_temporal_months:1 },
             manualEditEnabled: false,
@@ -983,7 +985,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 
                 if (this.form.otro === 'baja_temporal') {
                     this.totales.prepay_total = 0;
-                    total = this.bajaTemporalImporte();
+                    const adeudoPendiente = Number(this.adeudoCobro || (this.adeudo && this.adeudo.pendiente ? Number(this.adeudo.pendiente) : 0) || 0);
+                    total = adeudoPendiente > 0 ? 0 : Math.round((this.bajaTemporalImporte() + rec) * 100) / 100;
                 } else if(this.form.prepay === 'si'){
                     const months = Number(this.form.prepay_months||6);
                     const pkg = mensualidad;
@@ -1005,11 +1008,11 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                         }
                     }
                     const adeudoPendiente = Number(this.adeudoCobro || (this.adeudo && this.adeudo.pendiente ? Number(this.adeudo.pendiente) : 0) || 0);
-                    total = Math.round((adeudoPendiente + this.totales.prepay_total) * 100) / 100;
+                    total = Math.round((adeudoPendiente + this.totales.prepay_total + rec) * 100) / 100;
                 }else{
                     if (this.adeudo && this.adeudo.meses > 0) {
                         const pendienteSrv = Number(this.adeudo.pendiente || 0);
-                        total = Math.round(pendienteSrv * 100) / 100;
+                        total = Math.round((pendienteSrv + rec) * 100) / 100;
                     } else {
                         total = Math.round((mensualidad + rec) * 100) / 100;
                     }
@@ -1018,8 +1021,9 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 this.totales.total = total;
                 this.totales.letra = toWords(this.totales.total);
             },
-            async inputChanged(){
+            async inputChanged(manual = false){
                 if(this.readOnlyMode) return;
+                if(manual) this.recargoManual = true;
                 // Solo resetear el folio si no existe uno (no después de emitir factura)
                 if(!this.ref.numero) {
                     this.ref = { numero: null, id: null, created_at: null };
@@ -1032,12 +1036,6 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 
                 // Si selecciona baja temporal, verificar que no tenga adeudos
                 if(valor === 'baja_temporal'){
-                    const tieneAdeudos = this.hasAdeudos();
-                    if(tieneAdeudos){
-                        this.otroError = 'No se puede aplicar baja temporal: el cliente tiene adeudos pendientes.';
-                        this.form.otro = 'no';
-                        return;
-                    }
                     this.form.prepay = 'no';
                     this.form.recargo = 'no';
                     if (!this.form.baja_temporal_months) this.form.baja_temporal_months = 1;
@@ -1067,7 +1065,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 pagado_parcial: Number(j.pagado_parcial||0)
                             };
                             // Sincronizar el recargo del formulario con el del servidor si hay adeudo y no ha pagado este mes
-                            if (!this.pagadoMesActual) {
+                            if (!this.pagadoMesActual && !this.recargoManual) {
                                 this.form.recargo = this.adeudo.recargo > 0 ? 'si' : 'no';
                             }
                         } else {
@@ -1078,10 +1076,6 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                         } else {
                             this.adeudoCobro = Number(this.adeudo?.pendiente || 0);
                             this.saldoDespues = null;
-                        }
-                        if (this.form.otro === 'baja_temporal' && this.hasAdeudos()) {
-                            this.otroError = 'No se puede aplicar baja temporal: el cliente tiene adeudos pendientes.';
-                            this.form.otro = 'no';
                         }
                         this.recalcular();
                     }
@@ -1140,32 +1134,38 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                             }
                         } catch(_) {}
                         this.pagadoMesActual = paidThisMonth;
-                        if (day >= 8 && !paidThisMonth) {
-                            this.form.recargo = 'si';
-                        } else if (day < 8) {
-                            this.form.recargo = 'no';
+                        if (!this.recargoManual) {
+                            if (day >= 8 && !paidThisMonth) {
+                                this.form.recargo = 'si';
+                            } else if (day < 8) {
+                                this.form.recargo = 'no';
+                            }
                         }
                     }else{
                         this.form.pago_anterior = 0;
                         this.pagoAnteriorFecha = '';
                         this.pagadoMesActual = false;
                         // Si no hay pagos previos y estamos después del día 7, aplicar recargo
-                        const now = new Date();
-                        if (now.getDate() >= 8) {
-                            this.form.recargo = 'si';
-                        } else {
-                            this.form.recargo = 'no';
+                        if (!this.recargoManual) {
+                            const now = new Date();
+                            if (now.getDate() >= 8) {
+                                this.form.recargo = 'si';
+                            } else {
+                                this.form.recargo = 'no';
+                            }
                         }
                     }
                 }catch(_){
                     this.form.pago_anterior = 0;
                     this.pagoAnteriorFecha = '';
                     this.pagadoMesActual = false;
-                    const now = new Date();
-                    if (now.getDate() >= 8) {
-                        this.form.recargo = 'si';
-                    } else {
-                        this.form.recargo = 'no';
+                    if (!this.recargoManual) {
+                        const now = new Date();
+                        if (now.getDate() >= 8) {
+                            this.form.recargo = 'si';
+                        } else {
+                            this.form.recargo = 'no';
+                        }
                     }
                 }
                 this.recalcular();
@@ -1524,6 +1524,8 @@ html,body{ margin:0; padding:0 }
                 this.error='';
                 if(!this.form.numero){ this.error='Ingresa el ID'; return }
                 
+                this.loadingClient = true;
+                this.recargoManual = false;
                 // Reset states for the new client search
                 this.clearManualEdit();
                 this.ref = { numero: null, id: null, created_at: null };
@@ -1551,9 +1553,11 @@ html,body{ margin:0; padding:0 }
                     this.datos.mensualidad = numTarifa || pkg || 0;
                     this.recalcular();
                     await this.fetchPagoAnterior();
-                    await this.fetchAdeudo();
+                    await this.fetchPrepayStatus();
                 }catch(e){
                     this.error='Error de conexión';
+                } finally {
+                    this.loadingClient = false;
                 }
             },
         }

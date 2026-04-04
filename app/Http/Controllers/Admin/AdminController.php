@@ -225,11 +225,7 @@ class AdminController extends Controller
                 $payload['adeudo_nuevo'] = round($adeudoPendiente + $bajaTotal, 2);
 
                 $descuento = round((float) ($payload['descuento'] ?? 0), 2);
-                $mesesAdeudo = (int) ($adeudo['meses_adeudo'] ?? 0);
-                $recargoSrv = (float) ($adeudo['recargo'] ?? 0);
-                $tieneAdeudoReal = (($u?->adeudo_monto ?? 0) > 0) || ($mesesAdeudo > 1) || ($recargoSrv > 0);
-
-                if ($tieneAdeudoReal) {
+                if ($adeudoPendiente > 0) {
                     if ($u) {
                         $prev = [
                             'adeudo_monto' => (float) ($u->adeudo_monto ?? 0),

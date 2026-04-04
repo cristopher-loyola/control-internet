@@ -30,7 +30,7 @@
             <div>
                 <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Recargo</label>
                 <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                    x-model="form.recargo" :disabled="readOnlyMode" @change="inputChanged()">
+                    x-model="form.recargo" :disabled="readOnlyMode" @change="inputChanged(true)">
                     <option value="no">No</option>
                     <option value="si">Sí</option>
                 </select>
@@ -40,7 +40,7 @@
                 <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pago anterior</label>
                 <input type="number" step="1" placeholder="0.00"
                     class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                    x-model.number="form.pago_anterior" :disabled="readOnlyMode" @input="inputChanged()">
+                    x-model.number="form.pago_anterior" :disabled="readOnlyMode" @input="inputChanged(true)">
             </div>
 
             <div>
@@ -59,7 +59,7 @@
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pago por adelantado</label>
                     <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
-                        x-model="form.prepay" :disabled="readOnlyMode" @change="inputChanged()">
+                        x-model="form.prepay" :disabled="readOnlyMode" @change="inputChanged(true)">
                         <option value="no">No</option>
                         <option value="si">Sí</option>
                     </select>
@@ -542,6 +542,8 @@
         })();
         return {
             readOnlyMode: false,
+            loadingClient: false,
+            recargoManual: false,
             form:{ numero:'', recargo:'no', pago_anterior:0, metodo:'', cobro:'', prepay:'no', prepay_months:6, otro:'no', baja_temporal_months:1 },
             manualEditEnabled: false,
             manualTotal: 0,
@@ -881,11 +883,8 @@
                 
                 if (this.form.otro === 'baja_temporal') {
                     this.totales.prepay_total = 0;
-                    const meses = Number(this.adeudo && this.adeudo.meses ? this.adeudo.meses : 0);
-                    const recargoSrv = Number(this.adeudo && this.adeudo.recargo ? this.adeudo.recargo : 0);
-                    const sumToAdeudo = (isFinite(meses) && meses > 1) || (isFinite(recargoSrv) && recargoSrv > 0);
                     const adeudoPendiente = Number(this.adeudoCobro || (this.adeudo && this.adeudo.pendiente ? Number(this.adeudo.pendiente) : 0) || 0);
-                    total = Math.round(((sumToAdeudo ? adeudoPendiente : 0) + this.bajaTemporalImporte()) * 100) / 100;
+                    total = adeudoPendiente > 0 ? 0 : Math.round((this.bajaTemporalImporte() + rec) * 100) / 100;
                 } else if(this.form.prepay === 'si'){
                     const months = Number(this.form.prepay_months||6);
                     const pkg = mensualidad;
@@ -907,11 +906,11 @@
                         }
                     }
                     const adeudoPendiente = Number(this.adeudoCobro || (this.adeudo && this.adeudo.pendiente ? Number(this.adeudo.pendiente) : 0) || 0);
-                    total = Math.round((adeudoPendiente + this.totales.prepay_total) * 100) / 100;
+                    total = Math.round((adeudoPendiente + this.totales.prepay_total + rec) * 100) / 100;
                 }else{
                     if (this.adeudo && this.adeudo.meses > 0) {
                         const pendienteSrv = Number(this.adeudo.pendiente || 0);
-                        total = Math.round(pendienteSrv * 100) / 100;
+                        total = Math.round((pendienteSrv + rec) * 100) / 100;
                     } else {
                         total = Math.round((mensualidad + rec) * 100) / 100;
                     }
@@ -920,8 +919,9 @@
                 this.totales.total = total;
                 this.totales.letra = toWords(this.totales.total);
             },
-            async inputChanged(){
+            async inputChanged(manual = false){
                 if(this.readOnlyMode) return;
+                if(manual) this.recargoManual = true;
                 if(!this.ref.numero) {
                     this.ref = { numero: null, id: null, created_at: null };
                 }
@@ -959,7 +959,7 @@
                                 pagado_parcial: Number(j.pagado_parcial||0)
                             };
                             // Sincronizar el recargo del formulario con el del servidor si hay adeudo y no ha pagado este mes
-                            if (!this.pagadoMesActual) {
+                            if (!this.pagadoMesActual && !this.recargoManual) {
                                 this.form.recargo = this.adeudo.recargo > 0 ? 'si' : 'no';
                             }
                         } else {
@@ -1027,31 +1027,37 @@
                             }
                         } catch(_) {}
                         this.pagadoMesActual = paidThisMonth;
-                        if (day >= 8 && !paidThisMonth) {
-                            this.form.recargo = 'si';
-                        } else if (day < 8) {
-                            this.form.recargo = 'no';
+                        if (!this.recargoManual) {
+                            if (day >= 8 && !paidThisMonth) {
+                                this.form.recargo = 'si';
+                            } else if (day < 8) {
+                                this.form.recargo = 'no';
+                            }
                         }
                     }else{
                         this.form.pago_anterior = 0;
                         this.pagoAnteriorFecha = '';
                         this.pagadoMesActual = false;
-                        const now = new Date();
-                        if (now.getDate() >= 8) {
-                            this.form.recargo = 'si';
-                        } else {
-                            this.form.recargo = 'no';
+                        if (!this.recargoManual) {
+                            const now = new Date();
+                            if (now.getDate() >= 8) {
+                                this.form.recargo = 'si';
+                            } else {
+                                this.form.recargo = 'no';
+                            }
                         }
                     }
                 }catch(_){
                     this.form.pago_anterior = 0;
                     this.pagoAnteriorFecha = '';
                     this.pagadoMesActual = false;
-                    const now = new Date();
-                    if (now.getDate() >= 8) {
-                        this.form.recargo = 'si';
-                    } else {
-                        this.form.recargo = 'no';
+                    if (!this.recargoManual) {
+                        const now = new Date();
+                        if (now.getDate() >= 8) {
+                            this.form.recargo = 'si';
+                        } else {
+                            this.form.recargo = 'no';
+                        }
                     }
                 }
                 this.recalcular();
@@ -1371,6 +1377,8 @@ html,body{ margin:0; padding:0 }
                 this.error='';
                 if(!this.form.numero){ this.error='Ingresa el ID'; return }
                 
+                this.loadingClient = true;
+                this.recargoManual = false;
                 // Reset states for the new client search
                 this.clearManualEdit();
                 this.ref = { numero: null, id: null, created_at: null };
@@ -1404,10 +1412,11 @@ html,body{ margin:0; padding:0 }
                     
                     this.recalcular();
                     await this.fetchPagoAnterior();
-                    await this.fetchAdeudo();
                     await this.fetchPrepayStatus();
                 }catch(e){
                     this.error='Error de conexión';
+                } finally {
+                    this.loadingClient = false;
                 }
             },
             async fetchPrepayStatus(){
