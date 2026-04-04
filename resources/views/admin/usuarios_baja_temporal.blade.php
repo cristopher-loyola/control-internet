@@ -10,7 +10,7 @@
         $routePrefix = $isPagos ? 'pagos' : 'admin';
     @endphp
 
-    <div class="py-6">
+    <div class="py-6" x-data="bajaTemporal()">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 rounded shadow p-4">
                 <div class="flex items-center justify-between mb-3">
@@ -45,7 +45,18 @@
                                         @endif
                                     </td>
                                     <td class="py-2">{{ optional($u->estatusServicio)->nombre }}</td>
-                                    <td class="py-2">{{ optional($u->estado)->nombre }}</td>
+                                    <td class="py-2">
+                                        <select 
+                                            class="form-select text-xs rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                                            @change="actualizarEstado($event, {{ $u->id }})"
+                                        >
+                                            @foreach($estados as $estado)
+                                                <option value="{{ $estado->id }}" {{ $u->estado_id == $estado->id ? 'selected' : '' }}>
+                                                    {{ $estado->nombre === 'Desactivado' ? 'Cortado' : $estado->nombre }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </td>
                                     <td class="py-2 text-gray-500">{{ optional($u->updated_at)->format('Y-m-d') }}</td>
                                     <td class="py-2 text-right">
                                         <div class="inline-flex gap-2">
@@ -70,5 +81,39 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function bajaTemporal() {
+            return {
+                actualizarEstado(e, id) {
+                    const estadoId = e.target.value;
+                    const url = `{{ route($routePrefix . '.dashboard.baja-temporal.estado', ':id') }}`.replace(':id', id);
+                    const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+                    fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': token,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ estado_id: estadoId })
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.ok) {
+                            // Opcional: mostrar notificación de éxito
+                        } else {
+                            alert('Error al actualizar el estado');
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        alert('Error al actualizar el estado');
+                    });
+                }
+            }
+        }
+    </script>
 </x-app-layout>
 

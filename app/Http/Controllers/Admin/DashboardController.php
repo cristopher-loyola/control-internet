@@ -98,7 +98,23 @@ class DashboardController extends Controller
             ->orderBy('updated_at', 'desc')
             ->paginate(50);
 
-        return view('admin.usuarios_baja_temporal', compact('usuarios'));
+        $estados = \App\Models\Estado::all();
+
+        return view('admin.usuarios_baja_temporal', compact('usuarios', 'estados'));
+    }
+
+    public function updateEstado(Request $request, $id)
+    {
+        $request->validate([
+            'estado_id' => 'required|exists:estados,id',
+        ]);
+
+        $usuario = Usuario::findOrFail($id);
+        $usuario->update([
+            'estado_id' => $request->estado_id,
+        ]);
+
+        return response()->json(['ok' => true]);
     }
 
     public function morososIndex(Request $request)
