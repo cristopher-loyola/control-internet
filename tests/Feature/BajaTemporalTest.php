@@ -75,7 +75,7 @@ class BajaTemporalTest extends TestCase
         $resp = $this->postJson(route('admin.pagos.facturas.store'), [
             'numero_servicio' => '9001',
             'usuario_id' => null,
-            'total' => 60,
+            'total' => 410,
             'payload' => [
                 'nombre' => 'Cliente',
                 'mensualidad' => 300,
@@ -92,12 +92,12 @@ class BajaTemporalTest extends TestCase
         $this->assertDatabaseCount('facturas', 1);
         $this->assertDatabaseHas('facturas', [
             'numero_servicio' => '9001',
-            'total' => 0.00,
+            'total' => 410.00,
         ]);
 
         $u = Usuario::where('numero_servicio', 9001)->first();
         $this->assertNotNull($u);
-        $this->assertEquals(110.0, (float) $u->adeudo_monto);
+        $this->assertEquals(0.0, (float) $u->adeudo_monto);
 
         $estatusNombre = DB::table('estatus_servicios')->where('id', $u->estatus_servicio_id)->value('nombre');
         $this->assertEquals('Baja temporal', $estatusNombre);

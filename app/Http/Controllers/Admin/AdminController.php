@@ -225,49 +225,7 @@ class AdminController extends Controller
                 $payload['adeudo_nuevo'] = round($adeudoPendiente + $bajaTotal, 2);
 
                 $descuento = round((float) ($payload['descuento'] ?? 0), 2);
-                if ($adeudoPendiente > 0) {
-                    if ($u) {
-                        $prev = [
-                            'adeudo_monto' => (float) ($u->adeudo_monto ?? 0),
-                            'adeudo_descripcion' => $u->adeudo_descripcion,
-                        ];
-
-                        $newAdeudoMonto = round((float) ($u->adeudo_monto ?? 0) + $bajaTotal, 2);
-                        $desc = trim((string) ($u->adeudo_descripcion ?? ''));
-                        if ($desc === '') {
-                            $desc = 'Baja temporal';
-                        } elseif (! str_contains(mb_strtolower($desc), 'baja temporal')) {
-                            $desc = trim($desc.' + Baja temporal');
-                        }
-                        $desc = mb_substr($desc, 0, 190);
-
-                        $u->update([
-                            'adeudo_monto' => $newAdeudoMonto,
-                            'adeudo_descripcion' => $desc,
-                        ]);
-
-                        \Illuminate\Support\Facades\DB::table('audit_logs')->insert([
-                            'actor_user_id' => $request->user()?->id,
-                            'actor_role' => $request->user()?->role,
-                            'actor_name' => $request->user()?->name,
-                            'action' => 'usuario_baja_temporal_sumar_adeudo',
-                            'table_name' => 'usuarios',
-                            'entity_type' => \App\Models\Usuario::class,
-                            'entity_id' => (string) $u->id,
-                            'prev_values' => json_encode($prev),
-                            'new_values' => json_encode(['adeudo_monto' => $newAdeudoMonto, 'adeudo_descripcion' => $desc]),
-                            'ip' => $request->ip(),
-                            'user_agent' => (string) $request->userAgent(),
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
-
-                    $total = 0.0;
-                } else {
-                    $payload['adeudo_pendiente'] = 0;
-                    $total = round(max(0, $bajaTotal - $descuento), 2);
-                }
+                $total = round(max(0, $adeudoPendiente + $bajaTotal - $descuento), 2);
             }
 
             $manualOverride = null;
@@ -476,9 +434,15 @@ class AdminController extends Controller
                     if ($usuario) {
                         $prev = [
                             'estatus_servicio_id' => $usuario->estatus_servicio_id,
+                            'adeudo_monto' => $usuario->adeudo_monto,
+                            'adeudo_descripcion' => $usuario->adeudo_descripcion,
                         ];
 
-                        $usuario->update(['estatus_servicio_id' => $baja->id]);
+                        $usuario->update([
+                            'estatus_servicio_id' => $baja->id,
+                            'adeudo_monto' => 0,
+                            'adeudo_descripcion' => null,
+                        ]);
 
                         \Illuminate\Support\Facades\DB::table('audit_logs')->insert([
                             'actor_user_id' => $request->user()?->id,
@@ -489,7 +453,7 @@ class AdminController extends Controller
                             'entity_type' => \App\Models\Usuario::class,
                             'entity_id' => (string) $usuario->id,
                             'prev_values' => json_encode($prev),
-                            'new_values' => json_encode(['estatus_servicio_id' => $baja->id]),
+                            'new_values' => json_encode(['estatus_servicio_id' => $baja->id, 'adeudo_monto' => 0, 'adeudo_descripcion' => null]),
                             'ip' => $request->ip(),
                             'user_agent' => (string) $request->userAgent(),
                             'created_at' => now(),

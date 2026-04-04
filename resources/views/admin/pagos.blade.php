@@ -986,7 +986,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 if (this.form.otro === 'baja_temporal') {
                     this.totales.prepay_total = 0;
                     const adeudoPendiente = Number(this.adeudoCobro || (this.adeudo && this.adeudo.pendiente ? Number(this.adeudo.pendiente) : 0) || 0);
-                    total = adeudoPendiente > 0 ? 0 : Math.round((this.bajaTemporalImporte() + rec) * 100) / 100;
+                    total = Math.round((adeudoPendiente + this.bajaTemporalImporte() + rec) * 100) / 100;
                 } else if(this.form.prepay === 'si'){
                     const months = Number(this.form.prepay_months||6);
                     const pkg = mensualidad;
