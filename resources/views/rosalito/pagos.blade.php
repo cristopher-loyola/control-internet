@@ -647,7 +647,18 @@
                 const year = d.getFullYear();
                 return `${mes} de ${year}`;
             },
-            fechaLocal(d){ try{ if(!d) return ''; const dt=new Date(d); return dt.toLocaleDateString('es-MX',{year:'numeric',month:'long',day:'numeric'});}catch(_){ return String(d) } },
+            fechaLocal(d){ 
+                try{ 
+                    if(!d) return ''; 
+                    let dt;
+                    if (typeof d === 'string' && d.length === 10) {
+                        dt = new Date(d + 'T00:00:00');
+                    } else {
+                        dt = new Date(d);
+                    }
+                    return dt.toLocaleDateString('es-MX',{year:'numeric',month:'long',day:'numeric'});
+                }catch(_){ return String(d) } 
+            },
             toggleEditor(){
                 this.editMode = !this.editMode;
                 if(this.editMode){
@@ -909,7 +920,11 @@
             async fetchPagoAnterior(){
                 this.pagoAnteriorFecha = '';
                 try{
-                    const r = await fetch('{{ route('rosalito.recibos.prev') }}?numero='+encodeURIComponent(this.form.numero), { headers:{'Accept':'application/json'} });
+                    let url = '{{ route('rosalito.pagos.prev') }}?numero='+encodeURIComponent(this.form.numero);
+                    if (this.ref && this.ref.id) {
+                        url += '&exclude_id=' + this.ref.id;
+                    }
+                    const r = await fetch(url, { headers:{'Accept':'application/json'} });
                     const j = await r.json();
                     if(r.ok && j?.ok){
                         this.form.pago_anterior = Number(j.data.monto)||0;
@@ -1018,6 +1033,7 @@
                                 prepay_total: this.form.prepay==='si'? this.totales.prepay_total : null,
                                 adeudo_pendiente: Number(this.adeudoCobro || 0),
                                 pago_anterior: this.form.pago_anterior,
+                                pago_anterior_fecha: this.pagoAnteriorFecha,
                                 metodo: this.form.metodo,
                                 cobro: this.form.cobro,
                                 otro: this.form.otro,

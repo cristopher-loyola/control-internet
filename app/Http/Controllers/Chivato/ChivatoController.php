@@ -165,13 +165,20 @@ class ChivatoController extends Controller
     public function recibosPagoAnterior(Request $request)
     {
         $numero = (string) $request->query('numero');
+        $excludeId = $request->query('exclude_id');
+
         if ($numero === '' || ! ctype_digit($numero)) {
             return response()->json(['ok' => false, 'message' => 'Número inválido'], 422);
         }
+
         $f = Factura::where('numero_servicio', $numero)
+            ->when($excludeId, function ($q) use ($excludeId) {
+                $q->where('id', '!=', $excludeId);
+            })
             ->orderByDesc('created_at')
             ->orderByDesc('id')
             ->first();
+
         if (! $f) {
             return response()->json(['ok' => false, 'message' => 'Sin pagos anteriores'], 404);
         }
@@ -180,8 +187,8 @@ class ChivatoController extends Controller
             'ok' => true,
             'data' => [
                 'monto' => (float) $f->total,
-                'fecha' => optional($f->created_at)->toDateString(),
-                'created_at' => $f->created_at,
+                'fecha' => $f->created_at->toIso8601String(),
+                'created_at' => $f->created_at->toIso8601String(),
                 'reference_number' => $f->reference_number,
             ],
         ]);

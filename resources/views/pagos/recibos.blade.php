@@ -453,9 +453,9 @@
         .client-receipt .ref-number{top:14mm;left:10mm;font-size:14px}
         .id-band{background:#fde047;border:1px solid #eab308;border-radius:4px;padding:2px 8px;display:inline-flex;gap:10px;margin:2px 0;width:fit-content;max-width:60%}
         .client-receipt .id-band{padding:6px 12px;margin:15px 0;font-size:16px}
-        .receipt-grid{display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;font-size:13px;line-height:1.2}
-        .client-receipt .receipt-grid{font-size:14px;gap:4px 24px;line-height:1.3}
-        .client-receipt .receipt-grid.prepay-active{font-size:12px;gap:4px 24px;line-height:1.3}
+        .receipt-grid{display:grid;grid-template-columns:auto auto;justify-content:center;gap:2px 8px;font-size:13px;line-height:1.1}
+        .client-receipt .receipt-grid{font-size:14px;gap:3px 12px;line-height:1.2}
+        .client-receipt .receipt-grid.prepay-active{font-size:12px;gap:3px 12px;line-height:1.2}
         .footer-note { position: absolute; bottom: 8mm; left: 0; right: 0; text-align: center; font-size: 10px; font-weight: 600; color: #4b5563; }
         .cobro-row { padding-bottom: 2mm; }
         .receipt-head img{max-height:120px;object-fit:contain}
@@ -671,7 +671,18 @@
                 const year = d.getFullYear();
                 return `${mes} de ${year}`;
             },
-            fechaLocal(d){ try{ if(!d) return ''; const dt=new Date(d); return dt.toLocaleDateString('es-MX',{year:'numeric',month:'long',day:'numeric'});}catch(_){ return String(d) } },
+            fechaLocal(d){ 
+                try{ 
+                    if(!d) return ''; 
+                    let dt;
+                    if (typeof d === 'string' && d.length === 10) {
+                        dt = new Date(d + 'T00:00:00');
+                    } else {
+                        dt = new Date(d);
+                    }
+                    return dt.toLocaleDateString('es-MX',{year:'numeric',month:'long',day:'numeric'});
+                }catch(_){ return String(d) } 
+            },
             toggleEditor(){
                 this.editMode = !this.editMode;
                 if(this.editMode){
@@ -749,6 +760,7 @@
                                 this.datos.mensualidad = Number(p.mensualidad)||0;
                                 this.form.recargo = p.recargo || 'no';
                                 this.form.pago_anterior = p.pago_anterior || 0;
+                                this.pagoAnteriorFecha = p.pago_anterior_fecha || '';
                                 this.form.metodo = p.metodo || '';
                                 this.form.cobro = p.cobro || '';
                                 this.form.otro = p.otro || 'no';
@@ -1012,7 +1024,11 @@
             async fetchPagoAnterior(){
                 this.pagoAnteriorFecha = '';
                 try{
-                    const r = await fetch('{{ route('pagos.recibos.prev') }}?numero='+encodeURIComponent(this.form.numero), { headers:{'Accept':'application/json'} });
+                    let url = '{{ route('pagos.recibos.prev') }}?numero='+encodeURIComponent(this.form.numero);
+                    if (this.ref && this.ref.id) {
+                        url += '&exclude_id=' + this.ref.id;
+                    }
+                    const r = await fetch(url, { headers:{'Accept':'application/json'} });
                     const j = await r.json();
                     if(r.ok && j?.ok){
                         this.form.pago_anterior = Number(j.data.monto)||0;
@@ -1209,6 +1225,7 @@
                                 prepay_total: this.form.prepay==='si'? this.totales.prepay_total : null,
                                 adeudo_pendiente: Number(this.adeudoCobro || 0),
                                 pago_anterior: this.form.pago_anterior,
+                                pago_anterior_fecha: this.pagoAnteriorFecha,
                                 metodo: this.form.metodo,
                                 cobro: this.form.cobro,
                                 otro: this.form.otro,
@@ -1261,6 +1278,7 @@
                                 prepay_total: this.form.prepay==='si'? this.totales.prepay_total : null,
                                 adeudo_pendiente: Number(this.adeudoCobro || 0),
                                 pago_anterior: this.form.pago_anterior,
+                                pago_anterior_fecha: this.pagoAnteriorFecha,
                                 metodo: this.form.metodo,
                                 cobro: this.form.cobro,
                                 otro: this.form.otro,
