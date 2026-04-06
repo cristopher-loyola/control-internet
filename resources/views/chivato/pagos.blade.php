@@ -331,9 +331,11 @@
                             </div>
                             <div class="text-right text-xs text-gray-500">Copia: COBRADOR</div>
                             <div class="receipt-head"></div>
-                            <div class="id-band">
-                                <span class="font-bold">ID</span>
-                                <span class="font-bold" x-text="form.numero || '—'"></span>
+                            <div class="flex justify-end">
+                                <div class="id-band">
+                                    <span class="font-bold">ID</span>
+                                    <span class="font-bold" x-text="form.numero || '—'"></span>
+                                </div>
                             </div>
                             <div class="receipt-grid">
                                 <div>Nombre</div><div x-text="datos.nombre || '—'"></div>
@@ -368,9 +370,11 @@
                             </div>
                             <div class="text-right text-xs text-gray-500">Copia: CLIENTE</div>
                             <div class="receipt-head"></div>
-                            <div class="id-band">
-                                <span class="font-bold">ID</span>
-                                <span class="font-bold" x-text="form.numero || '—'"></span>
+                            <div class="flex justify-end">
+                                <div class="id-band">
+                                    <span class="font-bold">ID</span>
+                                    <span class="font-bold" x-text="form.numero || '—'"></span>
+                                </div>
                             </div>
                             <div class="receipt-grid">
                                 <div>Nombre</div><div x-text="datos.nombre || '—'"></div>
