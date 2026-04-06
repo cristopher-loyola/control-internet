@@ -427,6 +427,7 @@
                                 <div>Hora</div><div x-text="hora()"></div>
                             </div>
                             <div class="footer-note">
+                                Horario de atención en pagos: Lunes a Viernes de 9:00 am a 5:00 pm, sabado y domingo 9:00 am a 3:00 pm<br>
                                 Recuerda que del 1 al 7 de mes se realizan los pagos correctamente, posterior a eso se cobrarán cargos por costo de reconexión.
                             </div>
                         </div>
@@ -1384,6 +1385,7 @@ html,body{ margin:0; padding:0 }
   <div class="line"><div class="l">Hora</div><div>${hora}</div></div>
   <div class="sep"></div>
   <div class="center" style="font-size:10px; font-weight:600; color:#555; margin-top:6px; padding-top:6px; border-top:1px solid #999;">
+    Horario de atención en pagos: Lunes a Viernes de 9:00 am a 5:00 pm, sabado y domingo 9:00 am a 3:00 pm<br>
     Recuerda que del 1 al 7 de mes se realizan los pagos correctamente, posterior a eso se cobrarán cargos por costo de reconexión.
   </div>
   
