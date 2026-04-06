@@ -341,8 +341,8 @@
                                 <div>Nombre</div><div x-text="datos.nombre || '—'"></div>
                                 <div>Mes</div><div x-text="mesEnCursoCompleto()"></div>
                                 <div>Mensualidad de Internet</div><div x-text="moneda(datos.mensualidad)"></div>
-                                <div>Otros</div><div x-text="form.otro === 'cancelacion' ? 'Cancelación de servicio' : 'No'"></div>
-                                <div>Importe</div><div x-text="moneda(0)"></div>
+                                <div>Otros</div><div x-text="otroLabel()"></div>
+                                <div>Importe</div><div x-text="moneda(bajaTemporalImporte())"></div>
                                 <div x-show="appliedDiscount > 0">Descuento</div><div x-show="appliedDiscount > 0" x-text="moneda(appliedDiscount)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
@@ -356,7 +356,7 @@
                                 <div>Total a pagar en número</div><div x-text="moneda(totales.total)"></div>
                                 <div class="col-span-1">Total a pagar en letra</div><div class="col-span-1" x-text="totales.letra"></div>
                                 <div>Método de pago</div><div x-text="form.metodo || '—'"></div>
-                                <div>Cobro</div><div x-text="form.cobro || '—'"></div>
+                                <div class="cobro-row">Cobro</div><div class="cobro-row" x-text="form.cobro || '—'"></div>
                                 <div>Fecha</div><div x-text="fecha()"></div>
                                 <div>Hora</div><div x-text="hora()"></div>
                             </div>
@@ -376,12 +376,12 @@
                                     <span class="font-bold" x-text="form.numero || '—'"></span>
                                 </div>
                             </div>
-                            <div class="receipt-grid">
+                            <div class="receipt-grid" :class="form.prepay === 'si' ? 'prepay-active' : ''">
                                 <div>Nombre</div><div x-text="datos.nombre || '—'"></div>
                                 <div>Mes</div><div x-text="mesEnCursoCompleto()"></div>
                                 <div>Mensualidad de Internet</div><div x-text="moneda(datos.mensualidad)"></div>
-                                <div>Otros</div><div x-text="form.otro === 'cancelacion' ? 'Cancelación de servicio' : 'No'"></div>
-                                <div>Importe</div><div x-text="moneda(0)"></div>
+                                <div>Otros</div><div x-text="otroLabel()"></div>
+                                <div>Importe</div><div x-text="moneda(bajaTemporalImporte())"></div>
                                 <div x-show="appliedDiscount > 0">Descuento</div><div x-show="appliedDiscount > 0" x-text="moneda(appliedDiscount)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
@@ -395,12 +395,12 @@
                                 <div>Total a pagar en número</div><div x-text="moneda(totales.total)"></div>
                                 <div class="col-span-1">Total a pagar en letra</div><div class="col-span-1" x-text="totales.letra"></div>
                                 <div>Método de pago</div><div x-text="form.metodo || '—'"></div>
-                                <div>Cobro</div><div x-text="form.cobro || '—'"></div>
+                                <div class="cobro-row">Cobro</div><div class="cobro-row" x-text="form.cobro || '—'"></div>
                                 <div>Fecha</div><div x-text="fecha()"></div>
                                 <div>Hora</div><div x-text="hora()"></div>
                             </div>
-                            <div class="mt-4 text-center text-xs font-semibold text-gray-600 border-t pt-2">
-                                <p>Recuerda que del 1 al 7 de mes se realizan los pagos correctamente, posterior a eso se cobrarán cargos por costo de reconexión.</p>
+                            <div class="footer-note">
+                                Recuerda que del 1 al 7 de mes se realizan los pagos correctamente, posterior a eso se cobrarán cargos por costo de reconexión.
                             </div>
                         </div>
                     </div>
@@ -419,16 +419,22 @@
             .shadow-sm,.sm\:rounded-lg,.overflow-hidden{box-shadow:none!important;border-radius:0!important;overflow:visible!important}
             .receipt{border:0!important;border-radius:0!important}
             .divider-line{display:none!important}
-            .print-sheet::after{content:'';position:absolute;left:0;right:0;top:calc(50% - 0.3mm);height:0.6mm;background:#111;z-index:50}
+            .print-sheet::after{content:'';position:absolute;left:0;right:0;top:calc(33% + 20mm);height:0.6mm;background:#111;z-index:50}
         }
-         .print-sheet{position:relative;width:210mm;max-width:none;margin:0 calc(50% - 105mm);transform:none;height:297mm;background:#fff}
+        .print-sheet{position:relative;width:210mm;max-width:none;margin:0 auto;transform:none;height:297mm;background:#fff}       
         .sheet-abs{position:absolute;inset:0;z-index:20;pointer-events:none}
-        .receipt{position:relative;height:calc((297mm - 0.6mm)/2);border:1px solid #d1d5db;border-radius:8px;padding:6mm;background:#fff;overflow:hidden}
+        .receipt{position:relative;height:calc(33% + 20mm);border:1px solid #d1d5db;border-radius:8px;padding:4mm 6mm 2mm 6mm;background:#fff}
         .divider-line{height:0.6mm;background:#111;margin:0}
-        .client-receipt{padding-top:8mm}
-        .ref-number{position:absolute;top:2mm;left:6mm;font-weight:700;font-size:12px;color:#111;z-index:30}
-        .id-band{background:#fde047;border:1px solid #eab308;border-radius:4px;padding:4px 8px;display:inline-flex;gap:10px;margin:10px 0;width:fit-content;max-width:60%}
-        .receipt-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:12px}
+        .client-receipt{height:calc(67% - 20mm);padding:17mm 10mm 10mm 10mm}
+        .ref-number{position:absolute;top:4mm;left:6mm;font-weight:700;font-size:11px;color:#111;z-index:30}
+        .client-receipt .ref-number{top:14mm;left:10mm;font-size:14px}
+        .id-band{background:#fde047;border:1px solid #eab308;border-radius:4px;padding:2px 8px;display:inline-flex;gap:10px;margin:2px 0;width:fit-content;max-width:60%}
+        .client-receipt .id-band{padding:6px 12px;margin:15px 0;font-size:16px}
+        .receipt-grid{display:grid;grid-template-columns:auto auto;justify-content:center;gap:2px 8px;font-size:13px;line-height:1.1}
+        .client-receipt .receipt-grid{font-size:14px;gap:3px 12px;line-height:1.2}
+        .client-receipt .receipt-grid.prepay-active{font-size:12px;gap:3px 12px;line-height:1.2}
+        .footer-note { position: absolute; bottom: 8mm; left: 0; right: 0; text-align: center; font-size: 10px; font-weight: 600; color: #4b5563; }
+        .cobro-row { padding-bottom: 2mm; }
         .receipt-head img{max-height:120px;object-fit:contain}
         .logo-center{display:inline-block;max-width:680px;width:90%}
         .abs-img,.abs-text{position:absolute;pointer-events:none}
@@ -437,72 +443,14 @@
         .resize-handle{position:absolute;right:-6px;bottom:-6px;width:14px;height:14px;background:#fff;border:1px solid #666;border-radius:2px;box-shadow:0 0 0 2px rgba(255,255,255,.6);cursor:se-resize}
         @page{size:A4;margin:0}
         html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-        
-        /* Mobile optimizations */
         @media (max-width: 640px){
-            .max-w-6xl{ max-width: 100%; padding: 0.5rem; }
-            .print-sheet{ 
-                width: 100% !important; 
-                min-width: 100% !important;
-                height: auto !important; 
-                aspect-ratio: 210 / 297; 
-                margin: 0; 
-                transform: scale(0.6);
-                transform-origin: top center;
-            }
-            .receipt{ 
-                height: auto; 
-                min-height: 400px;
-                padding: 8px; 
-                border-radius: 6px; 
-                font-size: 11px;
-            }
-            .divider-line{ height: 1px; margin: 8px 0; }
+            .max-w-6xl{ max-width: 100%; }
+            .print-sheet{ width: 100vw; height: auto; aspect-ratio: 210 / 297; margin: 0; }
+            .receipt{ height: auto; padding: 12px; border-radius: 6px; }
+            .divider-line{ height: 1px; margin: 12px 0; }
             .sheet-abs{ display: none; }
-            .receipt-grid{ 
-                font-size: 0.85rem; 
-                line-height: 1.3; 
-                gap: 2px 8px;
-            }
-            .receipt-grid > div:nth-child(odd) {
-                font-size: 0.8rem;
-            }
-            .id-band{ 
-                margin: 6px 0; 
-                padding: 2px 6px;
-                font-size: 0.85rem;
-            }
-            .ref-number {
-                font-size: 10px;
-                top: 4px;
-                left: 8px;
-            }
-            /* Touch-friendly form elements */
-            .form-input, .form-select {
-                min-height: 44px;
-                font-size: 16px; /* Prevent zoom on iOS */
-            }
-            /* Stack action buttons nicely */
-            .btn {
-                min-height: 48px;
-                font-size: 1rem;
-            }
-            /* Make modals fit screen */
-            .fixed.inset-0 > div {
-                max-width: calc(100vw - 2rem);
-                margin: 1rem;
-            }
-        }
-        
-        /* Tablet adjustments */
-        @media (min-width: 641px) and (max-width: 1024px){
-            .print-sheet{
-                width: 100%;
-                max-width: 210mm;
-                margin: 0 auto;
-                transform: scale(0.8);
-                transform-origin: top center;
-            }
+            .receipt-grid{ font-size: 0.95rem; line-height: 1.2; }
+            .id-band{ margin: 8px 0; }
         }
     </style>
 
@@ -564,8 +512,11 @@
         };
         return {
             readOnlyMode: false,
-            form:{ numero:'', recargo:getDefaultRecargo(), pago_anterior:0, metodo:'', cobro:'', prepay:'no', prepay_months:6, otro:'no' },
+            form:{ numero:'', recargo:getDefaultRecargo(), pago_anterior:0, metodo:'', cobro:'', prepay:'no', prepay_months:6, otro:'no', baja_temporal_months:1 },
             pagoAnteriorFecha:'',
+            manualEditEnabled: false,
+            manualReason: '',
+            manualReasonSaved: '',
             datos:{ nombre:'', mensualidad:0 },
             totales:{ total:0, letra:'', prepay_total:0 },
             adeudo:null,
@@ -611,6 +562,31 @@
             _moveB:null, _upB:null, _moveTouchB:null,
             resizing:false, resizeKey:null, resizeStart:{x:0,w:0}, _resizeB:null, _resizeTouchB:null,
             moneda(v){ return new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'}).format(v||0) },
+            bajaTemporalImporte(){
+                if (this.form.otro !== 'baja_temporal') return 0;
+                const mensualidad = Number(this.datos.mensualidad) || 0;
+                const months = Number(this.form.baja_temporal_months || 1);
+                const total = mensualidad * 0.2 * Math.min(6, Math.max(1, months));
+                return Math.round(total * 100) / 100;
+            },
+            manualReasonForPrint(){
+                const r = this.manualEditEnabled ? this.manualReason : this.manualReasonSaved;
+                const s = String(r || '').trim();
+                if (!s) return '';
+                return s.length > 40 ? (s.slice(0, 40) + '…') : s;
+            },
+            otroLabel(){
+                let base = 'No';
+                if (this.form.otro === 'cancelacion') base = 'Cancelación de servicio';
+                if (this.form.otro === 'baja_temporal') {
+                    const m = Number(this.form.baja_temporal_months || 1);
+                    base = `Baja temporal (${m} ${m === 1 ? 'mes' : 'meses'})`;
+                }
+                const motivo = this.manualReasonForPrint();
+                if (!motivo) return base;
+                if (base === 'No') return motivo;
+                return `${base} - ${motivo}`;
+            },
             mesEnCurso(){ return new Date().toLocaleDateString('es-MX',{month:'long'}).charAt(0).toUpperCase() + new Date().toLocaleDateString('es-MX',{month:'long'}).slice(1) },
             mesEnCursoCompleto(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleDateString('es-MX',{month:'long'})+' de '+d.getFullYear() },
             fecha(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) },
@@ -924,7 +900,7 @@
             async fetchPagoAnterior(){
                 this.pagoAnteriorFecha = '';
                 try{
-                    let url = '{{ route('pozo_hondo.pagos.prev') }}?numero='+encodeURIComponent(this.form.numero);
+                    let url = '{{ route('pozo_hondo.recibos.prev') }}?numero='+encodeURIComponent(this.form.numero);
                     if (this.ref && this.ref.id) {
                         url += '&exclude_id=' + this.ref.id;
                     }
@@ -1041,6 +1017,11 @@
                                 metodo: this.form.metodo,
                                 cobro: this.form.cobro,
                                 otro: this.form.otro,
+                                baja_temporal_months: this.form.otro==='baja_temporal' ? this.form.baja_temporal_months : null,
+                                baja_temporal_total: this.form.otro==='baja_temporal' ? this.bajaTemporalImporte() : null,
+                                manual_total_enabled: this.manualEditEnabled,
+                                manual_total_value: this.manualEditEnabled ? (Number(this.manualTotal) || 0) : null,
+                                manual_total_reason: this.manualEditEnabled ? (String(this.manualReason || '').trim()) : null,
                                 fecha: this.fecha(),
                                 hora: this.hora(),
                                 descuento: this.appliedDiscount || 0
@@ -1071,8 +1052,8 @@
                 const nombre = this.datos.nombre || '—';
                 const id = this.form.numero || '—';
                 const mes = this.mesEnCursoCompleto();
-                const otros = '—';
-                const importe = this.moneda(0);
+                const otros = this.otroLabel();
+                const importe = this.moneda(this.bajaTemporalImporte());
                 const recargo = this.form.recargo === 'si' ? 'SI' : 'NO';
                 const totalNum = this.moneda(this.totales.total);
                 const totalLetra = this.totales.letra || '';
