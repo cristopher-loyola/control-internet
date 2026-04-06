@@ -47,6 +47,7 @@
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Motivo Cancelación</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Usuario</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cobró</th>
                                     <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
                                 </tr>
                             </thead>
@@ -80,6 +81,7 @@
                                             @endif
                                         </td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm">{{ $r->user_name ?? '—' }}</td>
+                                        <td class="px-4 py-2 whitespace-nowrap text-sm">{{ $r->cobro ?? '—' }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-right">
                                             @if(!$r->deleted_at)
                                                 <!-- <a href="{{ route('pagos.recibos') }}?folio={{ $r->reference_number }}&readonly=1" class="btn btn-info btn-sm">Re-imprimir</a> -->

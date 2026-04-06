@@ -608,6 +608,7 @@ class AdminController extends Controller
                 'user_name' => optional($users->get($f->created_by))->name,
                 'motivo_cancelacion' => $reasons[($f->numero_servicio ?? '').'|'.($f->periodo ?? '')] ?? null,
                 'descuento' => $payload['descuento'] ?? 0,
+                'cobro' => $payload['cobro'] ?? null,
             ];
         });
 
