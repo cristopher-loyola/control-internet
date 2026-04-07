@@ -263,6 +263,44 @@ class BajaTemporalTest extends TestCase
             ->assertSee('9011');
     }
 
+    public function test_baja_temporal_muestra_fecha_hasta_según_ultima_factura(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 4, 1, 10, 0, 0));
+        [$estadoId, $estatusPagadoId, $servicioId] = $this->seedCatalogs();
+        $bajaId = $this->ensureBajaTemporalStatus();
+
+        Usuario::create([
+            'numero_servicio' => 9050,
+            'nombre_cliente' => 'Cliente BT Fecha',
+            'domicilio' => '-',
+            'estado_id' => $estadoId,
+            'estatus_servicio_id' => $bajaId,
+            'servicio_id' => $servicioId,
+            'tarifa' => 300,
+            'adeudo_descripcion' => null,
+            'adeudo_monto' => 0,
+        ]);
+
+        \App\Models\Factura::create([
+            'reference_number' => 500,
+            'numero_servicio' => '9050',
+            'periodo' => null,
+            'total' => 60.00,
+            'payload' => [
+                'otro' => 'baja_temporal',
+                'baja_temporal_months' => 2,
+            ],
+        ]);
+
+        $admin = User::factory()->create(['role' => 'admin']);
+        $this->actingAs($admin);
+
+        $this->get(route('admin.dashboard.baja-temporal'))
+            ->assertOk()
+            ->assertSee('9050')
+            ->assertSee('2026-06-01');
+    }
+
     public function test_pagos_requiere_motivo_si_se_edita_total(): void
     {
         Carbon::setTestNow(Carbon::create(2026, 4, 1, 10, 0, 0));

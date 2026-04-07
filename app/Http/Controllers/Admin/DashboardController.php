@@ -98,6 +98,39 @@ class DashboardController extends Controller
             ->orderBy('updated_at', 'desc')
             ->paginate(50);
 
+        $numeros = $usuarios->getCollection()->pluck('numero_servicio')->filter()->map(fn ($n) => (string) $n)->values()->all();
+        $hastaMap = [];
+        if (! empty($numeros)) {
+            $facturas = Factura::whereNull('deleted_at')
+                ->whereIn('numero_servicio', $numeros)
+                ->orderByDesc('id')
+                ->get(['id', 'numero_servicio', 'payload', 'created_at']);
+            foreach ($facturas as $f) {
+                $num = (string) ($f->numero_servicio ?? '');
+                if ($num === '' || isset($hastaMap[$num])) {
+                    continue;
+                }
+                $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+                if (! is_array($payload) || ($payload['otro'] ?? null) !== 'baja_temporal') {
+                    continue;
+                }
+                $months = (int) ($payload['baja_temporal_months'] ?? 0);
+                if ($months <= 0) {
+                    $months = 1;
+                }
+                $from = $f->created_at ? Carbon::parse($f->created_at) : null;
+                $hasta = $from ? $from->copy()->addMonths($months)->toDateString() : null;
+                $hastaMap[$num] = $hasta;
+            }
+        }
+
+        $usuarios->getCollection()->transform(function ($u) use ($hastaMap) {
+            $num = (string) ($u->numero_servicio ?? '');
+            $u->baja_temporal_hasta = $hastaMap[$num] ?? null;
+
+            return $u;
+        });
+
         $estados = \App\Models\Estado::all();
 
         return view('admin.usuarios_baja_temporal', compact('usuarios', 'estados'));

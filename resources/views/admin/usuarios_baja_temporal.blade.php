@@ -12,41 +12,55 @@
 
     <div class="py-6" x-data="bajaTemporal()">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white dark:bg-gray-800 rounded shadow p-4">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="text-sm text-gray-600">Total: {{ $usuarios->total() }} clientes</div>
-                    <a href="{{ route($routePrefix . '.index') }}" class="btn btn-primary">Regresar al dashboard</a>
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-5">
+                <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3 mb-4">
+                    <div>
+                        <div class="text-lg font-bold text-gray-800 dark:text-white">Clientes en baja temporal</div>
+                        <div class="text-xs text-gray-500 mt-1">Total: {{ $usuarios->total() }} clientes</div>
+                    </div>
+                    <a href="{{ route($routePrefix . '.index') }}" class="btn btn-primary btn-sm">Regresar al dashboard</a>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full text-sm">
-                        <thead>
-                            <tr class="text-left text-gray-600">
-                                <th class="py-2">Número</th>
-                                <th class="py-2">Nombre</th>
-                                <th class="py-2">IP</th>
-                                <th class="py-2">Estatus</th>
-                                <th class="py-2">Estado</th>
-                                <th class="py-2">Actualizado</th>
-                                <th class="py-2 text-right">Acciones</th>
+
+                <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                        <thead class="bg-gray-50 dark:bg-gray-900">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Número</th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nombre</th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">IP</th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Estatus</th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Hasta</th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Estado</th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Actualizado</th>
+                                <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                             @forelse ($usuarios as $u)
-                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                                    <td class="py-2">{{ $u->numero_servicio }}</td>
-                                    <td class="py-2">{{ $u->nombre_cliente }}</td>
-                                    <td class="py-2">
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                                    <td class="px-4 py-3 font-semibold text-gray-900 dark:text-white">{{ $u->numero_servicio }}</td>
+                                    <td class="px-4 py-3 text-gray-800 dark:text-gray-100">{{ $u->nombre_cliente }}</td>
+                                    <td class="px-4 py-3">
                                         @if($u->ip && $u->ip !== '-')
-                                            <a href="http://{{ $u->ip }}" target="_blank" class="text-indigo-600 hover:text-indigo-800 hover:underline">
+                                            <a href="http://{{ $u->ip }}" target="_blank" class="text-indigo-600 hover:text-indigo-800 hover:underline dark:text-indigo-400 dark:hover:text-indigo-300">
                                                 {{ $u->ip }}
                                             </a>
                                         @else
-                                            {{ $u->ip }}
+                                            <span class="text-gray-400">-</span>
                                         @endif
                                     </td>
-                                    <td class="py-2">{{ optional($u->estatusServicio)->nombre }}</td>
-                                    <td class="py-2">
-                                        <select 
+                                    <td class="px-4 py-3">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
+                                            {{ optional($u->estatusServicio)->nombre }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200">
+                                            {{ $u->baja_temporal_hasta ?? '-' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <select
                                             class="form-select text-xs rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                                             @change="actualizarEstado($event, {{ $u->id }})"
                                         >
@@ -57,16 +71,14 @@
                                             @endforeach
                                         </select>
                                     </td>
-                                    <td class="py-2 text-gray-500">{{ optional($u->updated_at)->format('Y-m-d') }}</td>
-                                    <td class="py-2 text-right">
-                                        <div class="inline-flex gap-2">
-                                            <a href="{{ route($routePrefix . '.clientes.show', $u->id) }}" class="px-2 py-1 rounded bg-indigo-600 text-white text-xs hover:bg-indigo-700">Ver</a>
-                                        </div>
+                                    <td class="px-4 py-3 text-gray-500">{{ optional($u->updated_at)->format('Y-m-d') }}</td>
+                                    <td class="px-4 py-3 text-right">
+                                        <a href="{{ route($routePrefix . '.clientes.show', $u->id) }}" class="px-2 py-1 rounded bg-indigo-600 text-white text-xs hover:bg-indigo-700">Ver</a>
                                     </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="py-8 text-center text-gray-400 italic">
+                                    <td colspan="8" class="py-10 text-center text-gray-400 italic">
                                         No hay clientes en baja temporal
                                     </td>
                                 </tr>
@@ -116,4 +128,3 @@
         }
     </script>
 </x-app-layout>
-
