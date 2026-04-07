@@ -119,10 +119,6 @@
                                 <span>📋</span><span>Historial</span>
                             </a>
 
-                            <button class="w-full px-4 py-3 rounded-lg bg-green-600 text-white font-medium shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150 min-h-[48px] flex items-center justify-center gap-2" @click="openDiscountModal()">
-                                <span>🏷️</span><span>Aplicar Descuento</span>
-                            </button>
-
                             <button class="w-full px-4 py-3 rounded-lg bg-blue-600 text-white font-medium shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150 min-h-[48px] flex items-center justify-center gap-2" @click="metodoValido() && openConfirm('ticket')">
                                 <span>🧾</span><span>Imprimir Ticket</span>
                             </button>
@@ -150,21 +146,6 @@
                                 <strong>Total a pagar incluyendo adeudos:</strong>
                                 <span class="font-bold text-red-900" x-text="moneda(totales.total)"></span>
                             </p>
-                            <p class="mb-1" x-show="appliedDiscount > 0">
-                                <strong>Descuento aplicado:</strong>
-                                <span class="font-bold text-red-900" x-text="moneda(appliedDiscount)"></span>
-                                <button
-                                @click="removeDiscount()"
-                                class="ml-2 inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium
-                                        bg-red-100 text-red-700 border border-red-300 rounded-md
-                                        hover:bg-red-200 hover:text-red-900 hover:border-red-400
-                                        active:bg-red-300 transition-all duration-150 cursor-pointer">
-                                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                                </svg>
-                                Eliminar
-                                </button>
-                            </p>
                         </div>
                     </div>
 
@@ -184,27 +165,6 @@
                         </div>
                     </div>
 
-                    <!-- Modal de Descuento -->
-                    <div x-show="discountModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 not-print">
-                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-96">
-                            <div class="px-5 pt-5 pb-3 border-b border-gray-200 dark:border-gray-700">
-                                <div class="text-sm font-semibold text-gray-800 dark:text-gray-100 uppercase tracking-wider">
-                                    Aplicar Descuento
-                                </div>
-                            </div>
-                            <div class="px-5 py-4">
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Monto del descuento</label>
-                                <input type="number" step="0.01" min="0" placeholder="0.00"
-                                    class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                                    x-model.number="discountAmount">
-                                <p class="text-xs text-gray-500 mt-2">Este monto se restará del total a pagar</p>
-                            </div>
-                            <div class="px-5 pb-4 flex justify-end gap-2">
-                                <button class="btn btn-secondary" @click="discountModalOpen = false">Cancelar</button>
-                                <button class="btn btn-primary" @click="applyDiscount()">Aplicar</button>
-                            </div>
-                        </div>
-                    </div>
                     <br>
 
                     <div class="mt-6 print-sheet" x-ref="sheet" x-show="layoutReady" x-cloak>
