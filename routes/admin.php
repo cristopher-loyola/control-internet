@@ -25,6 +25,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/dashboard/corte', [DashboardController::class, 'corteCaja'])->name('dashboard.corte');
         Route::get('/dashboard/export', [DashboardController::class, 'exportResumen'])->name('dashboard.export');
         Route::get('/dashboard/cancelados', [DashboardController::class, 'canceladosIndex'])->name('dashboard.cancelados');
+        Route::post('/dashboard/cancelados/{id}/estado', [DashboardController::class, 'updateEstado'])->name('dashboard.cancelados.estado');
         Route::get('/dashboard/desactivados', [DashboardController::class, 'desactivadosIndex'])->name('dashboard.desactivados');
         Route::get('/dashboard/activos/pagados', [DashboardController::class, 'activosPagadosIndex'])->name('dashboard.activos.pagados');
         Route::get('/dashboard/baja-temporal', [DashboardController::class, 'bajaTemporalIndex'])->name('dashboard.baja-temporal');

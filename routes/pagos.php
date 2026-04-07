@@ -16,6 +16,7 @@ Route::middleware(['auth', 'role:pagos'])
         Route::get('/dashboard/cancelados/all', [DashboardController::class, 'allCancelados'])->name('dashboard.cancelados.all');
         Route::get('/dashboard/export', [DashboardController::class, 'exportResumen'])->name('dashboard.export');
         Route::get('/dashboard/cancelados', [DashboardController::class, 'canceladosIndex'])->name('dashboard.cancelados');
+        Route::post('/dashboard/cancelados/{id}/estado', [DashboardController::class, 'updateEstado'])->name('dashboard.cancelados.estado');
         Route::get('/dashboard/desactivados', [DashboardController::class, 'desactivadosIndex'])->name('dashboard.desactivados');
         Route::get('/dashboard/activos/pagados', [DashboardController::class, 'activosPagadosIndex'])->name('dashboard.activos.pagados');
         Route::get('/dashboard/baja-temporal', [DashboardController::class, 'bajaTemporalIndex'])->name('dashboard.baja-temporal');

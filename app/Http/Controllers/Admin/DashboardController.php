@@ -33,7 +33,11 @@ class DashboardController extends Controller
             ->orderBy('updated_at', 'desc')
             ->paginate(50);
 
-        return view('admin.usuarios_cancelados', compact('usuarios'));
+        $estados = \App\Models\Estado::query()
+            ->whereIn('id', [1, 2])
+            ->get();
+
+        return view('admin.usuarios_cancelados', compact('usuarios', 'estados'));
     }
 
     public function prepaySettings(Request $request)
