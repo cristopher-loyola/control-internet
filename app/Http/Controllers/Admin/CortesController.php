@@ -6,48 +6,20 @@ use App\Http\Controllers\Controller;
 use App\Models\Usuario;
 use App\Models\Cortador;
 use App\Models\Factura;
+use App\Services\MorosidadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class CortesController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, MorosidadService $morosidadService)
     {
         $q = trim((string) $request->query('q', ''));
         $zona = $request->query('zona');
         $estado = $request->query('estado');
 
         $mesActual = now()->format('Y-m');
-        $hoy = now();
-
-        // 1. Usuarios con pago registrado en el mes actual
-        $usuariosPagadosMes = Factura::where('periodo', $mesActual)
-            ->pluck('numero_servicio')
-            ->toArray();
-
-        // 2. Usuarios con pago adelantado que aún cubre este mes
-        // Buscamos facturas de los últimos 12 meses que tengan prepago
-        $prepagosActivos = Factura::where('created_at', '>=', now()->subYear())
-            ->where('payload->prepay', 'si')
-            ->get();
-
-        $usuariosConPrepago = [];
-        foreach ($prepagosActivos as $f) {
-            $p = $f->payload;
-            $months = intval($p['prepay_months'] ?? 0);
-            if ($months > 0) {
-                // Si la fecha de creación + meses de prepago es >= hoy
-                $vence = $f->created_at->copy()->addMonths($months);
-                if ($vence->greaterThanOrEqualTo($hoy)) {
-                    $usuariosConPrepago[] = (string) $f->numero_servicio;
-                }
-            }
-        }
-
-        $todosPagados = array_unique(array_merge(
-            array_map('strval', $usuariosPagadosMes), 
-            $usuariosConPrepago
-        ));
+        $diaDelMes = now()->day;
 
         $usuarios = Usuario::with('cortador')
             ->when($q !== '', function ($query) use ($q) {
@@ -67,9 +39,24 @@ class CortesController extends Controller
             ->paginate(50)
             ->appends($request->query());
 
-        // Marcar usuarios pagados
-        $usuarios->getCollection()->transform(function ($usuario) use ($todosPagados) {
-            $usuario->pagado_mes = in_array((string)$usuario->numero_servicio, $todosPagados);
+        // Calcular adeudo para cada usuario y determinar si está en verde
+        $usuarios->getCollection()->transform(function ($usuario) use ($morosidadService, $diaDelMes) {
+            $adeudo = $morosidadService->calcularAdeudoUsuario((string)$usuario->numero_servicio);
+            $mesesAdeudo = $adeudo['meses_adeudo'] ?? 0;
+
+            // Lógica de tolerancia:
+            // - 0 meses adeudo → Verde (al día)
+            // - 1 mes adeudo + día < 8 → Verde (tolerancia)
+            // - 1 mes adeudo + día >= 8 → Sin verde (corte)
+            // - 2+ meses adeudo → Sin verde (corte)
+            if ($mesesAdeudo == 0) {
+                $usuario->pagado_mes = true;
+            } elseif ($mesesAdeudo == 1 && $diaDelMes < 8) {
+                $usuario->pagado_mes = true; // Tolerancia hasta día 8
+            } else {
+                $usuario->pagado_mes = false;
+            }
+
             return $usuario;
         });
 
