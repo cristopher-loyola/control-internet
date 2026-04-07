@@ -149,8 +149,9 @@ class AdminController extends Controller
             $usuarioId = $request->input('usuario_id');
             $payload = $request->input('payload', []);
             $isBajaTemporal = ($payload['otro'] ?? null) === 'baja_temporal';
+            $isCancelacion = ($payload['otro'] ?? null) === 'cancelacion';
 
-            if ($numero && ! $isBajaTemporal) {
+            if ($numero && ! $isBajaTemporal && ! $isCancelacion) {
                 $prepay = \App\Models\Factura::whereNull('deleted_at')
                     ->where('numero_servicio', $numero)
                     ->where(function ($q) {
@@ -187,6 +188,17 @@ class AdminController extends Controller
                 $row = (object) ['current_value' => 0];
             }
             $total = round((float) $request->input('total', 0), 2);
+
+            if (($payload['otro'] ?? null) === 'cancelacion') {
+                $payload['otro'] = 'cancelacion';
+                $payload['recargo'] = 'no';
+                $payload['prepay'] = 'no';
+                $payload['prepay_months'] = null;
+                $payload['prepay_total'] = null;
+                if (! ($payload['manual_total_enabled'] ?? false)) {
+                    $total = 0.0;
+                }
+            }
 
             if (($payload['otro'] ?? null) === 'baja_temporal') {
                 if (! $numero || ! ctype_digit((string) $numero)) {
@@ -260,7 +272,7 @@ class AdminController extends Controller
                 $payload['manual_total_reason'] = $manualOverride['reason'];
             }
 
-            $periodoFactura = $isBajaTemporal ? null : $periodo;
+            $periodoFactura = ($isBajaTemporal || $isCancelacion) ? null : $periodo;
             $payloadJson = json_encode($payload);
             $fingerprintData = [
                 'numero_servicio' => $request->input('numero_servicio'),
@@ -272,9 +284,9 @@ class AdminController extends Controller
                 'pago_anterior' => $payload['pago_anterior'] ?? null,
                 'metodo' => $payload['metodo'] ?? 'Efectivo',
             ];
-            $fingerprint = $isBajaTemporal ? null : hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            $fingerprint = ($isBajaTemporal || $isCancelacion) ? null : hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
-            if (! $isBajaTemporal) {
+            if (! $isBajaTemporal && ! $isCancelacion) {
                 $existing = \App\Models\Factura::where(function ($q) use ($fingerprint) {
                     $q->where('fingerprint', $fingerprint);
                 })
@@ -404,7 +416,38 @@ class AdminController extends Controller
                 }
 
                 // Al registrar un pago exitoso, actualizar el estatus del cliente a Pagado/Activado
-                if (! $isBajaTemporal) {
+                if ($isCancelacion) {
+                    if ($request->input('usuario_id')) {
+                        $usuario = \App\Models\Usuario::find($request->input('usuario_id'));
+                    } else {
+                        $usuario = \App\Models\Usuario::where('numero_servicio', $request->input('numero_servicio'))->first();
+                    }
+                    if ($usuario) {
+                        $prev = [
+                            'estatus_servicio_id' => $usuario->estatus_servicio_id,
+                            'estado_id' => $usuario->estado_id,
+                        ];
+                        $usuario->update([
+                            'estatus_servicio_id' => 3,
+                            'estado_id' => 2,
+                        ]);
+                        \Illuminate\Support\Facades\DB::table('audit_logs')->insert([
+                            'actor_user_id' => $request->user()?->id,
+                            'actor_role' => $request->user()?->role,
+                            'actor_name' => $request->user()?->name,
+                            'action' => 'usuario_cancelacion_servicio',
+                            'table_name' => 'usuarios',
+                            'entity_type' => \App\Models\Usuario::class,
+                            'entity_id' => (string) $usuario->id,
+                            'prev_values' => json_encode($prev),
+                            'new_values' => json_encode(['estatus_servicio_id' => 3, 'estado_id' => 2]),
+                            'ip' => $request->ip(),
+                            'user_agent' => (string) $request->userAgent(),
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                } elseif (! $isBajaTemporal) {
                     if ($request->input('usuario_id')) {
                         $usuario = \App\Models\Usuario::find($request->input('usuario_id'));
                         if ($usuario) {
