@@ -975,21 +975,22 @@
                     if(r.ok && j?.ok){
                         const m = j.pendiente||0;
                         const meses = j.meses_adeudo||0;
+                        const serverRecargo = Number(j.recargo||0);
                         if(isFinite(m) && m>0 && meses>0){
                             this.adeudo = {
                                 desde_periodo: j.desde_periodo,
                                 desde_label: j.desde_mes_label || '',
                                 meses: meses,
                                 pendiente: Math.max(0, Number(m)||0),
-                                recargo: Number(j.recargo||0),
+                                recargo: serverRecargo,
                                 pagado_parcial: Number(j.pagado_parcial||0)
                             };
-                            // Sincronizar el recargo del formulario con el del servidor si hay adeudo y no ha pagado este mes
-                            if (!this.pagadoMesActual && !this.recargoManual) {
-                                this.form.recargo = this.adeudo.recargo > 0 ? 'si' : 'no';
-                            }
                         } else {
-                            this.adeudo = { desde_periodo:j.desde_periodo, desde_label:j.desde_mes_label||'', meses:meses, pendiente:0, recargo:Number(j.recargo||0), pagado_parcial:0 };
+                            this.adeudo = { desde_periodo:j.desde_periodo, desde_label:j.desde_mes_label||'', meses:meses, pendiente:0, recargo:serverRecargo, pagado_parcial:0 };
+                        }
+                        // Sincronizar el recargo del formulario con el del servidor si no ha pagado este mes y no se ha modificado manualmente
+                        if (!this.pagadoMesActual && !this.recargoManual) {
+                            this.form.recargo = serverRecargo > 0 ? 'si' : 'no';
                         }
                         if (this.ref && this.ref.id) {
                             this.saldoDespues = Number(this.adeudo?.pendiente || 0);

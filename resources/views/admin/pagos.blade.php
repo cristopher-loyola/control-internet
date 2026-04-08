@@ -568,12 +568,16 @@
             }
             return baseDefaults;
         })();
+        const getDefaultRecargo = () => {
+            const today = new Date();
+            return today.getDate() >= 8 ? 'si' : 'no';
+        };
         return {
             readOnlyMode: false,
             loadingClient: false,
             recargoManual: false,
             otroError: '',
-            form:{ numero:'', recargo:'no', pago_anterior:0, metodo:'', cobro:'', prepay:'no', prepay_months:6, otro:'no', baja_temporal_months:1 },
+            form:{ numero:'', recargo:getDefaultRecargo(), pago_anterior:0, metodo:'', cobro:'', prepay:'no', prepay_months:6, otro:'no', baja_temporal_months:1 },
             manualEditEnabled: false,
             manualTotal: 0,
             manualReason: '',
@@ -1570,7 +1574,7 @@ html,body{ margin:0; padding:0 }
                 this.pagoAnteriorFecha = '';
                 this.appliedDiscount = 0; // Resetear descuento aplicado
                 this.datos = { nombre: '', mensualidad: 0 };
-                this.form.recargo = 'no';
+                this.form.recargo = getDefaultRecargo();
                 this.form.pago_anterior = 0;
                 this.form.metodo = '';
                 this.form.prepay = 'no';
