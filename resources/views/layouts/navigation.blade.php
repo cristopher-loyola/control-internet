@@ -112,29 +112,28 @@
 >
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-            <div class="flex">
-                <!-- Logo -->
-                <div class="shrink-0 flex items-center">
-                    <a href="{{ $dashboardRoute }}">
-                        @if ($role === 'admin')
-                            <img src="{{ asset('images/Clogo.png') }}" class="block h-9 w-auto object-contain" alt="Control Internet Logo" />
-                        @elseif ($role === 'tecnico')
-                            <img src="{{ asset('images/Clogo6.png') }}" class="block h-9 w-auto object-contain" alt="Control Internet Logo" />
-                        @elseif ($role === 'pagos')
-                            <img src="{{ asset('images/Clogo4.png') }}" class="block h-9 w-auto object-contain" alt="Control Internet Logo" />
-                        @elseif ($role === 'contrataciones')
-                            <img src="{{ asset('images/Clogo3.png') }}" class="block h-9 w-auto object-contain" alt="Control Internet Logo" />
-                        @elseif (in_array($role, ['rosalito', 'pozo_hondo', 'chivato'], true))
-                            <img src="{{ asset('images/Clogo.png') }}" class="block h-9 w-auto object-contain" alt="Control Internet Logo" />
-                        @else
-                            <x-application-logo class="block h-9 w-auto fill-current text-gray-800 dark:text-gray-200" />
-                        @endif
-                    </a>
-                </div>
+        <div class="flex h-16">
+            <!-- Logo -->
+            <div class="shrink-0 flex items-center">
+                <a href="{{ $dashboardRoute }}">
+                    @if ($role === 'admin')
+                        <img src="{{ asset('images/Clogo.png') }}" class="block h-9 w-auto object-contain" alt="Control Internet Logo" />
+                    @elseif ($role === 'tecnico')
+                        <img src="{{ asset('images/Clogo6.png') }}" class="block h-9 w-auto object-contain" alt="Control Internet Logo" />
+                    @elseif ($role === 'pagos')
+                        <img src="{{ asset('images/Clogo4.png') }}" class="block h-9 w-auto object-contain" alt="Control Internet Logo" />
+                    @elseif ($role === 'contrataciones')
+                        <img src="{{ asset('images/Clogo3.png') }}" class="block h-9 w-auto object-contain" alt="Control Internet Logo" />
+                    @elseif (in_array($role, ['rosalito', 'pozo_hondo', 'chivato'], true))
+                        <img src="{{ asset('images/Clogo.png') }}" class="block h-9 w-auto object-contain" alt="Control Internet Logo" />
+                    @else
+                        <x-application-logo class="block h-9 w-auto fill-current text-gray-800 dark:text-gray-200" />
+                    @endif
+                </a>
+            </div>
 
-                <!-- Navigation Links -->
-                <div class="hidden sm:-my-px sm:ms-12 sm:flex sm:items-center sm:gap-3">
+            <!-- Navigation Links - Centered -->
+            <div class="hidden sm:flex flex-1 items-center justify-center gap-1">
                     <x-nav-link :href="$dashboardRoute" :active="$dashboardActive" class="group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $dashboardActive ? 'bg-white/10' : '' }}">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
@@ -269,56 +268,55 @@
                         <span class="h-5 w-px bg-white/20 mx-1"></span>
                     @endif
                 </div>
-            </div>
 
-            <!-- Settings Dropdown -->
-            <div class="hidden sm:flex sm:items-center sm:ms-10">
-                <x-dropdown align="right" width="48">
-                    <x-slot name="trigger">
-                        <button class="inline-flex items-center px-3 py-2 border-0 text-sm leading-4 font-medium rounded-md text-white bg-transparent hover:text-white focus:outline-none transition ease-in-out duration-150">
-                            <div class="flex flex-col items-start">
-                                <span class="text-white">{{ Auth::user()->name }}</span>
-                                <span class="text-[11px] font-semibold text-white/80 uppercase tracking-wide">
-                                    {{ Auth::user()->role_label }}
-                                </span>
-                            </div>
+                <!-- Settings Dropdown -->
+                <div class="hidden sm:flex sm:items-center shrink-0">
+                    <x-dropdown align="right" width="48">
+                        <x-slot name="trigger">
+                            <button class="inline-flex items-center px-3 py-2 border-0 text-sm leading-4 font-medium rounded-md text-white bg-transparent hover:text-white focus:outline-none transition ease-in-out duration-150">
+                                <div class="flex flex-col items-start">
+                                    <span class="text-white">{{ Auth::user()->name }}</span>
+                                    <span class="text-[11px] font-semibold text-white/80 uppercase tracking-wide">
+                                        {{ Auth::user()->role_label }}
+                                    </span>
+                                </div>
 
-                            <div class="ms-1">
-                                <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                </svg>
-                            </div>
-                        </button>
-                    </x-slot>
+                                <div class="ms-1">
+                                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                            </button>
+                        </x-slot>
 
-                    <x-slot name="content">
-                        <x-dropdown-link :href="route('profile.edit')">
-                            {{ __('Profile') }}
-                        </x-dropdown-link>
-
-                        <!-- Authentication -->
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-
-                            <x-dropdown-link :href="route('logout')"
-                                    onclick="event.preventDefault();
-                                                this.closest('form').submit();">
-                                {{ __('Log Out') }}
+                        <x-slot name="content">
+                            <x-dropdown-link :href="route('profile.edit')">
+                                {{ __('Profile') }}
                             </x-dropdown-link>
-                        </form>
-                    </x-slot>
-                </x-dropdown>
-            </div>
 
-            <!-- Hamburger -->
-            <div class="-me-2 flex items-center sm:hidden">
-                <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-white hover:text-white hover:bg-black/20 focus:outline-none focus:bg-black/20 focus:text-white transition duration-150 ease-in-out">
-                    <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                        <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                        <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
+                            <!-- Authentication -->
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+
+                                <x-dropdown-link :href="route('logout')"
+                                        onclick="event.preventDefault();
+                                                    this.closest('form').submit();">
+                                    {{ __('Log Out') }}
+                                </x-dropdown-link>
+                            </form>
+                        </x-slot>
+                    </x-dropdown>
+                </div>
+
+                <!-- Hamburger -->
+                <div class="-me-2 flex items-center sm:hidden">
+                    <button @click="open = ! open" class="inline-flex items-center justify-center p-2 rounded-md text-white hover:text-white hover:bg-black/20 focus:outline-none focus:bg-black/20 focus:text-white transition duration-150 ease-in-out">
+                        <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                            <path :class="{'hidden': open, 'inline-flex': ! open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                            <path :class="{'hidden': ! open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
         </div>
     </div>
 
