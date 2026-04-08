@@ -49,6 +49,9 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/pagos/historial/export', [AdminController::class, 'pagosHistorialExport'])->name('pagos.historial.export');
         Route::post('/pagos/facturas/{id}/cancel', [AdminController::class, 'pagosFacturaCancel'])->name('pagos.facturas.cancel');
         Route::get('/usuarios', [AdminController::class, 'usuarios'])->name('usuarios.index');
+        Route::post('/usuarios', [AdminController::class, 'usuariosStore'])->name('usuarios.store');
+        Route::put('/usuarios/{user}', [AdminController::class, 'usuariosUpdate'])->name('usuarios.update');
+        Route::delete('/usuarios/{user}', [AdminController::class, 'usuariosDestroy'])->name('usuarios.destroy');
         Route::get('/clientes', [AdminController::class, 'clientes'])->name('clientes.index');
         Route::post('/clientes', [AdminController::class, 'clientesStore'])->name('clientes.store');
         Route::post('/clientes/editar', [AdminController::class, 'clientesEditStore'])->name('clientes.edit');

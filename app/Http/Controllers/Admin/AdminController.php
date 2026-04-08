@@ -14,6 +14,16 @@ use Illuminate\Support\Facades\Validator;
 
 class AdminController extends Controller
 {
+    private const USER_ROLES = [
+        'admin',
+        'tecnico',
+        'pagos',
+        'contrataciones',
+        'rosalito',
+        'pozo_hondo',
+        'chivato',
+    ];
+
     public function index()
     {
         return view('admin.index');
@@ -1786,7 +1796,7 @@ class AdminController extends Controller
         $query = \App\Models\User::query();
 
         if ($request->filled('q')) {
-            $search = $request->input('q');
+            $search = (string) $request->input('q');
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%");
@@ -1794,6 +1804,70 @@ class AdminController extends Controller
         }
 
         $usuarios = $query->orderBy('name')->paginate(50)->withQueryString();
-        return view('admin.usuarios', compact('usuarios'));
+        $roles = self::USER_ROLES;
+
+        return view('admin.usuarios', compact('usuarios', 'roles'));
+    }
+
+    public function usuariosStore(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'role' => ['nullable', 'string', \Illuminate\Validation\Rule::in(self::USER_ROLES)],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        \App\Models\User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'role' => $validated['role'] ?? null,
+            'password' => \Illuminate\Support\Facades\Hash::make($validated['password']),
+        ]);
+
+        return redirect()->route('admin.usuarios.index')->with('success', 'Usuario creado correctamente.');
+    }
+
+    public function usuariosUpdate(Request $request, \App\Models\User $user)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', \Illuminate\Validation\Rule::unique('users', 'email')->ignore($user->id)],
+            'role' => ['nullable', 'string', \Illuminate\Validation\Rule::in(self::USER_ROLES)],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $update = [
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'role' => $validated['role'] ?? null,
+        ];
+
+        if (! empty($validated['password'])) {
+            $update['password'] = \Illuminate\Support\Facades\Hash::make($validated['password']);
+        }
+
+        $user->update($update);
+
+        return redirect()->route('admin.usuarios.index')->with('success', 'Usuario actualizado correctamente.');
+    }
+
+    public function usuariosDestroy(\App\Models\User $user)
+    {
+        $authId = auth()->id();
+        if ($authId !== null && (int) $user->id === (int) $authId) {
+            return redirect()->route('admin.usuarios.index')->with('error', 'No puedes eliminar tu propio usuario.');
+        }
+
+        if ($user->role === 'admin') {
+            $admins = \App\Models\User::where('role', 'admin')->count();
+            if ($admins <= 1) {
+                return redirect()->route('admin.usuarios.index')->with('error', 'No puedes eliminar el último administrador.');
+            }
+        }
+
+        $user->delete();
+
+        return redirect()->route('admin.usuarios.index')->with('success', 'Usuario eliminado correctamente.');
     }
 }

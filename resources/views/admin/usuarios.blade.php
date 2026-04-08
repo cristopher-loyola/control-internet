@@ -175,7 +175,7 @@
 
             <div class="flex justify-end gap-2">
                 <x-secondary-button type="button" x-on:click="$dispatch('close')">Cancelar</x-secondary-button>
-                <x-primary-button>Guardar</x-primary-button>
+                <x-primary-button class="btn btn-primary">Guardar</x-primary-button>
             </div>
         </form>
     </x-modal>
@@ -222,7 +222,7 @@
 
             <div class="flex justify-end gap-2">
                 <x-secondary-button type="button" x-on:click="$dispatch('close')">Cancelar</x-secondary-button>
-                <x-primary-button>Guardar cambios</x-primary-button>
+                <x-primary-button class="btn btn-primary">Guardar cambios</x-primary-button>
             </div>
         </form>
     </x-modal>
