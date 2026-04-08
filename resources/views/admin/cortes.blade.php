@@ -11,11 +11,17 @@
                 
                 <!-- Buscador y Filtros -->
                 <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                    <form action="{{ route('admin.cortes.index') }}" method="GET" class="w-full md:w-1/2 flex gap-2">
-                        <input type="text" name="q" value="{{ request('q') }}" placeholder="Buscar por ID, nombre o zona..."
-                            class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white">
-                        <button type="submit" class="btn btn-primary">Buscar</button>
-                    </form>
+                    <div class="flex items-center gap-4">
+                        <form action="{{ route('admin.cortes.index') }}" method="GET" class="flex gap-2">
+                            <input type="text" name="q" value="{{ request('q') }}" placeholder="Buscar por ID, nombre o zona..."
+                                class="form-input w-64 rounded-lg border-gray-300 dark:border-gray-600 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white">
+                            <button type="submit" class="btn btn-primary">Buscar</button>
+                        </form>
+                        <label class="flex items-center gap-2 cursor-pointer select-none">
+                            <input type="checkbox" x-model="soloPorCortar" class="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500">
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Solo por cortar</span>
+                        </label>
+                    </div>
                     
                     <div class="flex gap-2">
                         <button @click="openConfigModal = true" class="btn btn-secondary flex items-center gap-2">
@@ -39,7 +45,10 @@
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
                             @foreach ($usuarios as $u)
-                            <tr class="transition-colors" style="{{ $u->pagado_mes ? 'background-color: #00ff00 !important; color: #000 !important;' : '' }}">
+                            <tr class="transition-colors fila-corte" 
+                                data-pagado="{{ $u->pagado_mes ? '1' : '0' }}"
+                                :class="soloPorCortar && $el.dataset.pagado === '1' ? 'hidden' : ''"
+                                style="{{ $u->pagado_mes ? 'background-color: #00ff00 !important; color: #000 !important;' : '' }}">
                                 <td class="px-4 py-3 whitespace-nowrap">
                                     <div class="font-bold">{{ $u->numero_servicio }}</div>
                                     <div class="text-xs opacity-70">{{ $u->nombre_cliente }}</div>
@@ -129,7 +138,19 @@
             return {
                 openConfigModal: false,
                 nuevoNombre: '',
+                soloPorCortar: false,
                 cortadores: @json($cortadores),
+
+                filterRows() {
+                    const rows = document.querySelectorAll('.fila-corte');
+                    rows.forEach(row => {
+                        if (this.soloPorCortar && row.dataset.pagado === '1') {
+                            row.classList.add('hidden');
+                        } else {
+                            row.classList.remove('hidden');
+                        }
+                    });
+                },
                 
                 async updateUser(id, value, field) {
                     try {

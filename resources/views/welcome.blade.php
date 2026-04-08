@@ -58,22 +58,12 @@
                         </p>
 
                        <div class="flex flex-col sm:flex-row gap-2 items-center justify-center mb-5">
-                            @if (Route::has('login'))
-                                <a
-                                    href="{{ route('login') }}"
-                                    class="inline-flex justify-center items-center px-4 py-2 rounded-md text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-                                >
-                                    Iniciar sesión
-                                </a>
-                            @endif
-                            @if (Route::has('register'))
-                                <a
-                                    href="{{ route('register') }}"
-                                    class="inline-flex justify-center items-center px-4 py-2 rounded-md text-sm font-semibold text-[#1b1b18] dark:text-[#EDEDEC] border border-[#19140035] dark:border-[#3E3E3A] hover:border-[#1915014a] dark:hover:border-[#62605b]"
-                                >
-                                    Registrarse
-                                </a>
-                            @endif
+                            <a
+                                href="{{ route('login') }}"
+                                class="inline-flex justify-center items-center px-4 py-2 rounded-md text-sm font-semibold text-white bg-gradient-to-r from-red-600 to-red-800 hover:from-red-700 hover:to-red-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                            >
+                                Iniciar sesión
+                            </a>
                         </div>
                     </div>
                 </div>
