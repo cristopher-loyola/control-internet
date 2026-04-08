@@ -372,7 +372,7 @@
                                 <div>Importe</div><div x-text="moneda(bajaTemporalImporte())"></div>
                                 <div x-show="appliedDiscount > 0">Descuento</div><div x-show="appliedDiscount > 0" x-text="moneda(appliedDiscount)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
-                                <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
+                                <div>Costo de reconexión</div><div x-text="moneda(recargoMonto())"></div>
                                 <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
                                 <div x-show="adeudoCobro > 0">Adeudo pendiente</div><div x-show="adeudoCobro > 0" x-text="moneda(adeudoCobro)"></div>
                                 <div x-show="adeudo && Number(adeudo.meses||0) > 0">Período adeudo</div><div x-show="adeudo && Number(adeudo.meses||0) > 0" x-text="adeudoPeriodoLabel() || '—'"></div>
@@ -411,7 +411,7 @@
                                 <div>Importe</div><div x-text="moneda(bajaTemporalImporte())"></div>
                                 <div x-show="appliedDiscount > 0">Descuento</div><div x-show="appliedDiscount > 0" x-text="moneda(appliedDiscount)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
-                                <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
+                                <div>Costo de reconexión</div><div x-text="moneda(recargoMonto())"></div>
                                 <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
                                 <div x-show="adeudoCobro > 0">Adeudo pendiente</div><div x-show="adeudoCobro > 0" x-text="moneda(adeudoCobro)"></div>
                                 <div x-show="adeudo && Number(adeudo.meses||0) > 0">Período adeudo</div><div x-show="adeudo && Number(adeudo.meses||0) > 0" x-text="adeudoPeriodoLabel() || '—'"></div>
@@ -617,6 +617,11 @@
                 const months = Number(this.form.baja_temporal_months || 1);
                 const total = mensualidad * 0.2 * Math.min(6, Math.max(1, months));
                 return Math.round(total * 100) / 100;
+            },
+            recargoMonto(){
+                if (this.form.recargo !== 'si') return 0;
+                const srv = Number(this.adeudo && this.adeudo.recargo ? this.adeudo.recargo : 0) || 0;
+                return srv > 0 ? srv : 50;
             },
             manualReasonForPrint(){
                 const r = this.manualEditEnabled ? this.manualReason : this.manualReasonSaved;
@@ -895,13 +900,15 @@
                     return;
                 }
                 const mensualidad = Number(this.datos.mensualidad)||0;
-                const rec = this.form.recargo==='si'?50:0;
+                const recargoSrv = Number(this.adeudo && this.adeudo.recargo ? this.adeudo.recargo : 0) || 0;
+                const rec = this.recargoMonto();
                 let total = 0;
                 
                 if (this.form.otro === 'baja_temporal') {
                     this.totales.prepay_total = 0;
                     const adeudoPendiente = Number(this.adeudoCobro || (this.adeudo && this.adeudo.pendiente ? Number(this.adeudo.pendiente) : 0) || 0);
-                    total = Math.round((adeudoPendiente + this.bajaTemporalImporte() + rec) * 100) / 100;
+                    const adeudoBase = this.adeudo ? Math.max(0, adeudoPendiente - recargoSrv) : adeudoPendiente;
+                    total = Math.round((adeudoBase + this.bajaTemporalImporte() + rec) * 100) / 100;
                 } else if(this.form.prepay === 'si'){
                     const months = Number(this.form.prepay_months||6);
                     const pkg = mensualidad;
@@ -923,11 +930,13 @@
                         }
                     }
                     const adeudoPendiente = Number(this.adeudoCobro || (this.adeudo && this.adeudo.pendiente ? Number(this.adeudo.pendiente) : 0) || 0);
-                    total = Math.round((adeudoPendiente + this.totales.prepay_total + rec) * 100) / 100;
+                    const adeudoBase = this.adeudo ? Math.max(0, adeudoPendiente - recargoSrv) : adeudoPendiente;
+                    total = Math.round((adeudoBase + this.totales.prepay_total + rec) * 100) / 100;
                 }else{
                     if (this.adeudo && this.adeudo.meses > 0) {
                         const pendienteSrv = Number(this.adeudo.pendiente || 0);
-                        total = Math.round((pendienteSrv + rec) * 100) / 100;
+                        const pendienteBase = Math.max(0, pendienteSrv - recargoSrv);
+                        total = Math.round((pendienteBase + rec) * 100) / 100;
                     } else {
                         total = Math.round((mensualidad + rec) * 100) / 100;
                     }

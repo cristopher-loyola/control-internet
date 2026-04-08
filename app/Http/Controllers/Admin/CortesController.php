@@ -40,20 +40,29 @@ class CortesController extends Controller
             ->appends($request->query());
 
         // Calcular adeudo para cada usuario y determinar si está en verde
-        $usuarios->getCollection()->transform(function ($usuario) use ($morosidadService, $diaDelMes) {
+        $usuarios->getCollection()->transform(function ($usuario) use ($morosidadService, $diaDelMes, $mesActual) {
             $adeudo = $morosidadService->calcularAdeudoUsuario((string)$usuario->numero_servicio);
             $mesesAdeudo = $adeudo['meses_adeudo'] ?? 0;
+            $desdePeriodo = $adeudo['desde_periodo'] ?? $mesActual;
 
-            // Lógica de tolerancia:
+            // Lógica de corte:
             // - 0 meses adeudo → Verde (al día)
-            // - 1 mes adeudo + día < 8 → Verde (tolerancia)
-            // - 1 mes adeudo + día >= 8 → Sin verde (corte)
-            // - 2+ meses adeudo → Sin verde (corte)
+            // - Solo debe el mes actual (meses_adeudo == 1 && desde_periodo == mesActual) → Verde siempre
+            // - Debe meses anteriores (meses_adeudo >= 2 O desde_periodo < mesActual) + día < 8 → Verde (tolerancia)
+            // - Debe meses anteriores (meses_adeudo >= 2 O desde_periodo < mesActual) + día >= 8 → Blanco (corte)
             if ($mesesAdeudo == 0) {
                 $usuario->pagado_mes = true;
-            } elseif ($mesesAdeudo == 1 && $diaDelMes < 8) {
-                $usuario->pagado_mes = true; // Tolerancia hasta día 8
+            } elseif ($mesesAdeudo == 1 && $desdePeriodo === $mesActual) {
+                // Solo debe el mes actual → siempre verde
+                $usuario->pagado_mes = true;
+            } elseif ($mesesAdeudo >= 1 && $desdePeriodo < $mesActual && $diaDelMes < 8) {
+                // Debe 1+ meses anteriores pero aún es antes del día 8 → verde (tolerancia)
+                $usuario->pagado_mes = true;
+            } elseif ($mesesAdeudo >= 1 && $desdePeriodo < $mesActual && $diaDelMes >= 8) {
+                // Debe 1+ meses anteriores y ya es día 8 o después → blanco (corte)
+                $usuario->pagado_mes = false;
             } else {
+                // Caso por defecto: cualquier otro caso de adeudo → blanco (corte)
                 $usuario->pagado_mes = false;
             }
 
