@@ -86,6 +86,8 @@
     $cortesVistaActive = request()->routeIs('admin.cortes.*');
     $reactivacionesVistaRoute = $role === 'admin' ? route('admin.reactivaciones.index') : null;
     $reactivacionesVistaActive = request()->routeIs('admin.reactivaciones.*');
+    $usuariosRoute = $role === 'admin' ? route('admin.usuarios.index') : null;
+    $usuariosActive = request()->routeIs('admin.usuarios.*');
     $cortesRoute = $role === 'admin' ? route('admin.dashboard.corte') : null;
     $cortesActive = request()->routeIs('admin.dashboard.corte');
 
@@ -257,6 +259,15 @@
                         </x-nav-link>
                         <span class="h-5 w-px bg-white/20 mx-1"></span>
                     @endif
+                    @if ($usuariosRoute)
+                        <x-nav-link :href="$usuariosRoute" :active="$usuariosActive" class="group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $usuariosActive ? 'bg-white/10' : '' }}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                            </svg>
+                            <span class="text-sm font-medium">Usuarios</span>
+                        </x-nav-link>
+                        <span class="h-5 w-px bg-white/20 mx-1"></span>
+                    @endif
                 </div>
             </div>
 
@@ -398,6 +409,14 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                     </svg>
                     Corte
+                </x-responsive-nav-link>
+            @endif
+            @if ($usuariosRoute)
+                <x-responsive-nav-link :href="$usuariosRoute" :active="$usuariosActive" class="flex items-center gap-3 px-4 py-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                    Usuarios
                 </x-responsive-nav-link>
             @endif
         </div>

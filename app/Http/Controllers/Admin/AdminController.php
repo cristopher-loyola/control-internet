@@ -1780,4 +1780,20 @@ class AdminController extends Controller
 
         return back()->with('import_report', $report);
     }
+
+    public function usuarios(Request $request)
+    {
+        $query = \App\Models\User::query();
+
+        if ($request->filled('q')) {
+            $search = $request->input('q');
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $usuarios = $query->orderBy('name')->paginate(50)->withQueryString();
+        return view('admin.usuarios', compact('usuarios'));
+    }
 }
