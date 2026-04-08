@@ -283,7 +283,7 @@
                 this.loadMetrics(true);
                 setInterval(() => this.loadMetrics(false), 120000);
             },
-            money(v){ return '$' + Number(v ?? 0).toFixed(2); },
+            money(v){ return '$' + Number(v ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
             metodoPct(monto){
                 const total = (this.metrics.metodos || []).reduce((s, m) => s + (m.monto || 0), 0);
                 if(!total) return 0;
