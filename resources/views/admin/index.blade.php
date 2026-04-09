@@ -176,7 +176,7 @@
                 <div class="mt-2 overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead><tr class="text-left text-gray-600">
-                            <th class="py-1">Número</th><th class="py-1">Nombre</th><th class="py-1">Pendiente</th><th class="py-1">Vencimiento</th><th class="py-1">Días</th>
+                            <th class="py-1">Número</th><th class="py-1">Nombre</th><th class="py-1">Pendiente</th><th class="py-1">Vencimiento</th><th class="py-1">Meses</th>
                         </tr></thead>
                         <tbody>
                             <template x-for="m in (metrics.morosos || [])" :key="m.numero">
@@ -190,7 +190,7 @@
                                     <td class="py-1" x-text="m.nombre"></td>
                                     <td class="py-1 font-semibold" x-text="money(m.pendiente)"></td>
                                     <td class="py-1" x-text="m.vencimiento"></td>
-                                    <td class="py-1" x-text="m.dias_retraso"></td>
+                                    <td class="py-1" x-text="m.meses_adeudo"></td>
                                 </tr>
                             </template>
                             <tr x-show="!metrics.morosos || metrics.morosos.length===0">
