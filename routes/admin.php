@@ -13,6 +13,8 @@ Route::middleware(['auth', 'role:admin'])
 
         // Módulo de Cortes
         Route::get('/cortes', [CortesController::class, 'index'])->name('cortes.index');
+        Route::get('/cortes/export/pdf', [CortesController::class, 'exportPdf'])->name('cortes.export.pdf');
+        Route::get('/cortes/export/csv', [CortesController::class, 'exportCsv'])->name('cortes.export.csv');
         Route::get('/reactivaciones', [CortesController::class, 'reactivacionesIndex'])->name('reactivaciones.index');
         Route::post('/cortes/{id}/update', [CortesController::class, 'updateCorte'])->name('cortes.update');
         Route::post('/cortes/cortadores', [CortesController::class, 'storeCortador'])->name('cortes.cortadores.store');
