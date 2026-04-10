@@ -100,6 +100,22 @@
     ) && ! $clientesActive;
 @endphp
 
+<style>
+    @media (max-width: 640px) {
+        .sm\:hidden { display: block !important; }
+        nav .max-w-7xl { padding-left: 0.75rem; padding-right: 0.75rem; }
+        nav .h-16 { height: 3.5rem; }
+        nav img.h-9 { height: 2rem; }
+        .sm\:hidden .pt-2 { padding-top: 0.5rem; }
+        .sm\:hidden .pb-3 { padding-bottom: 0.5rem; }
+        .sm\:hidden .space-y-1 > * + * { margin-top: 0.25rem; }
+        .sm\:hidden a, .sm\:hidden button { font-size: 0.875rem; padding-top: 0.625rem; padding-bottom: 0.625rem; }
+        .sm\:hidden svg { width: 1.25rem; height: 1.25rem; }
+        .border-t { border-color: rgba(255,255,255,0.1); }
+        .px-4 { padding-left: 0.75rem; padding-right: 0.75rem; }
+    }
+</style>
+
 <nav
     x-data="navbarRole({
         role: @js($role),
@@ -406,7 +422,23 @@
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                     </svg>
-                    Corte
+                    Corte/Caja
+                </x-responsive-nav-link>
+            @endif
+            @if ($cortesVistaRoute)
+                <x-responsive-nav-link :href="$cortesVistaRoute" :active="$cortesVistaActive" class="flex items-center gap-3 px-4 py-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7 7m-7-7l-2.879 2.879M12 12L9.121 9.121m0 0L5 5m4.121 4.121L5 19m10.879-10.879L19 5m-4.121 4.121l-2.879-2.879M12 12l2.879-2.879"></path>
+                    </svg>
+                    Cortes
+                </x-responsive-nav-link>
+            @endif
+            @if ($reactivacionesVistaRoute)
+                <x-responsive-nav-link :href="$reactivacionesVistaRoute" :active="$reactivacionesVistaActive" class="flex items-center gap-3 px-4 py-3">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Reactivaciones
                 </x-responsive-nav-link>
             @endif
             @if ($usuariosRoute)

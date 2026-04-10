@@ -21,8 +21,8 @@
 
         <header class="bg-gray-900 text-white sticky top-0 z-50">
             <div class="flex items-center justify-between px-4 py-3">
-                <div class="flex items-center gap-3">
-                    <button @click="sidebarOpen = !sidebarOpen" class="md:hidden p-2 rounded-lg hover:bg-gray-800">
+                <div class="flex items-center gap-2">
+                    <button @click="sidebarOpen = !sidebarOpen" class="md:hidden p-2 rounded-lg hover:bg-gray-800 -ml-2" aria-label="Menu">
                         <svg x-show="!sidebarOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
                         </svg>
@@ -47,28 +47,36 @@
             </div>
         </header>
 
-        <div class="flex min-h-[calc(100vh-3.5rem)]">
+        <div class="flex min-h-[calc(100vh-3.5rem)]" :class="sidebarOpen ? 'overflow-hidden' : ''">
 
             <!-- Sidebar MOBILE: fixed, se muestra/oculta con Alpine -->
             <!-- Sidebar DESKTOP: sticky, siempre visible -->
             <aside x-cloak
                    x-show="sidebarOpen"
-                   class="fixed top-0 bottom-0 left-0 z-50 w-64 bg-gray-900 text-white flex-shrink-0 md:hidden h-screen"
-                   x-transition:enter="transition-transform duration-300"
+                   x-trap.noscroll.inert="sidebarOpen"
+                   class="fixed top-0 bottom-0 left-0 z-[60] w-64 bg-gray-900 text-white flex-shrink-0 md:hidden h-screen"
+                   x-transition:enter="transition-transform duration-300 ease-out"
                    x-transition:enter-start="-translate-x-full"
                    x-transition:enter-end="translate-x-0"
-                   x-transition:leave="transition-transform duration-300"
+                   x-transition:leave="transition-transform duration-300 ease-in"
                    x-transition:leave-start="translate-x-0"
                    x-transition:leave-end="-translate-x-full">
-                <div class="flex flex-col h-screen">
-                    <div class="flex items-center gap-3 px-4 py-4 border-b border-gray-800">
-                        <div class="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-lg">
-                            {{ substr(auth()->user()->name, 0, 1) }}
+                <div class="flex flex-col h-screen overflow-hidden">
+                    <div class="flex items-center justify-between px-4 py-3 border-b border-gray-800 bg-gray-900">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center font-bold text-lg">
+                                {{ substr(auth()->user()->name, 0, 1) }}
+                            </div>
+                            <div>
+                                <p class="font-medium text-sm">{{ auth()->user()->name }}</p>
+                                <p class="text-xs text-gray-400 capitalize">{{ auth()->user()->role }}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p class="font-medium text-sm">{{ auth()->user()->name }}</p>
-                            <p class="text-xs text-gray-400 capitalize">{{ auth()->user()->role }}</p>
-                        </div>
+                        <button @click="sidebarOpen = false" class="p-2 rounded-lg hover:bg-gray-800 text-gray-400 hover:text-white">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
                     </div>
                     <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
                         <a href="{{ route(auth()->user()->role . '.index') }}"
@@ -201,8 +209,13 @@
             <div x-show="sidebarOpen"
                  x-cloak
                  @click="sidebarOpen = false"
-                 class="fixed inset-0 bg-black/50 z-30 md:hidden h-screen"
-                 x-transition.opacity></div>
+                 class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55] md:hidden"
+                 x-transition:enter="transition-opacity duration-300"
+                 x-transition:enter-start="opacity-0"
+                 x-transition:enter-end="opacity-100"
+                 x-transition:leave="transition-opacity duration-300"
+                 x-transition:leave-start="opacity-100"
+                 x-transition:leave-end="opacity-0"></div>
 
             <main class="flex-1 overflow-y-auto">
                 {{ $slot }}

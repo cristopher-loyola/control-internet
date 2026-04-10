@@ -285,6 +285,61 @@
         </div>
     </div>
 
+    <style>
+        @media (max-width: 640px) {
+            .flex-wrap { flex-wrap: wrap; }
+            .items-end { align-items: stretch !important; flex-direction: column; }
+            .items-end > * { width: 100% !important; }
+            .gap-3 { gap: 0.5rem; }
+            .gap-2 { gap: 0.5rem; }
+            .btn { font-size: 0.8125rem; padding: 0.5rem 0.75rem; width: 100%; }
+            .btn-success, .btn-danger { width: calc(50% - 0.25rem); }
+            .btn-sm { font-size: 0.75rem; padding: 0.25rem 0.5rem; }
+            .text-sm { font-size: 0.8125rem; }
+            .text-xs { font-size: 0.6875rem; }
+            .text-2xl { font-size: 1.25rem; }
+            .text-3xl { font-size: 1.5rem; }
+            select, input[type="date"], input[type="month"] {
+                font-size: 0.875rem;
+                width: 100% !important;
+                max-width: none;
+                min-height: 2.25rem;
+            }
+            .flex.items-center.gap-2 {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 0.375rem;
+            }
+            .flex.items-center.gap-2 > * {
+                width: 100%;
+            }
+            .flex.items-center.gap-2 .text-xs {
+                display: none;
+            }
+            .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            .rounded-2xl { border-radius: 0.75rem; }
+            .p-5 { padding: 0.75rem; }
+            .p-4 { padding: 0.75rem; }
+            .py-6 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+            .max-w-7xl { padding-left: 0.75rem; padding-right: 0.75rem; }
+            .space-y-6 > * + * { margin-top: 0.75rem; }
+            .gap-4 { gap: 0.5rem; }
+            .gap-6 { gap: 0.75rem; }
+            .sm\:flex-row { flex-direction: column; }
+            canvas { max-width: 160px !important; max-height: 160px !important; }
+            #chartClientes { max-height: 100px !important; }
+            .relative.flex-shrink-0 { width: 160px !important; height: 160px !important; }
+            .absolute.inset-0.flex.flex-col.items-center.justify-center span.text-lg { font-size: 0.875rem; }
+            .absolute.inset-0.flex.flex-col.items-center.justify-center span.text-xs { font-size: 0.625rem; }
+            .min-w-full { min-width: 100%; }
+            .overflow-x-auto { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            table { font-size: 0.75rem; }
+            th, td { padding: 0.375rem 0.25rem; white-space: nowrap; }
+            .truncate { max-width: 160px; }
+            .lg\:col-span-2 { grid-column: span 1 / span 1; }
+            .lg\:col-span-3 { grid-column: span 1 / span 1; }
+        }
+    </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script>
     function adminDashboard(){
