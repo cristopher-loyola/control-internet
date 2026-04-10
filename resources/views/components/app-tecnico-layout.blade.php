@@ -43,18 +43,13 @@
             </div>
         </header>
 
-        <div class="flex min-h-screen" :class="sidebarOpen ? 'overflow-hidden' : ''">
+        <div class="flex min-h-screen">
 
             <!-- Sidebar MÓVIL -->
-            <aside x-cloak
-                   x-show="sidebarOpen"
-                   class="fixed top-0 bottom-0 left-0 z-[100] w-64 bg-green-800 text-white flex-shrink-0 md:hidden h-screen"
-                   x-transition:enter="transition-transform duration-300 ease-out"
-                   x-transition:enter-start="-translate-x-full"
-                   x-transition:enter-end="translate-x-0"
-                   x-transition:leave="transition-transform duration-300 ease-in"
-                   x-transition:leave-start="translate-x-0"
-                   x-transition:leave-end="-translate-x-full">
+            <aside x-show="sidebarOpen"
+                   class="fixed top-0 bottom-0 left-0 z-[60] w-64 bg-green-800 text-white flex-shrink-0 md:hidden h-screen"
+                   style="display: none;"
+                   x-bind:style="sidebarOpen ? 'display: block;' : 'display: none;'">
                 <div class="flex flex-col h-screen overflow-hidden">
                     <div class="flex items-center justify-between px-4 py-3 border-b border-green-700 bg-green-800">
                         <div class="flex items-center gap-3">

@@ -1,4 +1,8 @@
+@if(auth()->user()->role === 'tecnico')
 <x-app-tecnico-layout>
+@else
+<x-app-sidebar>
+@endif
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-white leading-tight">
             Perfil
@@ -26,4 +30,8 @@
             </div>
         </div>
     </div>
-</x-app-layout>
+@if(auth()->user()->role === 'tecnico')
+</x-app-tecnico-layout>
+@else
+</x-app-sidebar>
+@endif

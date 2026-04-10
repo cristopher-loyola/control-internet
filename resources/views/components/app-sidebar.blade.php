@@ -47,20 +47,14 @@
             </div>
         </header>
 
-        <div class="flex min-h-[calc(100vh-3.5rem)]" :class="sidebarOpen ? 'overflow-hidden' : ''">
+        <div class="flex min-h-[calc(100vh-3.5rem)]">
 
             <!-- Sidebar MOBILE: fixed, se muestra/oculta con Alpine -->
             <!-- Sidebar DESKTOP: sticky, siempre visible -->
-            <aside x-cloak
-                   x-show="sidebarOpen"
-                   x-trap.noscroll.inert="sidebarOpen"
+            <aside x-show="sidebarOpen"
                    class="fixed top-0 bottom-0 left-0 z-[60] w-64 bg-gray-900 text-white flex-shrink-0 md:hidden h-screen"
-                   x-transition:enter="transition-transform duration-300 ease-out"
-                   x-transition:enter-start="-translate-x-full"
-                   x-transition:enter-end="translate-x-0"
-                   x-transition:leave="transition-transform duration-300 ease-in"
-                   x-transition:leave-start="translate-x-0"
-                   x-transition:leave-end="-translate-x-full">
+                   style="display: none;"
+                   x-bind:style="sidebarOpen ? 'display: block;' : 'display: none;'">
                 <div class="flex flex-col h-screen overflow-hidden">
                     <div class="flex items-center justify-between px-4 py-3 border-b border-gray-800 bg-gray-900">
                         <div class="flex items-center gap-3">
@@ -80,7 +74,6 @@
                     </div>
                     <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
                         <a href="{{ route(auth()->user()->role . '.index') }}"
-                           @click="sidebarOpen = false"
                            class="flex items-center gap-3 px-3 py-3 rounded-lg {{ request()->routeIs(auth()->user()->role . '.index') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800' }}">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
@@ -88,7 +81,6 @@
                             <span class="text-sm font-medium">Dashboard</span>
                         </a>
                         <a href="{{ route('profile.edit') }}"
-                           @click="sidebarOpen = false"
                            class="flex items-center gap-3 px-3 py-3 rounded-lg {{ request()->routeIs('profile.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800' }}">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
@@ -98,7 +90,6 @@
 
                         @if(in_array(auth()->user()->role, ['chivato', 'pozo_hondo', 'rosalito']))
                         <a href="{{ route(auth()->user()->role . '.pagos') }}"
-                           @click="sidebarOpen = false"
                            class="flex items-center gap-3 px-3 py-3 rounded-lg {{ request()->routeIs(auth()->user()->role . '.pagos') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800' }}">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -107,7 +98,6 @@
                         </a>
 
                         <a href="{{ route(auth()->user()->role . '.corte') }}"
-                           @click="sidebarOpen = false"
                            class="flex items-center gap-3 px-3 py-3 rounded-lg {{ request()->routeIs(auth()->user()->role . '.corte') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800' }}">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
@@ -116,7 +106,6 @@
                         </a>
 
                         <a href="{{ route(auth()->user()->role . '.historial') }}"
-                           @click="sidebarOpen = false"
                            class="flex items-center gap-3 px-3 py-3 rounded-lg {{ request()->routeIs(auth()->user()->role . '.historial') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800' }}">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -204,18 +193,6 @@
                     </div>
                 </div>
             </aside>
-
-            <!-- Overlay mobile -->
-            <div x-show="sidebarOpen"
-                 x-cloak
-                 @click="sidebarOpen = false"
-                 class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55] md:hidden"
-                 x-transition:enter="transition-opacity duration-300"
-                 x-transition:enter-start="opacity-0"
-                 x-transition:enter-end="opacity-100"
-                 x-transition:leave="transition-opacity duration-300"
-                 x-transition:leave-start="opacity-100"
-                 x-transition:leave-end="opacity-0"></div>
 
             <main class="flex-1 overflow-y-auto">
                 {{ $slot }}
