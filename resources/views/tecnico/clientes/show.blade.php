@@ -1,4 +1,4 @@
-<x-app-layout title="Cliente">
+<x-app-tecnico-layout title="Cliente">
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-white leading-tight">
             Vista completa de datos del usuario seleccionado

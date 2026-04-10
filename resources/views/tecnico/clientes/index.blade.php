@@ -1,4 +1,4 @@
-<x-app-layout title="Clientes">
+<x-app-tecnico-layout title="Clientes">
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-white leading-tight">
             {{ __('Clientes') }}
@@ -50,13 +50,30 @@
 
                 <div class="flex gap-3">
                     <button type="button" class="btn btn-primary" x-data x-on:click.prevent="$dispatch('open-modal', 'tecnico-clientes-historial-buscar')">Buscar historial</button>
-                    <a :href="selected ? '{{ route('tecnico.clientes.historial', ['numero' => '__NUM__']) }}'.replace('__NUM__', form.numero_servicio ?? '') : '#" :class="selected ? 'btn btn-info' : 'btn btn-secondary opacity-50'" :aria-disabled="!selected">Historial</a>
+                    <a :href="selected ? '{{ route('tecnico.clientes.historial', ['numero' => '__NUM__']) }}'.replace('__NUM__', form.numero_servicio ?? '') : '#'" :class="selected ? 'btn btn-info' : 'btn btn-secondary opacity-50'" :aria-disabled="!selected">Historial</a>
                 </div>
             </div>
 
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-gray-100">
-                    <style>.skel{position:relative;overflow:hidden;background-color:rgba(229,231,235,1);border-radius:4px}.skel::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:skel-shimmer 1.4s infinite}@keyframes skel-shimmer{100%{transform:translateX(100%)}}</style>
+                    <style>.skel{position:relative;overflow:hidden;background-color:rgba(229,231,235,1);border-radius:4px}.skel::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:skel-shimmer 1.4s infinite}@keyframes skel-shimmer{100%{transform:translateX(100%)}}
+                        @media (max-width: 640px) {
+                            .max-w-none .flex.justify-between.items-center.mb-4 { flex-direction: column; gap: 0.75rem; align-items: stretch; }
+                            .max-w-none .flex.justify-between.items-center.mb-4 form.flex.items-center.gap-2 { flex-direction: column; align-items: stretch; }
+                            .max-w-none .flex.justify-between.items-center.mb-4 form.flex.items-center.gap-2 > * { width: 100%; }
+                            .max-w-none .flex.justify-between.items-center.mb-4 form.flex.items-center.gap-2 input,
+                            .max-w-none .flex.justify-between.items-center.mb-4 form.flex.items-center.gap-2 select { width: 100%; max-width: none; font-size: 1rem; min-height: 2.75rem; }
+                            .max-w-none .flex.justify-between.items-center.mb-4 .flex.gap-3 { flex-wrap: wrap; justify-content: center; }
+                            .max-w-none .flex.justify-between.items-center.mb-4 .flex.gap-3 > * { flex: 1 1 calc(50% - 0.375rem); min-width: 140px; }
+                            .max-w-none .btn { font-size: 0.875rem; padding: 0.5rem 0.75rem; }
+                            .max-w-none .btn-sm { font-size: 0.8125rem; padding: 0.5rem 0.75rem; }
+                            .max-w-none .overflow-x-auto { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+                            .max-w-none table { font-size: 0.75rem; }
+                            .max-w-none th, .max-w-none td { padding: 0.375rem 0.5rem; white-space: nowrap; }
+                            .max-w-none .h-10 { height: 2.25rem; }
+                            .max-w-none .p-6 { padding: 0.75rem; }
+                        }
+                    </style>
 
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

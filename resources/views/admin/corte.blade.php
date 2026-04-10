@@ -325,4 +325,27 @@
         };
     }
     </script>
+
+    <style>
+        @media (max-width: 640px) {
+            .max-w-7xl { padding-left: 0.75rem; padding-right: 0.75rem; }
+            .max-w-7xl .space-y-6 > * + * { margin-top: 1rem; }
+            /* Toolbar */
+            .max-w-7xl .flex.items-center.gap-3 { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+            .max-w-7xl input[type="date"] { width: 100%; font-size: 1rem; min-height: 2.75rem; }
+            /* Cards */
+            .max-w-7xl .grid.grid-cols-1.sm\:grid-cols-3 { grid-template-columns: 1fr; }
+            .max-w-7xl .bg-white.rounded-lg.shadow.p-4 { padding: 0.875rem; }
+            .max-w-7xl .text-2xl.font-bold { font-size: 1.5rem; }
+            /* Tablas */
+            .max-w-7xl .overflow-x-auto { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .max-w-7xl table { font-size: 0.8125rem; }
+            .max-w-7xl th, .max-w-7xl td { padding: 0.5rem 0.375rem; white-space: nowrap; }
+            .max-w-7xl .text-xs.px-2.py-0\.5.rounded-full { font-size: 0.625rem; padding: 0.125rem 0.375rem; }
+            /* Botones y headers de sección */
+            .max-w-7xl .flex.items-center.justify-between.mb-3 { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+            .max-w-7xl .flex.items-center.justify-between.mb-3 > div { width: 100%; }
+            .max-w-7xl .font-semibold.text-gray-700 { font-size: 0.9375rem; }
+        }
+    </style>
 </x-app-layout>

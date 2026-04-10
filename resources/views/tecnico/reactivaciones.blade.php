@@ -1,4 +1,4 @@
-<x-app-layout title="REACTIVACIONES">
+<x-app-tecnico-layout title="REACTIVACIONES">
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-white leading-tight uppercase">
             {{ __('REACTIVACIONES PENDIENTES - ') }} {{ now()->locale('es')->monthName }} {{ now()->year }}

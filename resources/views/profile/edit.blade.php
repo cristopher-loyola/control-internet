@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-tecnico-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-white leading-tight">
             Perfil

@@ -256,4 +256,28 @@
             }
         }
     </script>
+
+    <style>
+        @media (max-width: 640px) {
+            .max-w-7xl { padding-left: 0.75rem; padding-right: 0.75rem; }
+            .max-w-7xl .p-6 { padding: 0.75rem; }
+            /* Buscador y filtros */
+            .max-w-7xl .flex.flex-col.md\:flex-row { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+            .max-w-7xl .flex.items-center.gap-4 { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+            .max-w-7xl form.flex.gap-2 { flex-direction: column; }
+            .max-w-7xl form.flex.gap-2 .form-input { width: 100%; max-width: none; }
+            .max-w-7xl .btn { padding: 0.5rem 0.75rem; font-size: 0.875rem; }
+            .max-w-7xl label.flex.items-center.gap-2 { flex-direction: row; justify-content: center; padding: 0.5rem; background: #f9fafb; border-radius: 0.375rem; }
+            /* Botones de acción */
+            .max-w-7xl .flex.gap-2 { flex-wrap: wrap; }
+            .max-w-7xl .flex.gap-2 > * { flex: 1 1 calc(33% - 0.5rem); min-width: 100px; font-size: 0.75rem; justify-content: center; }
+            /* Tabla */
+            .max-w-7xl .overflow-x-auto { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .max-w-7xl table { font-size: 0.75rem; }
+            .max-w-7xl th, .max-w-7xl td { padding: 0.5rem 0.375rem; white-space: nowrap; }
+            .max-w-7xl .form-select { font-size: 0.75rem; min-width: 80px; }
+            /* Modal */
+            .max-w-7xl .max-w-xs { max-width: 90vw; }
+        }
+    </style>
 </x-app-layout>

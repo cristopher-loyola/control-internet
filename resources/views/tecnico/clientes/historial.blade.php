@@ -1,4 +1,4 @@
-<x-app-layout title="Historial del Cliente">
+<x-app-tecnico-layout title="Historial del Cliente">
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-white leading-tight">
             {{ __('Historial del Cliente') }}

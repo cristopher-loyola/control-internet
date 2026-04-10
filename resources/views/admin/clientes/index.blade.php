@@ -250,6 +250,24 @@
                         .skel::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:skel-shimmer 1.4s infinite}
                         @keyframes skel-shimmer{100%{transform:translateX(100%)}}
                         @media (prefers-reduced-motion:reduce){.skel::after{animation:none}}
+                        @media (max-width: 640px) {
+                            /* Solo afectar al contenido dentro de max-w-none, no a la navbar */
+                            .max-w-none .flex.justify-between.items-center.mb-4 { flex-direction: column; gap: 0.75rem; align-items: stretch; }
+                            .max-w-none .flex.justify-between.items-center.mb-4 form.flex.items-center.gap-2 { flex-direction: column; align-items: stretch; }
+                            .max-w-none .flex.justify-between.items-center.mb-4 form.flex.items-center.gap-2 > * { width: 100%; }
+                            .max-w-none .flex.justify-between.items-center.mb-4 form.flex.items-center.gap-2 input,
+                            .max-w-none .flex.justify-between.items-center.mb-4 form.flex.items-center.gap-2 select { width: 100%; max-width: none; }
+                            .max-w-none .flex.justify-between.items-center.mb-4 .flex.gap-3 { flex-wrap: wrap; }
+                            .max-w-none .flex.justify-between.items-center.mb-4 .flex.gap-3 > * { flex: 1 1 calc(50% - 0.375rem); min-width: 140px; }
+                            .max-w-none .btn { font-size: 0.8125rem; padding: 0.5rem 0.75rem; }
+                            .max-w-none .overflow-x-auto { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+                            .max-w-none table { font-size: 0.75rem; }
+                            .max-w-none th, .max-w-none td { padding: 0.375rem 0.5rem; white-space: nowrap; }
+                            .max-w-none .h-10 { height: 2.25rem; }
+                            .max-w-none .px-4 { padding-left: 0.75rem; padding-right: 0.75rem; }
+                            .max-w-none .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+                            .max-w-none { padding-left: 0.5rem; padding-right: 0.5rem; }
+                        }
                     </style>
                     @if (session('status') === 'cliente-creado')
                         <div x-data x-init="Swal.fire({ icon: 'success', title: '¡Éxito!', text: 'Cliente creado correctamente.' })"></div>

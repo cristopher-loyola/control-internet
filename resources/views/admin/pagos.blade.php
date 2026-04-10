@@ -506,13 +506,35 @@
         html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
         /* Responsive (pantallas pequeñas) */
         @media (max-width: 640px){
-            .max-w-6xl{ max-width: 100%; }
-            .print-sheet{ width: 100vw; height: auto; aspect-ratio: 210 / 297; margin: 0; }
-            .receipt{ height: auto; padding: 12px; border-radius: 6px; }
-            .divider-line{ height: 1px; margin: 12px 0; }
-            .sheet-abs{ display: none; } /* Oculta overlays en móvil; la impresión no se afecta */
-            .receipt-grid{ font-size: 0.95rem; line-height: 1.2; }
-            .id-band{ margin: 8px 0; }
+            .max-w-6xl{ max-width: 100%; padding-left: 0.5rem; padding-right: 0.5rem; }
+            .max-w-6xl .p-6 { padding: 0.75rem; }
+            .max-w-6xl .grid.md\:grid-cols-3 { grid-template-columns: 1fr; }
+            .max-w-6xl .md\:col-span-2 { grid-column: span 1; }
+            /* Formulario */
+            .max-w-6xl .grid.grid-cols-2 { grid-template-columns: 1fr; }
+            .max-w-6xl .col-span-2 { grid-column: span 1; }
+            .max-w-6xl .grid.grid-cols-3 { grid-template-columns: 1fr; }
+            .max-w-6xl .bg-gray-50.rounded-xl.p-5 { padding: 1rem; }
+            .max-w-6xl .form-input, .max-w-6xl .form-select { font-size: 1rem; min-height: 2.75rem; }
+            .max-w-6xl label { font-size: 0.75rem; }
+            .max-w-6xl .btn { font-size: 0.875rem; padding: 0.75rem; }
+            .max-w-6xl .flex.flex-col.items-center { align-items: stretch; }
+            .max-w-6xl .flex.flex-col.items-center h3 { text-align: center; }
+            /* Recibos */
+            .print-sheet{ width: 100%; height: auto; aspect-ratio: auto; margin: 0; padding: 0.5rem; }
+            .receipt{ height: auto; min-height: auto; padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+            .client-receipt{ height: auto; min-height: auto; padding: 1rem; margin-bottom: 0; }
+            .divider-line{ height: 2px; margin: 1rem 0; background: #111; }
+            .sheet-abs{ display: none; }
+            .receipt-grid{ font-size: 0.875rem; line-height: 1.3; gap: 4px 8px; }
+            .client-receipt .receipt-grid{ font-size: 0.875rem; line-height: 1.3; }
+            .client-receipt .receipt-grid.prepay-active{ font-size: 0.8rem; }
+            .id-band{ margin: 0.5rem 0; padding: 4px 8px; font-size: 0.875rem; max-width: 100%; }
+            .client-receipt .id-band{ margin: 0.5rem 0; padding: 4px 8px; font-size: 0.875rem; }
+            .receipt-head{ min-height: auto; }
+            .footer-note{ position: static; margin-top: 1rem; font-size: 0.75rem; }
+            .ref-number{ position: static; margin-bottom: 0.25rem; font-size: 0.75rem; }
+            .client-receipt .ref-number{ position: static; margin-bottom: 0.25rem; font-size: 0.75rem; }
         }
     </style>
 

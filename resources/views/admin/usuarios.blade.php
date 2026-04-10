@@ -246,4 +246,25 @@
             </div>
         </form>
     </x-modal>
+
+    <style>
+        @media (max-width: 640px) {
+            .max-w-7xl { padding-left: 0.75rem; padding-right: 0.75rem; }
+            .max-w-7xl .p-6 { padding: 0.75rem; }
+            /* Buscador y botón */
+            .max-w-7xl .flex.flex-col.md\:flex-row { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+            .max-w-7xl form.flex.gap-2 { flex-direction: column; }
+            .max-w-7xl form.flex.gap-2 .form-input { width: 100%; max-width: none; }
+            .max-w-7xl .d-flex.align-items-center { flex-direction: row; justify-content: space-between; }
+            .max-w-7xl .btn { padding: 0.5rem 0.75rem; font-size: 0.875rem; }
+            /* Tabla */
+            .max-w-7xl .overflow-x-auto { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            .max-w-7xl table { font-size: 0.8125rem; }
+            .max-w-7xl th, .max-w-7xl td { padding: 0.5rem 0.375rem; white-space: nowrap; }
+            .max-w-7xl .inline-flex.items-center.px-2\.5 { font-size: 0.625rem; padding: 0.125rem 0.5rem; }
+            /* Botones de acción */
+            .max-w-7xl .d-inline-flex.gap-2 { display: flex; flex-direction: column; gap: 0.25rem; }
+            .max-w-7xl .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+        }
+    </style>
 </x-app-layout>
