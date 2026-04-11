@@ -17,8 +17,8 @@
                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 not-print">
     <div class="md:col-span-2 bg-gray-50 dark:bg-gray-700 rounded-xl p-5 shadow-inner">
         <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 dark:text-gray-300 mb-4"> Buscar cliente</h3>
-        <div class="grid grid-cols-2 gap-4">
-            <div class="col-span-2">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="sm:col-span-2">
                 <label for="numero" class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">ID del cliente</label>
                 <input id="numero" type="number" placeholder="Ingresa el ID..."
                     class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm text-base focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
@@ -55,7 +55,7 @@
                 </select>
             </div>
 
-            <div class="col-span-2 grid grid-cols-3 gap-3">
+            <div class="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pago por adelantado</label>
                     <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
@@ -112,21 +112,21 @@
                 </div>
             </div>
 
-           <div>
-    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
-        Quién cobró
-    </label>
-    <select
-        class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-        x-model="form.cobro"
-        :disabled="readOnlyMode">
-        <option value="">Selecciona...</option>
-        <option value="Luz">Luz</option>    
-        <option value="Jaime">Jaime</option>
-        <option value="Nancy">Nancy</option>
-        <option value="Ivan">Ivan</option>
-    </select>
-</div>
+            <div class="sm:col-span-2">
+                <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
+                    Quién cobró
+                </label>
+                <select
+                    class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                    x-model="form.cobro"
+                    :disabled="readOnlyMode">
+                    <option value="">Selecciona...</option>
+                    <option value="Luz">Luz</option>
+                    <option value="Jaime">Jaime</option>
+                    <option value="Nancy">Nancy</option>
+                    <option value="Ivan">Ivan</option>
+                </select>
+            </div>
         </div>
     </div>
 
@@ -473,13 +473,66 @@
         html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}
         /* Responsive (pantallas pequeñas) */
         @media (max-width: 640px){
-            .max-w-6xl{ max-width: 100%; }
-            .print-sheet{ width: 100vw; height: auto; aspect-ratio: 210 / 297; margin: 0; }
-            .receipt{ height: auto; padding: 12px; border-radius: 6px; }
+            .max-w-6xl{ max-width: 100%; padding: 0 0.5rem; }
+            .print-sheet{ 
+                width: 100% !important; 
+                max-width: 100% !important;
+                height: auto !important; 
+                aspect-ratio: 210 / 297; 
+                margin: 0 auto !important;
+                transform: none !important;
+                overflow-x: hidden !important;
+            }
+            .receipt{ 
+                height: auto !important; 
+                min-height: auto !important;
+                padding: 8px 10px !important; 
+                border-radius: 6px;
+                width: 100% !important;
+                max-width: 100% !important;
+                overflow-wrap: break-word;
+            }
+            .client-receipt{ 
+                height: auto !important; 
+                min-height: 300px !important;
+                padding: 12px 10px !important;
+            }
             .divider-line{ height: 1px; margin: 12px 0; }
-            .sheet-abs{ display: none; } /* Oculta overlays en móvil; la impresión no se afecta */
-            .receipt-grid{ font-size: 0.95rem; line-height: 1.2; }
-            .id-band{ margin: 8px 0; }
+            .sheet-abs{ display: none !important; }
+            .receipt-grid{ 
+                font-size: 0.875rem !important; 
+                line-height: 1.3 !important; 
+                gap: 2px 6px !important;
+                width: 100% !important;
+            }
+            .client-receipt .receipt-grid{ font-size: 0.9rem !important; }
+            .client-receipt .receipt-grid.prepay-active{ font-size: 0.8rem !important; }
+            .id-band{ 
+                margin: 8px 0; 
+                padding: 3px 8px !important;
+                font-size: 0.875rem !important;
+                max-width: 100% !important;
+            }
+            .client-receipt .id-band{ 
+                padding: 4px 10px !important; 
+                margin: 10px 0;
+                font-size: 0.9rem !important;
+            }
+            .ref-number{ 
+                position: relative !important; 
+                top: auto !important; 
+                left: auto !important;
+                margin-bottom: 5px;
+                font-size: 0.75rem !important;
+            }
+            .footer-note { 
+                position: relative !important; 
+                bottom: auto !important; 
+                margin-top: 15px;
+                font-size: 0.7rem !important;
+                padding: 0 5px;
+            }
+            .cobro-row { padding-bottom: 0; }
         }
         /* Responsive para pantallas medianas */
         @media (max-width: 1024px) and (min-width: 641px){
@@ -487,9 +540,15 @@
                 width: 100%; 
                 max-width: 210mm; 
                 margin: 0 auto; 
-                transform: scale(0.8); 
+                transform: scale(0.85); 
                 transform-origin: top center;
             }
+        }
+        /* Asegurar que el contenedor principal no tenga scroll horizontal */
+        @media (max-width: 640px){
+            .bg-white.dark\:bg-gray-800{ overflow-x: hidden; }
+            .p-6{ padding: 0.75rem !important; }
+            .sm\:px-4{ padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
         }
     </style>
 
