@@ -1,8 +1,12 @@
-@if(auth()->user()->role === 'tecnico')
-<x-app-tecnico-layout>
-@else
-<x-app-sidebar>
-@endif
+@php
+    $role = auth()->user()->role;
+    $layout = match($role) {
+        'tecnico' => 'app-tecnico-layout',
+        'pagos', 'admin' => 'app-layout',
+        default => 'app-sidebar',
+    };
+@endphp
+<x-dynamic-component :component="$layout">
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-white leading-tight">
             Perfil
@@ -30,8 +34,4 @@
             </div>
         </div>
     </div>
-@if(auth()->user()->role === 'tecnico')
-</x-app-tecnico-layout>
-@else
-</x-app-sidebar>
-@endif
+</x-dynamic-component>

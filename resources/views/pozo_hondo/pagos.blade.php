@@ -53,7 +53,7 @@
                                 </div>
 
                                 <div class="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                    <div>
+                                    <div class="hidden">
                                         <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pago por adelantado</label>
                                         <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
                                             x-model="form.prepay" :disabled="readOnlyMode" @change="inputChanged()">
@@ -94,20 +94,13 @@
                                     </div>
                                 </div>
 
-                                <div>
+                                <div class="hidden">
                                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
                                         Quién cobró
                                     </label>
-                                    <select
-                                        class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                                        x-model="form.cobro"
-                                        :disabled="readOnlyMode">
-                                        <option value="">Selecciona...</option>
-                                        <option value="Luz">Luz</option>
-                                        <option value="Jaime">Jaime</option>
-                                        <option value="Nancy">Nancy</option>
-                                        <option value="Ivan">Ivan</option>
-                                    </select>
+                                    <input type="text" readonly
+                                        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm bg-gray-100"
+                                        value="{{ Auth::user()->name }}">
                                 </div>
                             </div>
                         </div>
@@ -480,7 +473,7 @@
         };
         return {
             readOnlyMode: false,
-            form:{ numero:'', recargo:getDefaultRecargo(), pago_anterior:0, metodo:'', cobro:'', prepay:'no', prepay_months:6, otro:'no', baja_temporal_months:1 },
+            form:{ numero:'', recargo:getDefaultRecargo(), pago_anterior:0, metodo:'', cobro:'{{ Auth::user()->name }}', prepay:'no', prepay_months:6, otro:'no', baja_temporal_months:1 },
             pagoAnteriorFecha:'',
             manualEditEnabled: false,
             manualReason: '',

@@ -33,13 +33,25 @@ class PozoHondoController extends Controller
 
     public function corte(Request $request)
     {
+        $fechaInicio = $request->input('fecha_inicio');
+        $fechaFin = $request->input('fecha_fin');
+
         // Obtener pagos exitosos (no cancelados) del perfil pozo_hondo
-        $pagos = Factura::whereNull('deleted_at')
+        $query = Factura::whereNull('deleted_at')
             ->whereNotNull('numero_servicio')
             ->whereHas('cajero', function ($q) {
                 $q->where('role', 'pozo_hondo');
-            })
-            ->orderByDesc('created_at')
+            });
+
+        // Aplicar filtro de fechas si se proporcionan
+        if ($fechaInicio) {
+            $query->whereDate('created_at', '>=', $fechaInicio);
+        }
+        if ($fechaFin) {
+            $query->whereDate('created_at', '<=', $fechaFin);
+        }
+
+        $pagos = $query->orderByDesc('created_at')
             ->limit(100)
             ->get(['id', 'reference_number', 'numero_servicio', 'periodo', 'total', 'payload', 'created_at']);
 
@@ -60,7 +72,11 @@ class PozoHondoController extends Controller
             ];
         });
 
-        return view('pozo_hondo.corte', ['pagos' => $items]);
+        return view('pozo_hondo.corte', [
+            'pagos' => $items,
+            'fechaInicio' => $fechaInicio,
+            'fechaFin' => $fechaFin,
+        ]);
     }
 
     public function historial(Request $request)

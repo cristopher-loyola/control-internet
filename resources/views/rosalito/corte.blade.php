@@ -17,6 +17,53 @@
                 </div>
             </div>
 
+            <!-- Filtro de Fechas -->
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <form method="GET" action="{{ route('rosalito.corte') }}" class="flex flex-wrap items-end gap-4">
+                    <div class="flex-1 min-w-[200px]">
+                        <label for="fecha_inicio" class="block text-sm font-medium text-gray-700 mb-1">Fecha de inicio</label>
+                        <input type="date" name="fecha_inicio" id="fecha_inicio"
+                            value="{{ $fechaInicio }}"
+                            class="w-full rounded-md border border-gray-400 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                    <div class="flex-1 min-w-[200px]">
+                        <label for="fecha_fin" class="block text-sm font-medium text-gray-700 mb-1">Fecha de fin</label>
+                        <input type="date" name="fecha_fin" id="fecha_fin"
+                            value="{{ $fechaFin }}"
+                            class="w-full rounded-md border border-gray-400 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="submit"
+                            class="inline-flex items-center px-4 py-2.5 bg-blue-600 border border-transparent rounded-md font-semibold text-sm text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-md">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                            Filtrar
+                        </button>
+                        @if($fechaInicio || $fechaFin)
+                            <a href="{{ route('rosalito.corte') }}"
+                                class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                                Limpiar
+                            </a>
+                        @endif
+                    </div>
+                </form>
+                @if($fechaInicio || $fechaFin)
+                    <div class="mt-4 p-3 bg-blue-50 rounded-md">
+                        <p class="text-sm text-blue-700">
+                            <span class="font-semibold">Mostrando resultados:</span>
+                            @if($fechaInicio && $fechaFin)
+                                Del {{ \Carbon\Carbon::parse($fechaInicio)->format('d/m/Y') }} al {{ \Carbon\Carbon::parse($fechaFin)->format('d/m/Y') }}
+                            @elseif($fechaInicio)
+                                Desde el {{ \Carbon\Carbon::parse($fechaInicio)->format('d/m/Y') }}
+                            @elseif($fechaFin)
+                                Hasta el {{ \Carbon\Carbon::parse($fechaFin)->format('d/m/Y') }}
+                            @endif
+                        </p>
+                    </div>
+                @endif
+            </div>
+
             <!-- Tabla de Pagos Exitosos -->
             <div class="bg-white rounded-lg shadow-sm overflow-hidden">
                 <div class="overflow-x-auto">
