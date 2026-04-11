@@ -4,11 +4,14 @@ namespace App\Http\Controllers\Pagos;
 
 use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
+use App\Models\Cortador;
 use App\Models\Factura;
 use App\Models\HistorialUsuario;
 use App\Models\Usuario;
 use App\Services\MorosidadService;
 use App\Services\PrepayDashboardService;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -1475,5 +1478,153 @@ thead th{ background:#2e7d32; color:#fff; }
         }
 
         return back()->with('import_report', $report);
+    }
+
+    /**
+     * Exportar a PDF los usuarios que NO están en verde (solo por cortar)
+     */
+    public function exportCortesPdf(Request $request, MorosidadService $morosidadService)
+    {
+        $q = trim((string) $request->query('q', ''));
+        $zona = $request->query('zona');
+        $estado = $request->query('estado');
+
+        $mesActual = now()->format('Y-m');
+        $diaDelMes = now()->day;
+
+        $usuarios = Usuario::with('cortador')
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where(function ($sq) use ($q) {
+                    $sq->where('numero_servicio', 'like', "%{$q}%")
+                        ->orWhere('nombre_cliente', 'like', "%{$q}%")
+                        ->orWhere('zona', 'like', "%{$q}%");
+                });
+            })
+            ->when($zona, function ($query) use ($zona) {
+                $query->where('zona', $zona);
+            })
+            ->when($estado, function ($query) use ($estado) {
+                $query->where('estado_corte', $estado);
+            })
+            ->orderBy('numero_servicio', 'asc')
+            ->get();
+
+        // Calcular adeudo y filtrar solo los NO verdes (por cortar)
+        $usuariosPorCortar = $usuarios->filter(function ($usuario) use ($morosidadService, $diaDelMes, $mesActual) {
+            $adeudo = $morosidadService->calcularAdeudoUsuario((string)$usuario->numero_servicio);
+            $mesesAdeudo = $adeudo['meses_adeudo'] ?? 0;
+            $desdePeriodo = $adeudo['desde_periodo'] ?? $mesActual;
+
+            // Determinar si está en verde (al día)
+            $pagadoMes = false;
+            if ($mesesAdeudo == 0) {
+                $pagadoMes = true;
+            } elseif ($mesesAdeudo == 1 && $desdePeriodo === $mesActual) {
+                $pagadoMes = true;
+            } elseif ($mesesAdeudo >= 1 && $desdePeriodo < $mesActual && $diaDelMes < 8) {
+                $pagadoMes = true;
+            }
+
+            // Solo incluir los que NO están en verde
+            return !$pagadoMes;
+        });
+
+        $cortadores = Cortador::orderBy('nombre')->get();
+        $titulo = 'USUARIOS POR CORTAR - ' . now()->locale('es')->monthName . ' ' . now()->year;
+
+        $html = view('admin.cortes_pdf', compact('usuariosPorCortar', 'cortadores', 'titulo'))->render();
+
+        $options = new Options();
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', true);
+
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        return $dompdf->stream('usuarios-por-cortar-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    /**
+     * Exportar a CSV (Excel) los usuarios que NO están en verde (solo por cortar)
+     */
+    public function exportCortesCsv(Request $request, MorosidadService $morosidadService)
+    {
+        $q = trim((string) $request->query('q', ''));
+        $zona = $request->query('zona');
+        $estado = $request->query('estado');
+
+        $mesActual = now()->format('Y-m');
+        $diaDelMes = now()->day;
+
+        $usuarios = Usuario::with('cortador')
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where(function ($sq) use ($q) {
+                    $sq->where('numero_servicio', 'like', "%{$q}%")
+                        ->orWhere('nombre_cliente', 'like', "%{$q}%")
+                        ->orWhere('zona', 'like', "%{$q}%");
+                });
+            })
+            ->when($zona, function ($query) use ($zona) {
+                $query->where('zona', $zona);
+            })
+            ->when($estado, function ($query) use ($estado) {
+                $query->where('estado_corte', $estado);
+            })
+            ->orderBy('numero_servicio', 'asc')
+            ->get();
+
+        // Calcular adeudo y filtrar solo los NO verdes (por cortar)
+        $usuariosPorCortar = $usuarios->filter(function ($usuario) use ($morosidadService, $diaDelMes, $mesActual) {
+            $adeudo = $morosidadService->calcularAdeudoUsuario((string)$usuario->numero_servicio);
+            $mesesAdeudo = $adeudo['meses_adeudo'] ?? 0;
+            $desdePeriodo = $adeudo['desde_periodo'] ?? $mesActual;
+
+            // Determinar si está en verde (al día)
+            $pagadoMes = false;
+            if ($mesesAdeudo == 0) {
+                $pagadoMes = true;
+            } elseif ($mesesAdeudo == 1 && $desdePeriodo === $mesActual) {
+                $pagadoMes = true;
+            } elseif ($mesesAdeudo >= 1 && $desdePeriodo < $mesActual && $diaDelMes < 8) {
+                $pagadoMes = true;
+            }
+
+            // Solo incluir los que NO están en verde
+            return !$pagadoMes;
+        });
+
+        $filename = 'usuarios-por-cortar-' . now()->format('Y-m-d') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=utf-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function () use ($usuariosPorCortar) {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM para UTF-8
+
+            // Encabezados
+            fputcsv($file, ['ID', 'Nombre Cliente', 'Zona', 'IP', 'MAC', 'Cortador Asignado', 'Estado Corte']);
+
+            // Datos
+            foreach ($usuariosPorCortar as $u) {
+                fputcsv($file, [
+                    $u->numero_servicio,
+                    $u->nombre_cliente,
+                    $u->zona ?? '-',
+                    $u->ip ?? '-',
+                    $u->mac ?? '-',
+                    $u->cortador?->nombre ?? '-',
+                    $u->estado_corte ?? '-',
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }

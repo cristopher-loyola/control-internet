@@ -24,6 +24,12 @@
                     </div>
                     
                     <div class="flex gap-2">
+                        <a href="{{ route('pagos.cortes.export.pdf') }}?{{ http_build_query(request()->only(['q', 'zona', 'estado'])) }}" class="btn btn-danger flex items-center gap-2" title="Exportar a PDF los usuarios por cortar">
+                            📄 PDF
+                        </a>
+                        <a href="{{ route('pagos.cortes.export.csv') }}?{{ http_build_query(request()->only(['q', 'zona', 'estado'])) }}" class="btn btn-success flex items-center gap-2" title="Exportar a Excel (CSV) los usuarios por cortar">
+                            📊 Excel
+                        </a>
                         <button @click="openConfigModal = true" class="btn btn-secondary flex items-center gap-2">
                             ⚙️ Configurar Cortadores
                         </button>

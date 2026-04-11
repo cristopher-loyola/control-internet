@@ -33,6 +33,8 @@ Route::middleware(['auth', 'role:pagos'])
 
         // Módulo de Cortes (para perfil pagos)
         Route::get('/cortes', [CortesController::class, 'index'])->name('cortes.index');
+        Route::get('/cortes/export/pdf', [PagosController::class, 'exportCortesPdf'])->name('cortes.export.pdf');
+        Route::get('/cortes/export/csv', [PagosController::class, 'exportCortesCsv'])->name('cortes.export.csv');
         Route::get('/reactivaciones', [CortesController::class, 'reactivacionesIndex'])->name('reactivaciones.index');
         Route::post('/cortes/{id}/update', [CortesController::class, 'updateCorte'])->name('cortes.update');
         Route::post('/cortes/cortadores', [CortesController::class, 'storeCortador'])->name('cortes.cortadores.store');
