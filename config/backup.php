@@ -68,7 +68,7 @@ return [
 
     'database_dump_generator' => [
         'mysql' => [
-            'dump_binary_path' => 'C:\\laragon\\bin\\mysql\\mysql-8.0.30-winx64\\bin\\mysqldump.exe',
+            'dump_binary_path' => 'C:\\laragon\\bin\\mysql\\mysql-8.4.3-winx64\\bin\\mysqldump.exe',
             'dump_command_options' => [
                 '--routines',
                 '--triggers',
