@@ -101,3 +101,20 @@ Artisan::command('usuarios:backfill-baja-temporal {--dry-run : Solo muestra los 
 
     return 0;
 })->purpose("Marca como 'Baja temporal' a usuarios con facturas cuyo payload->otro = baja_temporal");
+
+// Tareas programadas (Schedule)
+use Illuminate\Support\Facades\Schedule;
+use Illuminate\Console\Scheduling\CallbackEvent;
+
+// Limpia backups antiguos cada 15 dias
+Schedule::command('backup:clean')
+    ->daily()
+    ->at('01:30');
+
+// Genera backup y envia por email
+Schedule::command('backup:email')
+    ->daily()
+    ->at('12:26')
+    ->onFailure(function () {
+        \Log::error('Backup por email fallo');
+    });
