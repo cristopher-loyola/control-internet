@@ -4,7 +4,7 @@
     <style>
         body { font-family: Arial, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
         .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; }
-        .header { color: #4f46e5; border-bottom: 2px solid #4f46e5; padding-bottom: 10px; }
+        .header { color: #f30000; border-bottom: 2px solid #e54646; padding-bottom: 10px; }
         .info { margin: 20px 0; }
         .info-row { display: flex; justify-content: space-between; padding: 12px; background: #f9fafb; margin: 8px 0; border-radius: 6px; }
         .footer { margin-top: 30px; font-size: 12px; color: #6b7280; text-align: center; }
@@ -39,7 +39,7 @@
         </ul>
 
         <div class="footer">
-            Este backup se genera automaticamente cada dia a las 2:00 AM<br>
+            Este backup se genera automaticamente cada dia a las 16:45 PM<br>
             Sistema Control Internet
         </div>
     </div>
