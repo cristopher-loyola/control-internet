@@ -30,7 +30,10 @@ class BackupAndEmail extends Command
 
             $this->info('Backup encontrado: ' . basename($backupPath));
 
-            // 3. Enviar por email
+            // 3. Agregar CREATE SCHEMA al SQL
+            $this->fixDatabaseDeclaration($backupPath);
+
+            // 4. Enviar por email
             $this->sendEmail($backupPath);
 
             $this->info('Backup enviado exitosamente a tu email');
@@ -117,5 +120,73 @@ class BackupAndEmail extends Command
         }
 
         return round($bytes, 2) . ' ' . $units[$unitIndex];
+    }
+
+    private function fixDatabaseDeclaration(string $backupPath): void
+    {
+        $disk = Storage::disk('local');
+        $fullPath = $disk->path($backupPath);
+        $tempDir = storage_path('app/backup-temp');
+        
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($fullPath) !== true) {
+            $this->warn('No se pudo abrir el zip');
+            return;
+        }
+
+        // Buscar archivo SQL
+        $sqlFileName = null;
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $fileName = $zip->getNameIndex($i);
+            if (str_contains($fileName, '.sql')) {
+                $sqlFileName = $fileName;
+                $this->info('SQL encontrado: ' . $sqlFileName);
+                break;
+            }
+        }
+
+        if (!$sqlFileName) {
+            $zip->close();
+            $this->error('No se encontro SQL en el backup');
+            return;
+        }
+
+        // Extraer SQL
+        $tempSqlPath = $tempDir . '/temp_backup.sql';
+        $zip->extractTo($tempDir, $sqlFileName);
+        rename($tempDir . '/' . $sqlFileName, $tempSqlPath);
+        
+        // Leer contenido
+        $sqlContent = file_get_contents($tempSqlPath);
+        
+        // Verificar si ya tiene CREATE
+        if (str_contains($sqlContent, 'CREATE DATABASE') || str_contains($sqlContent, 'CREATE SCHEMA')) {
+            unlink($tempSqlPath);
+            $zip->close();
+            return;
+        }
+
+        // Agregar CREATE SCHEMA
+        $dbName = env('DB_DATABASE', 'control_internet');
+        $declaration = "CREATE SCHEMA IF NOT EXISTS `{$dbName}` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\n";
+        $declaration .= "USE `{$dbName}`;\n\n";
+        $newContent = $declaration . $sqlContent;
+        
+        // Guardar modificado
+        file_put_contents($tempSqlPath, $newContent);
+        
+        // Reemplazar en zip
+        $zip->deleteName($sqlFileName);
+        $zip->addFile($tempSqlPath, $sqlFileName);
+        $zip->close();
+        
+        // Limpiar
+        unlink($tempSqlPath);
+        
+        $this->info('CREATE SCHEMA agregado correctamente');
     }
 }

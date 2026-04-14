@@ -20,7 +20,7 @@ class Kernel extends ConsoleKernel
         // Genera backup y envia por email
         $schedule->command('backup:email')
             ->daily()
-            ->at('11:35')
+            ->at('10:35')
             ->onFailure(function () {
                 \Log::error('Backup por email fallo');
             });
