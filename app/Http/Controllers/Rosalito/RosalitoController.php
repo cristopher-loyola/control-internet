@@ -679,12 +679,22 @@ class RosalitoController extends Controller
                 th, td { border: 1px solid #888; padding: 6px 8px; font-family: Arial, Helvetica, sans-serif; font-size: 11pt; }
                 thead th { background: #2e7d32; color: #fff; }
                 .header-row { background: #1e3a8a; color: #fff; font-weight: bold; }
+                .comision-row { background: #f59e0b; color: #fff; font-weight: bold; }
                 .text { mso-number-format: "\@"; }
                 .date { mso-number-format: "dd/mm/yyyy\\ hh:mm"; }
                 .money { mso-number-format: "\\$#,##0.00"; text-align: right; }
                 .total-row td { background: #1e3a8a; color: #fff; font-weight: 700; }
                 h2 { font-family: Arial, Helvetica, sans-serif; }
             </style></head><body>';
+
+            // Calcular reconexiones (pagos después del día 7 del mes = $50 de comisión)
+            $comisionReconexion = 0;
+            foreach ($facturas as $f) {
+                $diaPago = (int) $f->created_at->format('j');
+                if ($diaPago >= 8) {
+                    $comisionReconexion += 50;
+                }
+            }
 
             // Información del corte
             echo '<h2>Reporte de Corte de Caja - ' . htmlspecialchars($zonaNombre) . '</h2>';
@@ -694,6 +704,7 @@ class RosalitoController extends Controller
             echo '<tr><td><strong>Fecha de Inicio:</strong></td><td>' . $corte->fecha_inicio->format('d/m/Y H:i:s') . '</td></tr>';
             echo '<tr><td><strong>Total de Pagos:</strong></td><td>' . $facturas->count() . '</td></tr>';
             echo '<tr><td><strong>Total Recaudado:</strong></td><td class="money">' . number_format($facturas->sum('total'), 2, '.', '') . '</td></tr>';
+            echo '<tr class="comision-row"><td><strong>Comisión por Reconexión ($50 c/u):</strong></td><td class="money">' . number_format($comisionReconexion, 2, '.', '') . '</td></tr>';
             echo '</table>';
 
             // Tabla de pagos
@@ -707,7 +718,7 @@ class RosalitoController extends Controller
                 <th>Monto</th>
                 <th>Método de Pago</th>
                 <th>Quién Cobró</th>
-                <th>Cajero</th>
+                <th>Comisión Reconexión</th>
             </tr></thead><tbody>';
 
             foreach ($facturas as $f) {
@@ -716,6 +727,10 @@ class RosalitoController extends Controller
                 $metodo = is_array($payload) ? ($payload['metodo'] ?? ($payload['pago_metodo'] ?? '-')) : '-';
                 $cobro = is_array($payload) ? ($payload['cobro'] ?? '-') : '-';
                 $folio = str_pad((string) $f->reference_number, 8, '0', STR_PAD_LEFT);
+
+                // Calcular comisión por reconexión
+                $diaPago = (int) $f->created_at->format('j');
+                $comisionPago = ($diaPago >= 8) ? 50 : 0;
 
                 echo '<tr>';
                 echo '<td class="text">' . htmlspecialchars($folio) . '</td>';
@@ -726,7 +741,7 @@ class RosalitoController extends Controller
                 echo '<td class="money">' . number_format((float) $f->total, 2, '.', '') . '</td>';
                 echo '<td>' . htmlspecialchars($metodo) . '</td>';
                 echo '<td>' . htmlspecialchars($cobro) . '</td>';
-                echo '<td>' . htmlspecialchars($f->cajero?->name ?? '-') . '</td>';
+                echo '<td class="money">' . ($comisionPago > 0 ? '$50.00' : '-') . '</td>';
                 echo '</tr>';
             }
 
@@ -735,7 +750,8 @@ class RosalitoController extends Controller
             echo '<td class="text"></td>';
             echo '<td colspan="4" style="text-align: right;">TOTAL RECAUDADO:</td>';
             echo '<td class="money">' . number_format($facturas->sum('total'), 2, '.', '') . '</td>';
-            echo '<td colspan="3"></td>';
+            echo '<td colspan="2"></td>';
+            echo '<td class="money">' . number_format($comisionReconexion, 2, '.', '') . '</td>';
             echo '</tr></tfoot></table>';
 
             echo '</body></html>';
