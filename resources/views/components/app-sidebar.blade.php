@@ -52,7 +52,7 @@
             <!-- Sidebar MOBILE: fixed, se muestra/oculta con Alpine -->
             <!-- Sidebar DESKTOP: sticky, siempre visible -->
             <aside x-show="sidebarOpen"
-                   class="fixed top-0 bottom-0 left-0 z-[60] w-64 bg-gray-900 text-white flex-shrink-0 md:hidden h-screen"
+                   class="fixed top-0 bottom-0 left-0 z-[100] w-64 bg-gray-900 text-white flex-shrink-0 md:hidden h-screen"
                    style="display: none;"
                    x-bind:style="sidebarOpen ? 'display: block;' : 'display: none;'">
                 <div class="flex flex-col h-screen overflow-hidden">

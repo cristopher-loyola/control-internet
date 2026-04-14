@@ -1,3 +1,3 @@
 <x-app-sidebar title="Inicio - Chivato" header-title="Panel Chivato">
-    <x-zona-dashboard title="Chivato" :zona="$zona" :stats="$stats" :chart="$chart" :payments="$payments" />
+    <x-zona-dashboard title="Chivato" :zona="$zona" :stats="$stats" :chart="$chart" :payments="$payments" zonaRoute="chivato" :corteActivo="$corteActivo" />
 </x-app-sidebar>

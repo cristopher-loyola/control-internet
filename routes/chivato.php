@@ -21,4 +21,10 @@ Route::middleware(['auth', 'role:chivato'])
         Route::get('/recibos/prepay-status', [ChivatoController::class, 'recibosPrepayStatus'])->name('recibos.prepay.status');
         Route::get('/recibos/layout', [ChivatoController::class, 'recibosLayoutGet'])->name('recibos.layout.get');
         Route::post('/recibos/facturas', [ChivatoController::class, 'recibosFacturaStore'])->name('recibos.facturas.store');
+
+        // Routes for Corte de Caja
+        Route::post('/corte/iniciar', [ChivatoController::class, 'iniciarCorte'])->name('corte.iniciar');
+        Route::post('/corte/finalizar', [ChivatoController::class, 'finalizarCorte'])->name('corte.finalizar');
+        Route::get('/corte/activo', [ChivatoController::class, 'corteActivo'])->name('corte.activo');
+        Route::get('/corte/exportar', [ChivatoController::class, 'exportarCorteExcel'])->name('corte.exportar');
     });

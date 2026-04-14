@@ -21,4 +21,10 @@ Route::middleware(['auth', 'role:pozo_hondo'])
         Route::get('/recibos/prepay-status', [PozoHondoController::class, 'recibosPrepayStatus'])->name('recibos.prepay.status');
         Route::get('/recibos/layout', [PozoHondoController::class, 'recibosLayoutGet'])->name('recibos.layout.get');
         Route::post('/recibos/facturas', [PozoHondoController::class, 'recibosFacturaStore'])->name('recibos.facturas.store');
+
+        // Routes for Corte de Caja
+        Route::post('/corte/iniciar', [PozoHondoController::class, 'iniciarCorte'])->name('corte.iniciar');
+        Route::post('/corte/finalizar', [PozoHondoController::class, 'finalizarCorte'])->name('corte.finalizar');
+        Route::get('/corte/activo', [PozoHondoController::class, 'corteActivo'])->name('corte.activo');
+        Route::get('/corte/exportar', [PozoHondoController::class, 'exportarCorteExcel'])->name('corte.exportar');
     });

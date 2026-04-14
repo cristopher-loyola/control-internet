@@ -9,6 +9,26 @@
                     <div>
                         <h2 class="text-lg font-semibold text-gray-800 mb-2">Corte de Caja - Pagos Exitosos</h2>
                         <p class="text-sm text-gray-600">Lista de todos los pagos cobrados exitosamente en el perfil Pozo Hondo</p>
+                        @if(isset($corteActivo) && $corteActivo)
+                            <div class="mt-2 p-2 bg-blue-100 rounded-md inline-flex items-center gap-3">
+                                <span class="text-sm text-black-800">
+                                    <span class="font-semibold">Corte activo:</span> {{ \Carbon\Carbon::parse($corteActivo->fecha_inicio)->format('d/m/Y H:i') }}
+                                </span>
+                                <a href="{{ route('pozo_hondo.corte.exportar') }}"
+   class="inline-flex items-center px-3 py-1.5 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-sm">
+    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+    </svg>
+    Exportar Excel
+</a>
+                            </div>
+                        @else
+                            <div class="mt-2 p-2 bg-yellow-100 rounded-md inline-block">
+                                <span class="text-sm text-yellow-800">
+                                    No hay corte activo - Mostrando pagos del día
+                                </span>
+                            </div>
+                        @endif
                     </div>
                     <div class="text-right">
                         <p class="text-sm text-gray-500">Total de registros</p>
@@ -109,25 +129,26 @@
             </div>
 
             <!-- Resumen del corte -->
-            @if($pagos->count() > 0)
-                <div class="mt-6">
-                    <div class="bg-white rounded-lg shadow-sm p-6 max-w-md">
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm text-gray-600">Total en caja</p>
-                                <p class="text-2xl font-bold text-green-600">
-                                    ${{ number_format($pagos->sum('total'), 2) }}
-                                </p>
-                            </div>
-                            <div class="p-3 bg-green-100 rounded-lg">
-                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                            </div>
+            <div class="mt-6">
+                <div class="bg-white rounded-lg shadow-sm p-6 max-w-md">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">Total recaudado</p>
+                            <p class="text-2xl font-bold text-green-600">
+                                ${{ number_format($pagos->sum('total'), 2) }}
+                            </p>
+                            <p class="text-xs text-gray-500 mt-1">
+                                {{ $pagos->count() }} pago{{ $pagos->count() !== 1 ? 's' : '' }}
+                            </p>
+                        </div>
+                        <div class="p-3 bg-green-100 rounded-lg">
+                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
                         </div>
                     </div>
                 </div>
-            @endif
+            </div>
         </div>
     </div>
 </x-app-sidebar>
