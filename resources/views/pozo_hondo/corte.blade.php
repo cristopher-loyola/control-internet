@@ -15,12 +15,12 @@
                                     <span class="font-semibold">Corte activo:</span> {{ \Carbon\Carbon::parse($corteActivo->fecha_inicio)->format('d/m/Y H:i') }}
                                 </span>
                                 <a href="{{ route('pozo_hondo.corte.exportar') }}"
-   class="inline-flex items-center px-3 py-1.5 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-sm">
-    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-    </svg>
-    Exportar Excel
-</a>
+                                   class="inline-flex items-center px-3 py-1.5 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-sm">
+                                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    Exportar Excel
+                                </a>
                             </div>
                         @else
                             <div class="mt-2 p-2 bg-yellow-100 rounded-md inline-block">
@@ -97,6 +97,8 @@
                                 <th class="px-4 py-3">Total</th>
                                 <th class="px-4 py-3">Método</th>
                                 <th class="px-4 py-3">Quién cobró</th>
+                                <th class="px-4 py-3">Comisión Recibo</th>
+                                <th class="px-4 py-3">Comisión Rec.</th>
                                 <th class="px-4 py-3">Fecha</th>
                             </tr>
                         </thead>
@@ -114,11 +116,25 @@
                                     </td>
                                     <td class="px-4 py-3">{{ $pago['metodo'] }}</td>
                                     <td class="px-4 py-3">{{ $pago['cobro'] }}</td>
+                                    <td class="px-4 py-3">
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            ${{ number_format($pago['comision_recibo'], 2) }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        @if($pago['comision_reconexion'] > 0)
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                                ${{ number_format($pago['comision_reconexion'], 2) }}
+                                            </span>
+                                        @else
+                                            <span class="text-gray-400">-</span>
+                                        @endif
+                                    </td>
                                     <td class="px-4 py-3">{{ $pago['fecha_formateada'] }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="px-4 py-8 text-center text-gray-500">
+                                    <td colspan="10" class="px-4 py-8 text-center text-gray-500">
                                         No hay pagos registrados en este momento.
                                     </td>
                                 </tr>
@@ -140,6 +156,35 @@
                             <p class="text-xs text-gray-500 mt-1">
                                 {{ $pagos->count() }} pago{{ $pagos->count() !== 1 ? 's' : '' }}
                             </p>
+                            <div class="mt-3 pt-3 border-t border-gray-200">
+                                <p class="text-sm text-blue-600 font-medium">Comisión por Recibo</p>
+                                <p class="text-xl font-bold text-blue-600">
+                                    ${{ number_format($totalComisionRecibo, 2) }}
+                                </p>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    $10 por cada recibo cobrado
+                                </p>
+                            </div>
+                            @if($totalComisionReconexion > 0)
+                                <div class="mt-3 pt-3 border-t border-gray-200">
+                                    <p class="text-sm text-orange-600 font-medium">Comisión por Reconexión</p>
+                                    <p class="text-xl font-bold text-orange-600">
+                                        ${{ number_format($totalComisionReconexion, 2) }}
+                                    </p>
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        $50 por pago después del día 7
+                                    </p>
+                                </div>
+                            @endif
+                            <div class="mt-3 pt-3 border-t-2 border-gray-300">
+                                <p class="text-sm text-green-700 font-semibold">TOTAL A ENTREGAR</p>
+                                <p class="text-2xl font-bold text-green-700">
+                                    ${{ number_format($pagos->sum('total') - $totalComisionRecibo - $totalComisionReconexion, 2) }}
+                                </p>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Total recaudado menos comisiones
+                                </p>
+                            </div>
                         </div>
                         <div class="p-3 bg-green-100 rounded-lg">
                             <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

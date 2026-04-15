@@ -80,13 +80,6 @@
                             </svg>
                             <span class="text-sm font-medium">Dashboard</span>
                         </a>
-                        <a href="{{ route('profile.edit') }}"
-                           class="flex items-center gap-3 px-3 py-3 rounded-lg {{ request()->routeIs('profile.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800' }}">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                            </svg>
-                            <span class="text-sm font-medium">Perfil</span>
-                        </a>
 
                         @if(in_array(auth()->user()->role, ['chivato', 'pozo_hondo', 'rosalito']))
                         <a href="{{ route(auth()->user()->role . '.pagos') }}"
@@ -111,6 +104,15 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                             <span class="text-sm font-medium">Historial de Pagos</span>
+                        </a>
+                        @endif
+
+                        <a href="{{ route('profile.edit') }}"
+                           class="flex items-center gap-3 px-3 py-3 rounded-lg {{ request()->routeIs('profile.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800' }}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                            <span class="text-sm font-medium">Perfil</span>
                         </a>
                     </nav>
                     <div class="p-3 border-t border-gray-800">
@@ -147,13 +149,6 @@
                             </svg>
                             <span class="text-sm font-medium">Dashboard</span>
                         </a>
-                        <a href="{{ route('profile.edit') }}"
-                           class="flex items-center gap-3 px-3 py-3 rounded-lg {{ request()->routeIs('profile.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800' }}">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                            </svg>
-                            <span class="text-sm font-medium">Perfil</span>
-                        </a>
 
                         <a href="{{ route(auth()->user()->role . '.pagos') }}"
                            class="flex items-center gap-3 px-3 py-3 rounded-lg {{ request()->routeIs(auth()->user()->role . '.pagos') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800' }}">
@@ -178,7 +173,14 @@
                             </svg>
                             <span class="text-sm font-medium">Historial de Pagos</span>
                         </a>
-                        @endif
+
+                        <a href="{{ route('profile.edit') }}"
+                           class="flex items-center gap-3 px-3 py-3 rounded-lg {{ request()->routeIs('profile.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800' }}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                            </svg>
+                            <span class="text-sm font-medium">Perfil</span>
+                        </a>
                     </nav>
                     <div class="p-3 border-t border-gray-800">
                         <form method="POST" action="{{ route('logout') }}">

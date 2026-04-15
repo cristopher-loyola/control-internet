@@ -78,6 +78,13 @@ class PozoHondoController extends Controller
         $items = $pagos->map(function ($f) {
             $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
 
+            // Calcular comisión por reconexión (pagos después del día 7 = $50)
+            $diaPago = $f->created_at ? (int) $f->created_at->format('j') : 0;
+            $comisionReconexion = ($diaPago >= 8) ? 50 : 0;
+
+            // Comisión por recibo cobrado ($10 por cada recibo)
+            $comisionRecibo = 10;
+
             return [
                 'id' => $f->id,
                 'reference_number' => $f->reference_number,
@@ -89,14 +96,23 @@ class PozoHondoController extends Controller
                 'nombre' => $payload['nombre'] ?? '-',
                 'fecha' => $f->created_at ? $f->created_at->toDateTimeString() : null,
                 'fecha_formateada' => $f->created_at ? $f->created_at->format('d/m/Y H:i') : null,
+                'comision_reconexion' => $comisionReconexion,
+                'comision_recibo' => $comisionRecibo,
+                'dia_pago' => $diaPago,
             ];
         });
 
+        // Calcular totales de comisiones
+        $totalComisionReconexion = $items->sum('comision_reconexion');
+        $totalComisionRecibo = $items->sum('comision_recibo');
+
         return view('pozo_hondo.corte', [
             'pagos' => $items,
+            'corteActivo' => $corteActivo,
             'fechaInicio' => $fechaInicio,
             'fechaFin' => $fechaFin,
-            'corteActivo' => $corteActivo,
+            'totalComisionReconexion' => $totalComisionReconexion,
+            'totalComisionRecibo' => $totalComisionRecibo,
         ]);
     }
 
@@ -684,6 +700,8 @@ class PozoHondoController extends Controller
                 thead th { background: #2e7d32; color: #fff; }
                 .header-row { background: #1e3a8a; color: #fff; font-weight: bold; }
                 .comision-row { background: #f59e0b; color: #fff; font-weight: bold; }
+                .comision-recibo-row { background: #2563eb; color: #fff; font-weight: bold; }
+                .total-entregar-row { background: #16a34a; color: #fff; font-weight: bold; }
                 .text { mso-number-format: "\@"; }
                 .date { mso-number-format: "dd/mm/yyyy\\ hh:mm"; }
                 .money { mso-number-format: "\\$#,##0.00"; text-align: right; }
@@ -708,7 +726,13 @@ class PozoHondoController extends Controller
             echo '<tr><td><strong>Fecha de Inicio:</strong></td><td>' . $corte->fecha_inicio->format('d/m/Y H:i:s') . '</td></tr>';
             echo '<tr><td><strong>Total de Pagos:</strong></td><td>' . $facturas->count() . '</td></tr>';
             echo '<tr><td><strong>Total Recaudado:</strong></td><td class="money">' . number_format($facturas->sum('total'), 2, '.', '') . '</td></tr>';
+            $totalRecaudado = $facturas->sum('total');
+            $totalComisionRecibo = $facturas->count() * 10;
+            $totalAEntregar = $totalRecaudado - $totalComisionRecibo - $comisionReconexion;
+
+            echo '<tr class="comision-recibo-row"><td><strong>Comisión por Recibo ($10 c/u):</strong></td><td class="money">' . number_format($totalComisionRecibo, 2, '.', '') . '</td></tr>';
             echo '<tr class="comision-row"><td><strong>Comisión por Reconexión ($50 c/u):</strong></td><td class="money">' . number_format($comisionReconexion, 2, '.', '') . '</td></tr>';
+            echo '<tr class="total-entregar-row"><td><strong>TOTAL A ENTREGAR:</strong></td><td class="money">' . number_format($totalAEntregar, 2, '.', '') . '</td></tr>';
             echo '</table>';
 
             // Tabla de pagos
@@ -722,6 +746,7 @@ class PozoHondoController extends Controller
                 <th>Monto</th>
                 <th>Método de Pago</th>
                 <th>Quién Cobró</th>
+                <th>Comisión Recibo</th>
                 <th>Comisión Reconexión</th>
             </tr></thead><tbody>';
 
@@ -745,6 +770,7 @@ class PozoHondoController extends Controller
                 echo '<td class="money">' . number_format((float) $f->total, 2, '.', '') . '</td>';
                 echo '<td>' . htmlspecialchars($metodo) . '</td>';
                 echo '<td>' . htmlspecialchars($cobro) . '</td>';
+                echo '<td class="money">$10.00</td>';
                 echo '<td class="money">' . ($comisionPago > 0 ? '$50.00' : '-') . '</td>';
                 echo '</tr>';
             }
@@ -755,6 +781,7 @@ class PozoHondoController extends Controller
             echo '<td colspan="4" style="text-align: right;">TOTAL RECAUDADO:</td>';
             echo '<td class="money">' . number_format($facturas->sum('total'), 2, '.', '') . '</td>';
             echo '<td colspan="2"></td>';
+            echo '<td class="money">' . number_format($facturas->count() * 10, 2, '.', '') . '</td>';
             echo '<td class="money">' . number_format($comisionReconexion, 2, '.', '') . '</td>';
             echo '</tr></tfoot></table>';
 

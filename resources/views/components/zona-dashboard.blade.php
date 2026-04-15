@@ -127,9 +127,9 @@
             if (response.ok && data.ok) {
                 showMessage(data.message || 'Corte iniciado correctamente');
                 checkCorteStatus();
-                // Redirigir a la página de corte
+                // Redirigir a la página de pagos
                 setTimeout(() => {
-                    window.location.href = `/${zonaRoute.replace('_', '-')}/corte`;
+                    window.location.href = `/${zonaRoute.replace('_', '-')}/pagos`;
                 }, 1000);
             } else {
                 const message = data.message || `Error ${response.status}: No se pudo iniciar el corte`;
