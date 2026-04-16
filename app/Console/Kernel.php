@@ -12,18 +12,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Limpia backups antiguos cada 15 dias
-        $schedule->command('backup:clean')
-            ->daily()
-            ->at('01:30');
-
-        // Genera backup y envia por email
-        $schedule->command('backup:email')
-            ->daily()
-            ->at('10:35')
-            ->onFailure(function () {
-                \Log::error('Backup por email fallo');
-            });
+        // Las tareas programadas estan definidas en routes/console.php (Laravel 11)
     }
 
     /**

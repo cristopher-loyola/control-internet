@@ -11,6 +11,7 @@ Route::middleware(['auth', 'role:pozo_hondo'])
         Route::get('/pagos', [PozoHondoController::class, 'pagos'])->name('pagos');
         Route::get('/corte', [PozoHondoController::class, 'corte'])->name('corte');
         Route::get('/historial', [PozoHondoController::class, 'historial'])->name('historial');
+        Route::get('/historial-cortes', [PozoHondoController::class, 'historialCortes'])->name('historial-cortes');
         Route::delete('/pagos/eliminar/{id}', [PozoHondoController::class, 'eliminarPago'])->name('pagos.eliminar');
 
         // API Routes for Pozo Hondo Payments (Independent)

@@ -166,6 +166,26 @@ class ChivatoController extends Controller
         return redirect()->route('chivato.historial')->with('success', 'Pago eliminado correctamente.');
     }
 
+    /**
+     * Historial de cortes de caja cerrados
+     */
+    public function historialCortes(Request $request)
+    {
+        $user = $request->user();
+        $zona = 'chivato';
+
+        // Obtener cortes cerrados del usuario actual
+        $cortes = CorteCaja::where('zona', $zona)
+            ->where('user_id', $user->id)
+            ->where('estado', 'cerrado')
+            ->orderByDesc('fecha_fin')
+            ->get();
+
+        return view('chivato.historial-cortes', [
+            'cortes' => $cortes,
+        ]);
+    }
+
     // API Functions for Chivato Payments (Independent)
 
     public function prepaySettings(Request $request)

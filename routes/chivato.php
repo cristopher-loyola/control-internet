@@ -11,6 +11,7 @@ Route::middleware(['auth', 'role:chivato'])
         Route::get('/pagos', [ChivatoController::class, 'pagos'])->name('pagos');
         Route::get('/corte', [ChivatoController::class, 'corte'])->name('corte');
         Route::get('/historial', [ChivatoController::class, 'historial'])->name('historial');
+        Route::get('/historial-cortes', [ChivatoController::class, 'historialCortes'])->name('historial-cortes');
         Route::delete('/pagos/eliminar/{id}', [ChivatoController::class, 'eliminarPago'])->name('pagos.eliminar');
 
         // API Routes for Chivato Payments (Independent)

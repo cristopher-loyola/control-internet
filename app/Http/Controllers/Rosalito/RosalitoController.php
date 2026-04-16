@@ -166,6 +166,26 @@ class RosalitoController extends Controller
         return redirect()->route('rosalito.historial')->with('success', 'Pago eliminado correctamente.');
     }
 
+    /**
+     * Historial de cortes de caja cerrados
+     */
+    public function historialCortes(Request $request)
+    {
+        $user = $request->user();
+        $zona = 'rosalito';
+
+        // Obtener cortes cerrados del usuario actual
+        $cortes = CorteCaja::where('zona', $zona)
+            ->where('user_id', $user->id)
+            ->where('estado', 'cerrado')
+            ->orderByDesc('fecha_fin')
+            ->get();
+
+        return view('rosalito.historial-cortes', [
+            'cortes' => $cortes,
+        ]);
+    }
+
     // API Functions for Rosalito Payments (Independent)
 
     public function prepaySettings(Request $request)

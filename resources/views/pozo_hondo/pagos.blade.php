@@ -778,9 +778,18 @@
                     total = Math.round((adeudoPendiente + this.totales.prepay_total) * 100) / 100;
                 }else{
                     if (this.adeudo && this.adeudo.meses > 0) {
-                        const pendienteSrv = Number(this.adeudo.pendiente || 0);
+                        let pendienteSrv = Number(this.adeudo.pendiente || 0);
+                        const recargoSrv = Number(this.adeudo.recargo || 0);
+                        // Si el usuario manualmente desactiva el recargo, restarlo del total y del adeudoCobro
+                        if (this.form.recargo === 'no' && recargoSrv > 0) {
+                            pendienteSrv = Math.max(0, pendienteSrv - recargoSrv);
+                            this.adeudoCobro = pendienteSrv;
+                        } else {
+                            this.adeudoCobro = Number(this.adeudo.pendiente || 0);
+                        }
                         total = Math.round(pendienteSrv * 100) / 100;
                     } else {
+                        this.adeudoCobro = 0;
                         total = Math.round((mensualidad + rec) * 100) / 100;
                     }
                 }

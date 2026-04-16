@@ -166,6 +166,26 @@ class PozoHondoController extends Controller
         return redirect()->route('pozo_hondo.historial')->with('success', 'Pago eliminado correctamente.');
     }
 
+    /**
+     * Historial de cortes de caja cerrados
+     */
+    public function historialCortes(Request $request)
+    {
+        $user = $request->user();
+        $zona = 'pozo_hondo';
+
+        // Obtener cortes cerrados del usuario actual
+        $cortes = CorteCaja::where('zona', $zona)
+            ->where('user_id', $user->id)
+            ->where('estado', 'cerrado')
+            ->orderByDesc('fecha_fin')
+            ->get();
+
+        return view('pozo_hondo.historial-cortes', [
+            'cortes' => $cortes,
+        ]);
+    }
+
     // API Functions for Pozo Hondo Payments (Independent)
 
     public function prepaySettings(Request $request)

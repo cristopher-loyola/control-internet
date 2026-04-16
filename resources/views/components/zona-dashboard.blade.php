@@ -146,7 +146,30 @@
     // Finalizar corte
     btnFinalizar?.addEventListener('click', async function() {
         const url = this.dataset.url;
-        if (!confirm('¿Estás seguro de finalizar el corte de caja?')) {
+        const btn = this;
+
+        // SweetAlert2 confirmation modal
+        const result = await Swal.fire({
+            title: '¿Finalizar corte de caja?',
+            text: 'Esta acción cerrará el corte actual y no podrá realizarse más cobros en este turno.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Sí, finalizar',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#6b7280',
+            reverseButtons: true,
+            focusCancel: true,
+            customClass: {
+                popup: 'rounded-lg',
+                title: 'text-lg font-semibold text-gray-800',
+                htmlContainer: 'text-sm text-gray-600',
+                confirmButton: 'px-4 py-2 rounded-md font-medium text-sm',
+                cancelButton: 'px-4 py-2 rounded-md font-medium text-sm'
+            }
+        });
+
+        if (!result.isConfirmed) {
             return;
         }
 

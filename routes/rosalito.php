@@ -11,6 +11,7 @@ Route::middleware(['auth', 'role:rosalito'])
         Route::get('/pagos', [RosalitoController::class, 'pagos'])->name('pagos');
         Route::get('/corte', [RosalitoController::class, 'corte'])->name('corte');
         Route::get('/historial', [RosalitoController::class, 'historial'])->name('historial');
+        Route::get('/historial-cortes', [RosalitoController::class, 'historialCortes'])->name('historial-cortes');
         Route::delete('/pagos/eliminar/{id}', [RosalitoController::class, 'eliminarPago'])->name('pagos.eliminar');
 
         // API Routes for Rosalito Payments (Independent)

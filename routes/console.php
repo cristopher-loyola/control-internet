@@ -114,7 +114,7 @@ Schedule::command('backup:clean')
 // Genera backup y envia por email
 Schedule::command('backup:email')
     ->daily()
-    ->at('16:45')
+    ->at('9:30')
     ->onFailure(function () {
         \Log::error('Backup por email fallo');
     });
