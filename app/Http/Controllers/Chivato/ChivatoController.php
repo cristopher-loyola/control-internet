@@ -78,9 +78,9 @@ class ChivatoController extends Controller
         $items = $pagos->map(function ($f) {
             $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
 
-            // Calcular comisión por reconexión (pagos después del día 7 = $50)
-            $diaPago = $f->created_at ? (int) $f->created_at->format('j') : 0;
-            $comisionReconexion = ($diaPago >= 8) ? 50 : 0;
+            // Calcular comisión por reconexión (solo si se cobró recargo en el recibo)
+            $recargoCobrado = isset($payload['recargo']) && $payload['recargo'] === 'si';
+            $comisionReconexion = $recargoCobrado ? 50 : 0;
 
             // Comisión por recibo cobrado ($10 por cada recibo)
             $comisionRecibo = 10;
@@ -98,7 +98,6 @@ class ChivatoController extends Controller
                 'fecha_formateada' => $f->created_at ? $f->created_at->format('d/m/Y H:i') : null,
                 'comision_reconexion' => $comisionReconexion,
                 'comision_recibo' => $comisionRecibo,
-                'dia_pago' => $diaPago,
             ];
         });
 

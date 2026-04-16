@@ -162,7 +162,7 @@
                                     ${{ number_format($totalComisionRecibo, 2) }}
                                 </p>
                                 <p class="text-xs text-gray-500 mt-1">
-                                    $10 por cada recibo cobrado
+                                    {{ $pagos->count() }} recibo{{ $pagos->count() !== 1 ? 's' : '' }} cobrado{{ $pagos->count() !== 1 ? 's' : '' }}
                                 </p>
                             </div>
                             @if($totalComisionReconexion > 0)
@@ -172,7 +172,7 @@
                                         ${{ number_format($totalComisionReconexion, 2) }}
                                     </p>
                                     <p class="text-xs text-gray-500 mt-1">
-                                        $50 por pago después del día 7
+                                        $50 cuando se cobra recargo
                                     </p>
                                 </div>
                             @endif
