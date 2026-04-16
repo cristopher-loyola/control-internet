@@ -31,7 +31,7 @@
                                 <div>
                                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Recargo</label>
                                     <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                                        x-model="form.recargo" :disabled="readOnlyMode" @change="inputChanged()">
+                                        x-model="form.recargo" :disabled="readOnlyMode || isLoading" @change="inputChanged()">
                                         <option value="no">No</option>
                                         <option value="si">Sí</option>
                                     </select>
@@ -473,6 +473,7 @@
         };
         return {
             readOnlyMode: false,
+            isLoading: false,
             form:{ numero:'', recargo:getDefaultRecargo(), pago_anterior:0, metodo:'', cobro:'{{ Auth::user()->name }}', prepay:'no', prepay_months:6, otro:'no', baja_temporal_months:1 },
             pagoAnteriorFecha:'',
             manualEditEnabled: false,
@@ -1105,6 +1106,7 @@ html,body{ margin:0; padding:0 }
 
                 // Reset states for the new client search
                 this.ref = { numero: null, id: null, created_at: null };
+                this.isLoading = true;
                 this.adeudo = null;
                 this.adeudoCobro = 0;
                 this.saldoDespues = null;
@@ -1127,16 +1129,34 @@ html,body{ margin:0; padding:0 }
                         return
                     }
                     this.datos.nombre = j.data.nombre_cliente || '';
-                    const rawTarifa = j.data.tarifa ?? '';
-                    const numTarifa = Number(String(rawTarifa).replace(/[^\d.]/g, '')) || 0;
-                    const pkg = Number(String(j.data.paquete ?? '').replace(/[^\d]/g,'')) || 0;
-                    this.datos.mensualidad = numTarifa || pkg || 0;
+                    
+                    // Detectar si es el primer periodo de cobro (hasta la fecha de vencimiento del primer pago)
+                    const primerPago = Number(j.data.primer_pago) || 0;
+                    const vencimientoPrimerPago = j.data.primer_pago_vencimiento;
+                    let esPrimerPeriodo = false;
+                    if (primerPago > 0 && vencimientoPrimerPago) {
+                        const now = new Date();
+                        const vencimiento = new Date(vencimientoPrimerPago);
+                        // Es primer periodo si estamos antes o en la fecha de vencimiento
+                        esPrimerPeriodo = now <= vencimiento;
+                    }
+                    
+                    if (esPrimerPeriodo && primerPago > 0) {
+                        this.datos.mensualidad = primerPago;
+                    } else {
+                        const rawTarifa = j.data.tarifa ?? '';
+                        const numTarifa = Number(String(rawTarifa).replace(/[^\d.]/g, '')) || 0;
+                        const pkg = Number(String(j.data.paquete ?? '').replace(/[^\d]/g,'')) || 0;
+                        this.datos.mensualidad = numTarifa || pkg || 0;
+                    }
 
                     this.recalcular();
                     await this.fetchPagoAnterior();
                     await this.fetchAdeudo();
                     await this.fetchPrepayStatus();
+                    this.isLoading = false;
                 }catch(e){
+                    this.isLoading = false;
                     this.error='Error de conexión';
                 }
             },

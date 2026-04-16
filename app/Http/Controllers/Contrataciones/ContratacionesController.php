@@ -83,7 +83,7 @@ class ContratacionesController extends Controller
                 'tecnologia' => ['nullable', 'string', 'in:ina,foi,fod'],
                 'dispositivo' => ['nullable', 'string', 'in:permanencia voluntaria,como dato'],
                 'tarifa' => ['nullable', 'numeric', 'min:0'],
-                'fecha_contratacion' => ['nullable', 'date'],
+                'primer_pago' => ['nullable', 'numeric', 'min:0'],
             ],
             [
                 'required' => 'El campo :attribute es obligatorio.',
@@ -103,7 +103,7 @@ class ContratacionesController extends Controller
                 'megas' => 'megas',
                 'tarifa' => 'paquete',
                 'dispositivo' => 'dispositivo',
-                'fecha_contratacion' => 'fecha del siguiente cobro',
+                'primer_pago' => 'primer pago',
             ]
         )->validateWithBag('clienteCreate');
 
@@ -143,7 +143,9 @@ class ContratacionesController extends Controller
             'dispositivo' => $textOrDash($request->dispositivo),
             'megas' => $megasAsignados ?? $request->megas ?? null,
             'tarifa' => $request->tarifa ?? null,
-            'fecha_contratacion' => $request->fecha_contratacion ?? null,
+            'primer_pago' => $request->primer_pago ?? null,
+            'primer_pago_vencimiento' => $request->primer_pago ? now()->addMonth()->startOfMonth()->addDays(6)->format('Y-m-d') : null,
+            'fecha_contratacion' => $request->primer_pago ? now()->addMonth()->startOfMonth()->format('Y-m-d') : null,
         ]);
 
         HistorialUsuario::create([

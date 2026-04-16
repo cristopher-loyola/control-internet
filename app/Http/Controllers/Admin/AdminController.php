@@ -865,6 +865,9 @@ class AdminController extends Controller
                 'telefono' => $u->telefono,
                 'paquete' => $u->paquete,
                 'tarifa' => $u->tarifa,
+                'primer_pago' => $u->primer_pago,
+                'primer_pago_vencimiento' => $u->primer_pago_vencimiento,
+                'fecha_contratacion' => $u->fecha_contratacion,
                 'uso' => $u->uso,
                 'tecnologia' => $u->tecnologia,
                 'megas' => $u->megas,
@@ -1013,7 +1016,7 @@ class AdminController extends Controller
                 'tecnologia' => ['nullable', 'string', 'in:ina,foi,fod'],
                 'dispositivo' => ['nullable', 'string', 'in:permanencia voluntaria,como dato'],
                 'tarifa' => ['nullable', 'numeric', 'min:0'],
-                'fecha_contratacion' => ['nullable', 'date'],
+                'primer_pago' => ['nullable', 'numeric', 'min:0'],
             ],
             [
                 'required' => 'El campo :attribute es obligatorio.',
@@ -1033,7 +1036,7 @@ class AdminController extends Controller
                 'megas' => 'megas',
                 'tarifa' => 'paquete',
                 'dispositivo' => 'dispositivo',
-                'fecha_contratacion' => 'fecha del siguiente cobro',
+                'primer_pago' => 'primer pago',
             ]
         )->validateWithBag('clienteCreate');
 
@@ -1082,7 +1085,9 @@ class AdminController extends Controller
             'dispositivo' => $textOrDash($request->dispositivo),
             'megas' => $megasAsignados ?? $request->megas ?? null,
             'tarifa' => $request->tarifa ?? null,
-            'fecha_contratacion' => $request->fecha_contratacion ?? null,
+            'primer_pago' => $request->primer_pago ?? null,
+            'primer_pago_vencimiento' => $request->primer_pago ? now()->addMonth()->startOfMonth()->addDays(6)->format('Y-m-d') : null,
+            'fecha_contratacion' => $request->primer_pago ? now()->addMonth()->startOfMonth()->format('Y-m-d') : null,
         ]);
 
         // Snapshot historial (creación)

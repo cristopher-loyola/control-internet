@@ -515,9 +515,10 @@
                     <x-input-error :messages="$errors->clienteCreate->get('megas')" class="mt-2" />
                 </div>
                 <div class="sm:col-span-2" x-show="isNuevoCliente">
-                    <x-input-label for="fecha_contratacion" value="Fecha del siguiente cobro" />
-                    <x-text-input id="fecha_contratacion" name="fecha_contratacion" type="date" class="mt-1 block w-full" :value="old('fecha_contratacion')" />
-                    <x-input-error :messages="$errors->clienteCreate->get('fecha_contratacion')" class="mt-2" />
+                    <x-input-label for="primer_pago" value="Primer pago ($)" />
+                    <x-text-input id="primer_pago" name="primer_pago" type="number" step="0.01" min="0" class="mt-1 block w-full" :value="old('primer_pago')" placeholder="Ingresa la cantidad del primer pago" />
+                    <p class="mt-1 text-xs text-gray-500">El primer pago vence el día 7 del mes siguiente. Si no paga a tiempo, se agregará recargo de $50.</p>
+                    <x-input-error :messages="$errors->clienteCreate->get('primer_pago')" class="mt-2" />
                 </div>
             </div>
 

@@ -34,9 +34,24 @@ class MorosidadService
         }
         $periodo = $periodo ?: now()->format('Y-m');
         $curStart = Carbon::createFromFormat('Y-m', $periodo)->startOfMonth();
-        $dueDate = $curStart->copy()->day(7)->endOfDay();
         $today = now();
-        $mensualidad = (float) preg_replace('/[^\d.]/', '', (string) ($usuario->tarifa ?? 0));
+
+        // Determinar si es el primer periodo de cobro (hasta la fecha de vencimiento del primer pago)
+        $esPrimerPeriodo = false;
+        $primerPago = (float) ($usuario->primer_pago ?? 0);
+        $vencimientoPrimerPago = $usuario->primer_pago_vencimiento;
+        if ($primerPago > 0 && $vencimientoPrimerPago) {
+            // Es primer periodo si estamos antes o en la fecha de vencimiento
+            $esPrimerPeriodo = $today->lessThanOrEqualTo(Carbon::parse($vencimientoPrimerPago)->endOfDay());
+        }
+
+        // Usar primer_pago como mensualidad si es el primer periodo
+        $mensualidad = $esPrimerPeriodo
+            ? $primerPago
+            : (float) preg_replace('/[^\d.]/', '', (string) ($usuario->tarifa ?? 0));
+
+        // Fecha de vencimiento: día 7 del mes de cobro
+        $dueDate = $curStart->copy()->day(7)->endOfDay();
         if (! is_finite($mensualidad) || $mensualidad < 0) {
             $mensualidad = 0.0;
         }
@@ -93,6 +108,7 @@ class MorosidadService
             'ok' => true,
             'numero' => $numero,
             'mensualidad' => round($mensualidad, 2),
+            'es_primer_periodo' => $esPrimerPeriodo,
             'meses_adeudo' => (int) $mesesAdeudo + ($usuario->adeudo_monto > 0 ? 1 : 0), // Ajuste visual si hay adeudo manual
             'desde_periodo' => $desdePeriodo,
             'desde_mes_label' => $desdeMes,
