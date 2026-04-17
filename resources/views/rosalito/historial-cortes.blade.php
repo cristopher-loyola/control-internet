@@ -115,10 +115,24 @@
             <!-- Script para reanudar corte -->
             <script>
                 function reanudarCorte(corteId) {
-                    if (!confirm('¿Estás seguro de que deseas reanudar este corte? Podrás seguir agregando pagos a él.')) {
-                        return;
-                    }
+                    Swal.fire({
+                        title: '¿Reanudar corte?',
+                        text: 'Podrás seguir agregando pagos a este corte.',
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#EAB308',
+                        cancelButtonColor: '#6B7280',
+                        confirmButtonText: 'Sí, reanudar',
+                        cancelButtonText: 'Cancelar',
+                        reverseButtons: true
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            ejecutarReanudar(corteId);
+                        }
+                    });
+                }
 
+                function ejecutarReanudar(corteId) {
                     fetch('/rosalito/corte/reanudar', {
                         method: 'POST',
                         headers: {
@@ -130,15 +144,33 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.ok) {
-                            alert('Corte reanudado correctamente');
-                            window.location.reload();
+                            Swal.fire({
+                                title: '¡Reanudado!',
+                                text: 'El corte ha sido reanudado correctamente.',
+                                icon: 'success',
+                                confirmButtonColor: '#10B981',
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                window.location.reload();
+                            });
                         } else {
-                            alert(data.message || 'Error al reanudar el corte');
+                            Swal.fire({
+                                title: 'Error',
+                                text: data.message || 'Error al reanudar el corte',
+                                icon: 'error',
+                                confirmButtonColor: '#EF4444'
+                            });
                         }
                     })
                     .catch(error => {
                         console.error('Error:', error);
-                        alert('Error al reanudar el corte');
+                        Swal.fire({
+                            title: 'Error',
+                            text: 'Error al reanudar el corte',
+                            icon: 'error',
+                            confirmButtonColor: '#EF4444'
+                        });
                     });
                 }
             </script>
