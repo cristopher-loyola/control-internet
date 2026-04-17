@@ -154,400 +154,46 @@ class AdminController extends Controller
         ]);
 
         return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $service) {
-            $periodo = now()->format('Y-m');
-            $numero = $request->input('numero_servicio');
-            $usuarioId = $request->input('usuario_id');
-            $payload = $request->input('payload', []);
-            $isBajaTemporal = ($payload['otro'] ?? null) === 'baja_temporal';
-            $isCancelacion = ($payload['otro'] ?? null) === 'cancelacion';
+            $datos = $this->extraerDatosBase($request);
 
-            if ($numero && ! $isBajaTemporal && ! $isCancelacion) {
-                $prepay = \App\Models\Factura::whereNull('deleted_at')
-                    ->where('numero_servicio', $numero)
-                    ->where(function ($q) {
-                        $q->where('payload->prepay', 'si')
-                            ->orWhere('payload->prepay', true);
-                    })
-                    ->orderByDesc('id')
-                    ->first(['id', 'payload', 'created_at']);
-                if ($prepay) {
-                    $p = is_array($prepay->payload) ? $prepay->payload : (is_string($prepay->payload) ? @json_decode($prepay->payload, true) : []);
-                    $months = (int) (($p['prepay_months'] ?? 0) ?: 0);
-                    $from = $prepay->created_at ? \Illuminate\Support\Carbon::parse($prepay->created_at) : null;
-                    $venceAt = PrepayDashboardService::venceAt($from, $months);
-                    $estado = PrepayDashboardService::estadoPorVencimiento($venceAt, now());
-                    if ($venceAt && ! $estado['vencido']) {
-                        return response()->json([
-                            'ok' => false,
-                            'message' => 'Pago adelantado vigente hasta '.$venceAt->locale('es')->translatedFormat('F Y'),
-                        ], 409);
-                    }
-                }
-            }
-            $row = \Illuminate\Support\Facades\DB::table('invoice_sequences')
-                ->where('name', 'facturas')
-                ->lockForUpdate()
-                ->first();
-            if (! $row) {
-                \Illuminate\Support\Facades\DB::table('invoice_sequences')->insert([
-                    'name' => 'facturas',
-                    'current_value' => 0,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ]);
-                $row = (object) ['current_value' => 0];
-            }
-            $total = round((float) $request->input('total', 0), 2);
-
-            if (($payload['otro'] ?? null) === 'cancelacion') {
-                $payload['otro'] = 'cancelacion';
-                $payload['recargo'] = 'no';
-                $payload['prepay'] = 'no';
-                $payload['prepay_months'] = null;
-                $payload['prepay_total'] = null;
-                if (! ($payload['manual_total_enabled'] ?? false)) {
-                    $total = 0.0;
-                }
+            // 1. Validar prepay vigente
+            if ($error = $this->validarPrepayVigente($datos)) {
+                return $error;
             }
 
-            if (($payload['otro'] ?? null) === 'baja_temporal') {
-                if (! $numero || ! ctype_digit((string) $numero)) {
-                    return response()->json(['ok' => false, 'message' => 'Número inválido'], 422);
-                }
+            // 2. Generar siguiente folio
+            $nextFolio = $this->generarFolio();
 
-                $adeudo = $service->calcularAdeudoUsuario((string) $numero, null);
-                if (! ($adeudo['ok'] ?? false)) {
-                    return response()->json(['ok' => false, 'message' => $adeudo['message'] ?? 'No se pudo validar adeudos'], 409);
-                }
-                $adeudoPendiente = round((float) ($adeudo['pendiente'] ?? 0), 2);
+            // 3. Procesar según tipo
+            $resultado = match($datos['tipo']) {
+                'baja_temporal' => $this->procesarBajaTemporal($datos, $service),
+                'cancelacion' => $this->procesarCancelacion($datos),
+                default => $this->procesarPagoNormal($datos),
+            };
 
-                $months = (int) ($payload['baja_temporal_months'] ?? 0);
-                if ($months < 1 || $months > 6) {
-                    return response()->json(['ok' => false, 'message' => 'Meses de baja temporal inválidos (1–6)'], 422);
-                }
-
-                $mensualidad = 0.0;
-                $u = ! empty($usuarioId)
-                    ? Usuario::find($usuarioId)
-                    : Usuario::where('numero_servicio', (string) $numero)->first();
-                if ($u && $u->tarifa !== null) {
-                    $mensualidad = (float) $u->tarifa;
-                }
-                if ($mensualidad <= 0) {
-                    $mensualidad = (float) preg_replace('/[^\d.]/', '', (string) ($payload['mensualidad'] ?? 0));
-                }
-                if ($mensualidad <= 0) {
-                    return response()->json(['ok' => false, 'message' => 'No se pudo determinar la mensualidad para calcular la baja temporal'], 422);
-                }
-
-                $bajaTotal = round($mensualidad * 0.2 * $months, 2);
-                $payload['mensualidad'] = $mensualidad;
-                $payload['otro'] = 'baja_temporal';
-                $payload['recargo'] = 'no';
-                $payload['prepay'] = 'no';
-                $payload['prepay_months'] = null;
-                $payload['prepay_total'] = null;
-                $payload['adeudo_pendiente'] = $adeudoPendiente;
-                $payload['baja_temporal_months'] = $months;
-                $payload['baja_temporal_total'] = $bajaTotal;
-                $payload['adeudo_prev'] = $adeudoPendiente;
-                $payload['adeudo_nuevo'] = round($adeudoPendiente + $bajaTotal, 2);
-
-                $descuento = round((float) ($payload['descuento'] ?? 0), 2);
-                $total = round(max(0, $adeudoPendiente + $bajaTotal - $descuento), 2);
+            if ($resultado['error'] ?? false) {
+                return $resultado['response'];
             }
 
-            $manualOverride = null;
-            if (($payload['manual_total_enabled'] ?? false) && (($payload['otro'] ?? null) !== 'baja_temporal')) {
-                $reason = trim((string) ($payload['manual_total_reason'] ?? ''));
-                if ($reason === '') {
-                    return response()->json(['ok' => false, 'message' => 'Motivo requerido para editar el total'], 422);
-                }
-                $manualValue = $payload['manual_total_value'] ?? null;
-                if (! is_numeric($manualValue)) {
-                    return response()->json(['ok' => false, 'message' => 'Total manual inválido'], 422);
-                }
-                $manualValue = round((float) $manualValue, 2);
-                if ($manualValue < 0) {
-                    return response()->json(['ok' => false, 'message' => 'Total manual inválido'], 422);
-                }
-                $manualOverride = [
-                    'prev_total' => $total,
-                    'new_total' => $manualValue,
-                    'reason' => mb_substr($reason, 0, 250),
-                ];
-                $total = $manualValue;
-                $payload['manual_total_enabled'] = true;
-                $payload['manual_total_value'] = $manualValue;
-                $payload['manual_total_reason'] = $manualOverride['reason'];
+            $total = $resultado['total'];
+            $payload = $resultado['payload'];
+
+            // 4. Aplicar edición manual si existe
+            $manualOverride = $this->procesarEdicionManual($datos, $total, $payload);
+
+            // 5. Validar duplicados
+            if ($duplicado = $this->buscarDuplicado($datos, $payload, $total)) {
+                return $this->retornarDuplicado($duplicado, $datos);
             }
 
-            $periodoFactura = ($isBajaTemporal || $isCancelacion) ? null : $periodo;
-            $payloadJson = json_encode($payload);
-            $fingerprintData = [
-                'numero_servicio' => $request->input('numero_servicio'),
-                'periodo' => $periodoFactura,
-                'total' => $total,
-                'nombre' => $payload['nombre'] ?? null,
-                'mensualidad' => $payload['mensualidad'] ?? null,
-                'recargo' => $payload['recargo'] ?? null,
-                'pago_anterior' => $payload['pago_anterior'] ?? null,
-                'metodo' => $payload['metodo'] ?? 'Efectivo',
-            ];
-            $fingerprint = ($isBajaTemporal || $isCancelacion) ? null : hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            // 6. Crear factura
+            $factura = $this->crearFactura($nextFolio, $datos, $total, $payload, $manualOverride);
 
-            if (! $isBajaTemporal && ! $isCancelacion) {
-                $existing = \App\Models\Factura::where(function ($q) use ($fingerprint) {
-                    $q->where('fingerprint', $fingerprint);
-                })
-                    ->orWhere(function ($q) use ($request, $periodoFactura, $total, $payloadJson) {
-                        $q->where('numero_servicio', $request->input('numero_servicio'))
-                            ->where('periodo', $periodoFactura)
-                            ->where('total', $total)
-                            ->whereRaw('payload = ?', [$payloadJson]);
-                    })
-                    ->orderBy('id', 'desc')
-                    ->first();
-                if ($existing) {
-                    \Illuminate\Support\Facades\DB::table('payment_attempts')->insert([
-                        'usuario_id' => $usuarioId,
-                        'numero_servicio' => $numero,
-                        'periodo' => $periodoFactura,
-                        'status' => 'success',
-                        'reason' => 'Reimpresión / reuso de factura',
-                        'created_by' => optional($request->user())->id,
-                        'payload' => json_encode($request->input('payload', [])),
-                        'attempted_at' => now(),
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
+            // 7. Actualizar usuario según tipo
+            $this->actualizarEstatusUsuario($factura, $datos['tipo'], $manualOverride);
 
-                    return response()->json([
-                        'ok' => true,
-                        'referencia' => $existing->reference_number,
-                        'id' => $existing->id,
-                        'reused' => true,
-                    ]);
-                }
-
-                $trashedByFingerprint = \App\Models\Factura::withTrashed()->where('fingerprint', $fingerprint)->first();
-                if ($trashedByFingerprint) {
-                    \Illuminate\Support\Facades\DB::table('payment_attempts')->insert([
-                        'usuario_id' => $usuarioId,
-                        'numero_servicio' => $numero,
-                        'periodo' => $periodoFactura,
-                        'status' => 'success',
-                        'reason' => 'Reimpresión / reuso de factura (trashed)',
-                        'created_by' => optional($request->user())->id,
-                        'payload' => json_encode($request->input('payload', [])),
-                        'attempted_at' => now(),
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-
-                    return response()->json([
-                        'ok' => true,
-                        'referencia' => $trashedByFingerprint->reference_number,
-                        'id' => $trashedByFingerprint->id,
-                        'reused' => true,
-                    ]);
-                }
-
-                // Validación de duplicados por periodo solo si no es reimpresión
-                if (($numero !== null && $numero !== '') || ! empty($usuarioId)) {
-                    $dup = \App\Models\Factura::where('periodo', $periodoFactura)
-                        ->where(function ($q) use ($numero, $usuarioId) {
-                            if ($numero !== null && $numero !== '') {
-                                $q->where('numero_servicio', $numero);
-                            }
-                            if (! empty($usuarioId)) {
-                                $q->orWhere('usuario_id', $usuarioId);
-                            }
-                        })
-                        ->first();
-                } else {
-                    $dup = null;
-                }
-                if ($dup) {
-                    \Illuminate\Support\Facades\DB::table('payment_attempts')->insert([
-                        'usuario_id' => $usuarioId,
-                        'numero_servicio' => $numero,
-                        'periodo' => $periodoFactura,
-                        'status' => 'duplicate',
-                        'reason' => 'Pago ya registrado para este periodo',
-                        'created_by' => optional($request->user())->id,
-                        'payload' => json_encode($request->input('payload', [])),
-                        'attempted_at' => now(),
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-
-                    return response()->json([
-                        'ok' => false,
-                        'message' => 'Ya existe un pago registrado para este periodo',
-                        'referencia' => $dup->reference_number,
-                        'periodo' => $periodoFactura,
-                    ], 409);
-                }
-            }
-            $next = (int) $row->current_value + 1;
-            \Illuminate\Support\Facades\DB::table('invoice_sequences')
-                ->where('name', 'facturas')
-                ->update(['current_value' => $next, 'updated_at' => now()]);
-
-            try {
-                $factura = new \App\Models\Factura;
-                $factura->reference_number = $next;
-                $factura->usuario_id = $request->input('usuario_id');
-                $factura->numero_servicio = $request->input('numero_servicio');
-                $factura->periodo = $periodoFactura;
-                $factura->total = $total;
-                $factura->payload = $payload;
-                $factura->created_by = $request->user()?->id;
-                $factura->fingerprint = $fingerprint;
-                $factura->save();
-
-                if ($manualOverride) {
-                    \Illuminate\Support\Facades\DB::table('audit_logs')->insert([
-                        'actor_user_id' => $request->user()?->id,
-                        'actor_role' => $request->user()?->role,
-                        'actor_name' => $request->user()?->name,
-                        'action' => 'factura_total_override',
-                        'table_name' => 'facturas',
-                        'entity_type' => \App\Models\Factura::class,
-                        'entity_id' => (string) $factura->id,
-                        'prev_values' => json_encode(['total' => $manualOverride['prev_total']]),
-                        'new_values' => json_encode(['total' => $manualOverride['new_total'], 'reason' => $manualOverride['reason']]),
-                        'ip' => $request->ip(),
-                        'user_agent' => (string) $request->userAgent(),
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                }
-
-                // Al registrar un pago exitoso, actualizar el estatus del cliente a Pagado/Activado
-                if ($isCancelacion) {
-                    if ($request->input('usuario_id')) {
-                        $usuario = \App\Models\Usuario::find($request->input('usuario_id'));
-                    } else {
-                        $usuario = \App\Models\Usuario::where('numero_servicio', $request->input('numero_servicio'))->first();
-                    }
-                    if ($usuario) {
-                        $prev = [
-                            'estatus_servicio_id' => $usuario->estatus_servicio_id,
-                            'estado_id' => $usuario->estado_id,
-                        ];
-                        $usuario->update([
-                            'estatus_servicio_id' => 3,
-                            'estado_id' => 2,
-                        ]);
-                        \Illuminate\Support\Facades\DB::table('audit_logs')->insert([
-                            'actor_user_id' => $request->user()?->id,
-                            'actor_role' => $request->user()?->role,
-                            'actor_name' => $request->user()?->name,
-                            'action' => 'usuario_cancelacion_servicio',
-                            'table_name' => 'usuarios',
-                            'entity_type' => \App\Models\Usuario::class,
-                            'entity_id' => (string) $usuario->id,
-                            'prev_values' => json_encode($prev),
-                            'new_values' => json_encode(['estatus_servicio_id' => 3, 'estado_id' => 2]),
-                            'ip' => $request->ip(),
-                            'user_agent' => (string) $request->userAgent(),
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
-                } elseif (! $isBajaTemporal) {
-                    if ($request->input('usuario_id')) {
-                        $usuario = \App\Models\Usuario::find($request->input('usuario_id'));
-                        if ($usuario) {
-                            $usuario->update([
-                                'estatus_servicio_id' => 1, // Pagado
-                                'estado_id' => 1,           // Activado
-                                'adeudo_monto' => 0,
-                                'adeudo_descripcion' => null,
-                            ]);
-                        }
-                    } elseif ($request->input('numero_servicio')) {
-                        $usuario = \App\Models\Usuario::where('numero_servicio', $request->input('numero_servicio'))->first();
-                        if ($usuario) {
-                            $usuario->update([
-                                'estatus_servicio_id' => 1, // Pagado
-                                'estado_id' => 1,           // Activado
-                                'adeudo_monto' => 0,
-                                'adeudo_descripcion' => null,
-                            ]);
-                        }
-                    }
-                } else {
-                    $baja = \App\Models\EstatusServicio::whereRaw('LOWER(nombre) = ?', ['baja temporal'])->first();
-                    if (! $baja) {
-                        $baja = \App\Models\EstatusServicio::create(['nombre' => 'Baja temporal']);
-                    }
-
-                    if ($request->input('usuario_id')) {
-                        $usuario = \App\Models\Usuario::find($request->input('usuario_id'));
-                    } else {
-                        $usuario = \App\Models\Usuario::where('numero_servicio', $request->input('numero_servicio'))->first();
-                    }
-
-                    if ($usuario) {
-                        $prev = [
-                            'estatus_servicio_id' => $usuario->estatus_servicio_id,
-                            'adeudo_monto' => $usuario->adeudo_monto,
-                            'adeudo_descripcion' => $usuario->adeudo_descripcion,
-                        ];
-
-                        $usuario->update([
-                            'estatus_servicio_id' => $baja->id,
-                            'adeudo_monto' => 0,
-                            'adeudo_descripcion' => null,
-                        ]);
-
-                        \Illuminate\Support\Facades\DB::table('audit_logs')->insert([
-                            'actor_user_id' => $request->user()?->id,
-                            'actor_role' => $request->user()?->role,
-                            'actor_name' => $request->user()?->name,
-                            'action' => 'usuario_baja_temporal',
-                            'table_name' => 'usuarios',
-                            'entity_type' => \App\Models\Usuario::class,
-                            'entity_id' => (string) $usuario->id,
-                            'prev_values' => json_encode($prev),
-                            'new_values' => json_encode(['estatus_servicio_id' => $baja->id, 'adeudo_monto' => 0, 'adeudo_descripcion' => null]),
-                            'ip' => $request->ip(),
-                            'user_agent' => (string) $request->userAgent(),
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
-                }
-            } catch (\Illuminate\Database\QueryException $e) {
-                // Si falla por fingerprint duplicado (carrera), buscamos el que ganó
-                // Pero solo si NO está cancelado. Si está cancelado, dejamos que falle
-                $c = $fingerprint ? \App\Models\Factura::withTrashed()->where('fingerprint', $fingerprint)->first() : null;
-                if ($c) {
-                    return response()->json([
-                        'ok' => true,
-                        'referencia' => $c->reference_number,
-                        'id' => $c->id,
-                        'reused' => true,
-                    ]);
-                }
-                throw $e;
-            }
-
-            \Illuminate\Support\Facades\DB::table('payment_attempts')->insert([
-                'usuario_id' => $usuarioId,
-                'numero_servicio' => $numero,
-                'periodo' => $periodoFactura,
-                'status' => 'success',
-                'reason' => 'Factura creada',
-                'created_by' => optional($request->user())->id,
-                'payload' => json_encode($request->input('payload', [])),
-                'attempted_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            // 8. Registrar auditoría
+            $this->registrarAuditoria($factura, $datos, $manualOverride);
 
             return response()->json([
                 'ok' => true,
@@ -555,6 +201,508 @@ class AdminController extends Controller
                 'id' => $factura->id,
             ]);
         });
+    }
+
+    // ========== MÉTODOS PRIVADOS REFACTORIZADOS ==========
+
+    private function extraerDatosBase($request): array
+    {
+        $payload = $request->input('payload', []);
+
+        return [
+            'periodo' => now()->format('Y-m'),
+            'numero' => $request->input('numero_servicio'),
+            'usuarioId' => $request->input('usuario_id'),
+            'payload' => $payload,
+            'request' => $request,
+            'tipo' => match(true) {
+                ($payload['otro'] ?? null) === 'baja_temporal' => 'baja_temporal',
+                ($payload['otro'] ?? null) === 'cancelacion' => 'cancelacion',
+                default => 'normal',
+            },
+        ];
+    }
+
+    private function validarPrepayVigente(array $datos): ?\Illuminate\Http\JsonResponse
+    {
+        if (! $datos['numero'] || in_array($datos['tipo'], ['baja_temporal', 'cancelacion'])) {
+            return null;
+        }
+
+        $prepay = \App\Models\Factura::whereNull('deleted_at')
+            ->where('numero_servicio', $datos['numero'])
+            ->where(fn($q) => $q->where('payload->prepay', 'si')->orWhere('payload->prepay', true))
+            ->orderByDesc('id')
+            ->first(['id', 'payload', 'created_at']);
+
+        if (! $prepay) {
+            return null;
+        }
+
+        $p = is_array($prepay->payload)
+            ? $prepay->payload
+            : (is_string($prepay->payload) ? @json_decode($prepay->payload, true) : []);
+
+        $months = (int) (($p['prepay_months'] ?? 0) ?: 0);
+        $venceAt = PrepayDashboardService::venceAt(
+            $prepay->created_at ? \Illuminate\Support\Carbon::parse($prepay->created_at) : null,
+            $months
+        );
+        $estado = PrepayDashboardService::estadoPorVencimiento($venceAt, now());
+
+        if ($venceAt && ! $estado['vencido']) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Pago adelantado vigente hasta ' . $venceAt->locale('es')->translatedFormat('F Y'),
+            ], 409);
+        }
+
+        return null;
+    }
+
+    private function generarFolio(): int
+    {
+        $row = \Illuminate\Support\Facades\DB::table('invoice_sequences')
+            ->where('name', 'facturas')
+            ->lockForUpdate()
+            ->first();
+
+        if (! $row) {
+            \Illuminate\Support\Facades\DB::table('invoice_sequences')->insert([
+                'name' => 'facturas',
+                'current_value' => 0,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            $current = 0;
+        } else {
+            $current = (int) $row->current_value;
+        }
+
+        $next = $current + 1;
+
+        \Illuminate\Support\Facades\DB::table('invoice_sequences')
+            ->where('name', 'facturas')
+            ->update(['current_value' => $next, 'updated_at' => now()]);
+
+        return $next;
+    }
+
+    private function procesarBajaTemporal(array $datos, MorosidadService $service): array
+    {
+        if (! $datos['numero'] || ! ctype_digit((string) $datos['numero'])) {
+            return ['error' => true, 'response' => response()->json(['ok' => false, 'message' => 'Número inválido'], 422)];
+        }
+
+        $adeudo = $service->calcularAdeudoUsuario((string) $datos['numero'], null);
+        if (! ($adeudo['ok'] ?? false)) {
+            return ['error' => true, 'response' => response()->json(['ok' => false, 'message' => $adeudo['message'] ?? 'No se pudo validar adeudos'], 409)];
+        }
+
+        $adeudoPendiente = round((float) ($adeudo['pendiente'] ?? 0), 2);
+        $months = (int) ($datos['payload']['baja_temporal_months'] ?? 0);
+
+        if ($months < 1 || $months > 6) {
+            return ['error' => true, 'response' => response()->json(['ok' => false, 'message' => 'Meses de baja temporal inválidos (1–6)'], 422)];
+        }
+
+        $mensualidad = $this->obtenerMensualidad($datos['usuarioId'], $datos['numero'], $datos['payload']);
+        if ($mensualidad <= 0) {
+            return ['error' => true, 'response' => response()->json(['ok' => false, 'message' => 'No se pudo determinar la mensualidad'], 422)];
+        }
+
+        $bajaTotal = round($mensualidad * 0.2 * $months, 2);
+        $descuento = round((float) ($datos['payload']['descuento'] ?? 0), 2);
+        $total = round(max(0, $adeudoPendiente + $bajaTotal - $descuento), 2);
+
+        $payload = array_merge($datos['payload'], [
+            'mensualidad' => $mensualidad,
+            'otro' => 'baja_temporal',
+            'recargo' => 'no',
+            'prepay' => 'no',
+            'prepay_months' => null,
+            'prepay_total' => null,
+            'adeudo_pendiente' => $adeudoPendiente,
+            'baja_temporal_months' => $months,
+            'baja_temporal_total' => $bajaTotal,
+            'adeudo_prev' => $adeudoPendiente,
+            'adeudo_nuevo' => round($adeudoPendiente + $bajaTotal, 2),
+        ]);
+
+        return ['error' => false, 'total' => $total, 'payload' => $payload];
+    }
+
+    private function procesarCancelacion(array $datos): array
+    {
+        $payload = array_merge($datos['payload'], [
+            'otro' => 'cancelacion',
+            'recargo' => 'no',
+            'prepay' => 'no',
+            'prepay_months' => null,
+            'prepay_total' => null,
+        ]);
+
+        $total = ($payload['manual_total_enabled'] ?? false)
+            ? round((float) ($datos['payload']['manual_total_value'] ?? 0), 2)
+            : 0.0;
+
+        return ['error' => false, 'total' => $total, 'payload' => $payload];
+    }
+
+    private function procesarPagoNormal(array $datos): array
+    {
+        return [
+            'error' => false,
+            'total' => round((float) ($datos['payload']['total'] ?? 0), 2),
+            'payload' => $datos['payload'],
+        ];
+    }
+
+    private function obtenerMensualidad(?int $usuarioId, ?string $numero, array $payload): float
+    {
+        $u = ! empty($usuarioId)
+            ? Usuario::find($usuarioId)
+            : Usuario::where('numero_servicio', (string) $numero)->first();
+
+        if ($u && $u->tarifa !== null) {
+            return (float) $u->tarifa;
+        }
+
+        return (float) preg_replace('/[^\d.]/', '', (string) ($payload['mensualidad'] ?? 0));
+    }
+
+    private function procesarEdicionManual(array $datos, float &$total, array &$payload): ?array
+    {
+        if (! ($datos['payload']['manual_total_enabled'] ?? false) || $datos['tipo'] === 'baja_temporal') {
+            return null;
+        }
+
+        $reason = trim((string) ($datos['payload']['manual_total_reason'] ?? ''));
+        if ($reason === '') {
+            throw new \RuntimeException('Motivo requerido para editar el total');
+        }
+
+        $manualValue = $datos['payload']['manual_total_value'] ?? null;
+        if (! is_numeric($manualValue) || (float) $manualValue < 0) {
+            throw new \RuntimeException('Total manual inválido');
+        }
+
+        $manualValue = round((float) $manualValue, 2);
+        $prevTotal = $total;
+        $total = $manualValue;
+
+        $payload['manual_total_enabled'] = true;
+        $payload['manual_total_value'] = $manualValue;
+        $payload['manual_total_reason'] = mb_substr($reason, 0, 250);
+
+        return [
+            'prev_total' => $prevTotal,
+            'new_total' => $manualValue,
+            'reason' => mb_substr($reason, 0, 250),
+        ];
+    }
+
+    private function buscarDuplicado(array $datos, array $payload, float $total): ?\App\Models\Factura
+    {
+        if ($datos['tipo'] !== 'normal') {
+            return null;
+        }
+
+        $periodoFactura = $datos['periodo'];
+        $payloadJson = json_encode($payload);
+
+        $fingerprintData = [
+            'numero_servicio' => $datos['numero'],
+            'periodo' => $periodoFactura,
+            'total' => $total,
+            'nombre' => $payload['nombre'] ?? null,
+            'mensualidad' => $payload['mensualidad'] ?? null,
+            'recargo' => $payload['recargo'] ?? null,
+            'pago_anterior' => $payload['pago_anterior'] ?? null,
+            'metodo' => $payload['metodo'] ?? 'Efectivo',
+        ];
+
+        $fingerprint = hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+        // Buscar por fingerprint
+        $existing = \App\Models\Factura::where('fingerprint', $fingerprint)
+            ->orWhere(function ($q) use ($datos, $total, $payloadJson, $periodoFactura) {
+                $q->where('numero_servicio', $datos['numero'])
+                    ->where('periodo', $periodoFactura)
+                    ->where('total', $total)
+                    ->whereRaw('payload = ?', [$payloadJson]);
+            })
+            ->orderByDesc('id')
+            ->first();
+
+        if ($existing) {
+            $existing->fingerprint_match = true;
+            return $existing;
+        }
+
+        // Buscar facturas canceladas (trashed) por fingerprint
+        $trashed = \App\Models\Factura::withTrashed()->where('fingerprint', $fingerprint)->first();
+        if ($trashed) {
+            $trashed->is_trashed = true;
+            return $trashed;
+        }
+
+        // Validar duplicado por periodo
+        $dup = \App\Models\Factura::where('periodo', $periodoFactura)
+            ->where(function ($q) use ($datos) {
+                if ($datos['numero']) {
+                    $q->where('numero_servicio', $datos['numero']);
+                }
+                if (! empty($datos['usuarioId'])) {
+                    $q->orWhere('usuario_id', $datos['usuarioId']);
+                }
+            })
+            ->first();
+
+        if ($dup) {
+            $dup->is_duplicate_period = true;
+            return $dup;
+        }
+
+        return null;
+    }
+
+    private function retornarDuplicado(\App\Models\Factura $duplicado, array $datos): \Illuminate\Http\JsonResponse
+    {
+        $periodoFactura = in_array($datos['tipo'], ['baja_temporal', 'cancelacion']) ? null : $datos['periodo'];
+
+        // Es duplicado por periodo (error)
+        if ($duplicado->is_duplicate_period ?? false) {
+            \Illuminate\Support\Facades\DB::table('payment_attempts')->insert([
+                'usuario_id' => $datos['usuarioId'],
+                'numero_servicio' => $datos['numero'],
+                'periodo' => $periodoFactura,
+                'status' => 'duplicate',
+                'reason' => 'Pago ya registrado para este periodo',
+                'created_by' => optional($datos['request']->user())->id,
+                'payload' => json_encode($datos['payload']),
+                'attempted_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return response()->json([
+                'ok' => false,
+                'message' => 'Ya existe un pago registrado para este periodo',
+                'referencia' => $duplicado->reference_number,
+                'periodo' => $periodoFactura,
+            ], 409);
+        }
+
+        // Es reimpresión (éxito)
+        $reason = ($duplicado->is_trashed ?? false)
+            ? 'Reimpresión / reuso de factura (trashed)'
+            : 'Reimpresión / reuso de factura';
+
+        \Illuminate\Support\Facades\DB::table('payment_attempts')->insert([
+            'usuario_id' => $datos['usuarioId'],
+            'numero_servicio' => $datos['numero'],
+            'periodo' => $periodoFactura,
+            'status' => 'success',
+            'reason' => $reason,
+            'created_by' => optional($datos['request']->user())->id,
+            'payload' => json_encode($datos['payload']),
+            'attempted_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'referencia' => $duplicado->reference_number,
+            'id' => $duplicado->id,
+            'reused' => true,
+        ]);
+    }
+
+    private function crearFactura(int $folio, array $datos, float $total, array $payload, ?array $manualOverride): \App\Models\Factura
+    {
+        $periodoFactura = in_array($datos['tipo'], ['baja_temporal', 'cancelacion']) ? null : $datos['periodo'];
+
+        $fingerprintData = [
+            'numero_servicio' => $datos['numero'],
+            'periodo' => $periodoFactura,
+            'total' => $total,
+            'nombre' => $payload['nombre'] ?? null,
+            'mensualidad' => $payload['mensualidad'] ?? null,
+            'recargo' => $payload['recargo'] ?? null,
+            'pago_anterior' => $payload['pago_anterior'] ?? null,
+            'metodo' => $payload['metodo'] ?? 'Efectivo',
+        ];
+
+        $fingerprint = in_array($datos['tipo'], ['baja_temporal', 'cancelacion'])
+            ? null
+            : hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+        try {
+            $factura = new \App\Models\Factura;
+            $factura->reference_number = $folio;
+            $factura->usuario_id = $datos['usuarioId'];
+            $factura->numero_servicio = $datos['numero'];
+            $factura->periodo = $periodoFactura;
+            $factura->total = $total;
+            $factura->payload = $payload;
+            $factura->created_by = optional($datos['request']->user())->id;
+            $factura->fingerprint = $fingerprint;
+            $factura->save();
+
+            return $factura;
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Carrera - buscar la factura que ya se creó
+            $c = $fingerprint ? \App\Models\Factura::withTrashed()->where('fingerprint', $fingerprint)->first() : null;
+            if ($c) {
+                return $c;
+            }
+            throw $e;
+        }
+    }
+
+    private function actualizarEstatusUsuario(\App\Models\Factura $factura, string $tipo, ?array $manualOverride): void
+    {
+        switch ($tipo) {
+            case 'cancelacion':
+                $this->cancelarServicio($factura, $manualOverride);
+                break;
+            case 'baja_temporal':
+                $this->aplicarBajaTemporal($factura, $manualOverride);
+                break;
+            default:
+                $this->marcarComoPagado($factura, $manualOverride);
+                break;
+        }
+    }
+
+    private function cancelarServicio(\App\Models\Factura $factura, ?array $manualOverride): void
+    {
+        $usuario = $factura->usuario_id
+            ? \App\Models\Usuario::find($factura->usuario_id)
+            : \App\Models\Usuario::where('numero_servicio', $factura->numero_servicio)->first();
+
+        if (! $usuario) return;
+
+        $prev = [
+            'estatus_servicio_id' => $usuario->estatus_servicio_id,
+            'estado_id' => $usuario->estado_id,
+        ];
+
+        $usuario->update([
+            'estatus_servicio_id' => 3, // Cancelado
+            'estado_id' => 2,
+        ]);
+
+        $this->logAuditoria('usuario_cancelacion_servicio', 'usuarios', $usuario->id, $prev, [
+            'estatus_servicio_id' => 3,
+            'estado_id' => 2,
+        ]);
+    }
+
+    private function aplicarBajaTemporal(\App\Models\Factura $factura, ?array $manualOverride): void
+    {
+        $baja = \App\Models\EstatusServicio::whereRaw('LOWER(nombre) = ?', ['baja temporal'])->first();
+        if (! $baja) {
+            $baja = \App\Models\EstatusServicio::create(['nombre' => 'Baja temporal']);
+        }
+
+        $usuario = $factura->usuario_id
+            ? \App\Models\Usuario::find($factura->usuario_id)
+            : \App\Models\Usuario::where('numero_servicio', $factura->numero_servicio)->first();
+
+        if (! $usuario) return;
+
+        $prev = [
+            'estatus_servicio_id' => $usuario->estatus_servicio_id,
+            'adeudo_monto' => $usuario->adeudo_monto,
+            'adeudo_descripcion' => $usuario->adeudo_descripcion,
+        ];
+
+        $usuario->update([
+            'estatus_servicio_id' => $baja->id,
+            'adeudo_monto' => 0,
+            'adeudo_descripcion' => null,
+        ]);
+
+        $this->logAuditoria('usuario_baja_temporal', 'usuarios', $usuario->id, $prev, [
+            'estatus_servicio_id' => $baja->id,
+            'adeudo_monto' => 0,
+            'adeudo_descripcion' => null,
+        ]);
+    }
+
+    private function marcarComoPagado(\App\Models\Factura $factura, ?array $manualOverride): void
+    {
+        $usuario = $factura->usuario_id
+            ? \App\Models\Usuario::find($factura->usuario_id)
+            : \App\Models\Usuario::where('numero_servicio', $factura->numero_servicio)->first();
+
+        if (! $usuario) return;
+
+        $usuario->update([
+            'estatus_servicio_id' => 1, // Pagado
+            'estado_id' => 1,           // Activado
+            'adeudo_monto' => 0,
+            'adeudo_descripcion' => null,
+        ]);
+    }
+
+    private function registrarAuditoria(\App\Models\Factura $factura, array $datos, ?array $manualOverride): void
+    {
+        $periodoFactura = in_array($datos['tipo'], ['baja_temporal', 'cancelacion']) ? null : $datos['periodo'];
+
+        if ($manualOverride) {
+            \Illuminate\Support\Facades\DB::table('audit_logs')->insert([
+                'actor_user_id' => optional($datos['request']->user())->id,
+                'actor_role' => optional($datos['request']->user())->role,
+                'actor_name' => optional($datos['request']->user())->name,
+                'action' => 'factura_total_override',
+                'table_name' => 'facturas',
+                'entity_type' => \App\Models\Factura::class,
+                'entity_id' => (string) $factura->id,
+                'prev_values' => json_encode(['total' => $manualOverride['prev_total']]),
+                'new_values' => json_encode(['total' => $manualOverride['new_total'], 'reason' => $manualOverride['reason']]),
+                'ip' => $datos['request']->ip(),
+                'user_agent' => (string) $datos['request']->userAgent(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        // Log del pago exitoso
+        \Illuminate\Support\Facades\DB::table('payment_attempts')->insert([
+            'usuario_id' => $datos['usuarioId'],
+            'numero_servicio' => $datos['numero'],
+            'periodo' => $periodoFactura,
+            'status' => 'success',
+            'reason' => 'Factura creada',
+            'created_by' => optional($datos['request']->user())->id,
+            'payload' => json_encode($datos['payload']),
+            'attempted_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    private function logAuditoria(string $action, string $table, int $entityId, array $prev, array $new): void
+    {
+        \Illuminate\Support\Facades\DB::table('audit_logs')->insert([
+            'actor_user_id' => auth()->id(),
+            'actor_role' => auth()->user()?->role,
+            'actor_name' => auth()->user()?->name,
+            'action' => $action,
+            'table_name' => $table,
+            'entity_type' => \App\Models\Usuario::class,
+            'entity_id' => (string) $entityId,
+            'prev_values' => json_encode($prev),
+            'new_values' => json_encode($new),
+            'ip' => request()->ip(),
+            'user_agent' => (string) request()->userAgent(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     public function pagosFacturasIndex(\Illuminate\Http\Request $request)
