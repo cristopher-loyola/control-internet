@@ -10,6 +10,16 @@
                             Vista en modo solo lectura: los campos están deshabilitados.
                         </div>
                     </template>
+
+                    <!-- Alerta de corte inactivo -->
+                    <div x-show="!corteActivo" class="mb-3 px-3 py-2 rounded bg-red-500/20 text-red-900 border border-red-400 text-sm not-print">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                            </svg>
+                            <span>No hay un corte de caja activo. Por favor, inicie un corte de caja antes de realizar pagos.</span>
+                        </div>
+                    </div>
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 not-print">
                         <div class="lg:col-span-2 bg-gray-50 dark:bg-gray-700 rounded-xl p-4 sm:p-5 shadow-inner">
                             <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 dark:text-gray-300 mb-4">Buscar cliente</h3>
@@ -112,11 +122,17 @@
                                 <span>📋</span><span>Historial</span>
                             </a>
 
-                            <button class="w-full px-4 py-3 rounded-lg bg-blue-600 text-white font-medium shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150 min-h-[48px] flex items-center justify-center gap-2" @click="metodoValido() && openConfirm('ticket')">
+                            <button class="w-full px-4 py-3 rounded-lg bg-blue-600 text-white font-medium shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150 min-h-[48px] flex items-center justify-center gap-2" 
+                                :class="{ 'opacity-50 cursor-not-allowed': !corteActivo }" 
+                                :disabled="!corteActivo || readOnlyMode" 
+                                @click="corteActivo && metodoValido() && openConfirm('ticket')">
                                 <span>🧾</span><span>Imprimir Ticket</span>
                             </button>
 
-                            <button class="w-full px-4 py-3 rounded-lg bg-red-600 text-white font-medium shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150 min-h-[48px] flex items-center justify-center gap-2" @click="metodoValido() && openConfirm('receipt')">
+                            <button class="w-full px-4 py-3 rounded-lg bg-red-600 text-white font-medium shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150 min-h-[48px] flex items-center justify-center gap-2" 
+                                :class="{ 'opacity-50 cursor-not-allowed': !corteActivo }" 
+                                :disabled="!corteActivo || readOnlyMode" 
+                                @click="corteActivo && metodoValido() && openConfirm('receipt')">
                                 <span>🖨️</span><span>Imprimir Recibo</span>
                             </button>
                         </div>
@@ -474,6 +490,7 @@
         return {
             readOnlyMode: false,
             isLoading: false,
+            corteActivo: false,
             form:{ numero:'', recargo:getDefaultRecargo(), pago_anterior:0, metodo:'', cobro:'{{ Auth::user()->name }}', prepay:'no', prepay_months:6, otro:'no', baja_temporal_months:1 },
             pagoAnteriorFecha:'',
             manualEditEnabled: false,
@@ -650,6 +667,7 @@
             saveLayout(){ localStorage.setItem('reciboLayout', JSON.stringify(this.layout)); },
             async init(){
                 await this.loadServerLayout();
+                await this.verificarCorteActivo();
                 try{
                     const r = await fetch('{{ route('chivato.prepay.settings') }}', { headers:{'Accept':'application/json'} });
                     const j = await r.json();
@@ -924,6 +942,29 @@
                 // Siempre retorna true - método de pago es siempre Efectivo
                 this.form.metodo = 'Efectivo';
                 return true;
+            },
+            async verificarCorteActivo(){
+                try {
+                    const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
+                    const response = await fetch('{{ route('chivato.corte.activo') }}', {
+                        method: 'GET',
+                        headers: {
+                            'X-CSRF-TOKEN': token,
+                            'Accept': 'application/json',
+                        }
+                    });
+                    const data = await response.json();
+                    this.corteActivo = data.activo || false;
+                    if (!this.corteActivo) {
+                        this.error = 'No hay un corte de caja activo. Por favor, inicie un corte de caja antes de continuar.';
+                    } else {
+                        this.error = '';
+                    }
+                } catch (error) {
+                    console.error('Error verificando corte activo:', error);
+                    this.corteActivo = false;
+                    this.error = 'Error al verificar el estado del corte de caja.';
+                }
             },
             openConfirm(type = 'receipt'){
                 if(this.prepayActivo && !this.ref?.id){

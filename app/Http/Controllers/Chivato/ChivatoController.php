@@ -349,6 +349,18 @@ class ChivatoController extends Controller
             'payload' => ['nullable', 'array'],
         ]);
 
+        // Verificar que haya un corte activo antes de permitir el pago
+        $user = $request->user();
+        $zona = 'chivato';
+        
+        if (!CorteCaja::tieneActivo($zona, $user->id)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No se puede realizar el pago. No hay un corte de caja activo. Por favor, inicie un corte de caja antes de continuar.',
+                'code' => 422
+            ], 422);
+        }
+
         return DB::transaction(function () use ($request) {
             $periodo = now()->format('Y-m');
             $numero = $request->input('numero_servicio');
