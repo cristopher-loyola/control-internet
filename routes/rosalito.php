@@ -26,6 +26,7 @@ Route::middleware(['auth', 'role:rosalito'])
         // Routes for Corte de Caja
         Route::post('/corte/iniciar', [RosalitoController::class, 'iniciarCorte'])->name('corte.iniciar');
         Route::post('/corte/finalizar', [RosalitoController::class, 'finalizarCorte'])->name('corte.finalizar');
+        Route::post('/corte/reanudar', [RosalitoController::class, 'reanudarCorte'])->name('corte.reanudar');
         Route::get('/corte/activo', [RosalitoController::class, 'corteActivo'])->name('corte.activo');
         Route::get('/corte/exportar', [RosalitoController::class, 'exportarCorteExcel'])->name('corte.exportar');
     });

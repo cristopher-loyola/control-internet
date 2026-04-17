@@ -26,6 +26,7 @@ Route::middleware(['auth', 'role:chivato'])
         // Routes for Corte de Caja
         Route::post('/corte/iniciar', [ChivatoController::class, 'iniciarCorte'])->name('corte.iniciar');
         Route::post('/corte/finalizar', [ChivatoController::class, 'finalizarCorte'])->name('corte.finalizar');
+        Route::post('/corte/reanudar', [ChivatoController::class, 'reanudarCorte'])->name('corte.reanudar');
         Route::get('/corte/activo', [ChivatoController::class, 'corteActivo'])->name('corte.activo');
         Route::get('/corte/exportar', [ChivatoController::class, 'exportarCorteExcel'])->name('corte.exportar');
     });

@@ -26,6 +26,7 @@ Route::middleware(['auth', 'role:pozo_hondo'])
         // Routes for Corte de Caja
         Route::post('/corte/iniciar', [PozoHondoController::class, 'iniciarCorte'])->name('corte.iniciar');
         Route::post('/corte/finalizar', [PozoHondoController::class, 'finalizarCorte'])->name('corte.finalizar');
+        Route::post('/corte/reanudar', [PozoHondoController::class, 'reanudarCorte'])->name('corte.reanudar');
         Route::get('/corte/activo', [PozoHondoController::class, 'corteActivo'])->name('corte.activo');
         Route::get('/corte/exportar', [PozoHondoController::class, 'exportarCorteExcel'])->name('corte.exportar');
     });

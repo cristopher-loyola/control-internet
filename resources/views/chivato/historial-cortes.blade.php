@@ -30,14 +30,14 @@
                                 <th class="px-4 py-3">Cobros</th>
                                 <th class="px-4 py-3">Total Recaudado</th>
                                 <th class="px-4 py-3">Estado</th>
+                                <th class="px-4 py-3">Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($cortes as $corte)
+                            @forelse($cortes as $index => $corte)
                                 <tr class="bg-white border-b hover:bg-gray-50">
                                     <td class="px-4 py-3 font-medium text-gray-900">
                                         #{{ $corte->id }}
-                                    </td>
                                     <td class="px-4 py-3">
                                         <div class="text-gray-900 font-medium">
                                             {{ $corte->fecha_inicio->format('d/m/Y') }}
@@ -81,10 +81,23 @@
                                             </span>
                                         @endif
                                     </td>
+                                    <td class="px-4 py-3">
+                                        @if($index === 0 && !$corteActivo && $corte->estado === 'cerrado')
+                                            <button onclick="reanudarCorte({{ $corte->id }})" 
+                                                    class="inline-flex items-center px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-medium rounded-lg transition-colors duration-200">
+                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                                </svg>
+                                                Reanudar
+                                            </button>
+                                        @else
+                                            <span class="text-gray-400">-</span>
+                                        @endif
+                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                                    <td colspan="7" class="px-4 py-8 text-center text-gray-500">
                                         <div class="flex flex-col items-center">
                                             <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
@@ -98,6 +111,37 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Script para reanudar corte -->
+            <script>
+                function reanudarCorte(corteId) {
+                    if (!confirm('¿Estás seguro de que deseas reanudar este corte? Podrás seguir agregando pagos a él.')) {
+                        return;
+                    }
+
+                    fetch('/chivato/corte/reanudar', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                        },
+                        body: JSON.stringify({})
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.ok) {
+                            alert('Corte reanudado correctamente');
+                            window.location.reload();
+                        } else {
+                            alert(data.message || 'Error al reanudar el corte');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Error al reanudar el corte');
+                    });
+                }
+            </script>
 
             <!-- Resumen -->
             @if($cortes->count() > 0)

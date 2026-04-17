@@ -180,8 +180,16 @@ class RosalitoController extends Controller
             ->orderByDesc('fecha_fin')
             ->get();
 
+        // Verificar si hay corte activo (para mostrar o no el botón de reanudar)
+        $corteActivo = CorteCaja::tieneActivo($zona, $user->id);
+
+        // Obtener el primer corte (el más reciente) si existe
+        $primerCorte = $cortes->first();
+
         return view('rosalito.historial-cortes', [
             'cortes' => $cortes,
+            'corteActivo' => $corteActivo,
+            'primerCorte' => $primerCorte,
         ]);
     }
 
@@ -641,6 +649,53 @@ class RosalitoController extends Controller
                 'total_pagos' => $totalPagos,
             ],
             'message' => 'Corte de caja finalizado correctamente',
+        ]);
+    }
+
+    /**
+     * Reanudar el último corte de caja cerrado (solo si no hay corte activo)
+     */
+    public function reanudarCorte(Request $request)
+    {
+        $user = $request->user();
+        $zona = 'rosalito';
+
+        // Verificar que no haya un corte activo
+        if (CorteCaja::tieneActivo($zona, $user->id)) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Ya tienes un corte de caja activo. No puedes reanudar otro.',
+            ], 409);
+        }
+
+        // Buscar el último corte cerrado del usuario
+        $ultimoCorte = CorteCaja::where('zona', $zona)
+            ->where('user_id', $user->id)
+            ->where('estado', 'cerrado')
+            ->orderByDesc('fecha_fin')
+            ->first();
+
+        if (! $ultimoCorte) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'No hay cortes cerrados para reanudar',
+            ], 404);
+        }
+
+        // Reanudar el corte: cambiar estado a activo y limpiar fecha_fin
+        $ultimoCorte->update([
+            'estado' => 'activo',
+            'fecha_fin' => null,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'corte' => [
+                'id' => $ultimoCorte->id,
+                'fecha_inicio' => $ultimoCorte->fecha_inicio->toDateTimeString(),
+                'estado' => 'activo',
+            ],
+            'message' => 'Corte de caja reanudado correctamente',
         ]);
     }
 
