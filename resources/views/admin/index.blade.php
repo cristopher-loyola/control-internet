@@ -115,33 +115,7 @@
                     </div>
                 </div>
 
-                {{-- Clientes nuevos --}}
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-5 flex flex-col gap-4">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <div class="text-lg font-bold text-gray-800 dark:text-white mt-0.5">Clientes nuevos</div>
-                        </div>
-
-                    </div>
-                    <div class="grid grid-cols-3 gap-2">
-                        <div class="rounded-xl p-2.5 text-center" style="background:rgba(14,165,233,0.08);">
-                            <div class="text-xs font-semibold uppercase tracking-widest mb-1" style="color:#0ea5e9;">Hoy</div>
-                            <div class="text-2xl font-bold text-gray-800 dark:text-white" x-text="metrics.clientes_nuevos?.day ?? 0"></div>
-                        </div>
-                        <div class="rounded-xl p-2.5 text-center" style="background:rgba(22,163,74,0.08);">
-                            <div class="text-xs font-semibold uppercase tracking-widest mb-1" style="color:#16a34a;">Semana</div>
-                            <div class="text-2xl font-bold text-gray-800 dark:text-white" x-text="metrics.clientes_nuevos?.week ?? 0"></div>
-                        </div>
-                        <div class="rounded-xl p-2.5 text-center" style="background:rgba(245,158,11,0.08);">
-                            <div class="text-xs font-semibold uppercase tracking-widest mb-1" style="color:#f59e0b;">Mes</div>
-                            <div class="text-2xl font-bold text-gray-800 dark:text-white" x-text="metrics.clientes_nuevos?.month ?? 0"></div>
-                        </div>
-                    </div>
-                    <div class="flex-1">
-                        <canvas id="chartClientes" height="130"></canvas>
-                    </div>
-                </div>
-
+                <x-rosalito-payments-card />
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -327,7 +301,6 @@
             .gap-6 { gap: 0.75rem; }
             .sm\:flex-row { flex-direction: column; }
             canvas { max-width: 160px !important; max-height: 160px !important; }
-            #chartClientes { max-height: 100px !important; }
             .relative.flex-shrink-0 { width: 160px !important; height: 160px !important; }
             .absolute.inset-0.flex.flex-col.items-center.justify-center span.text-lg { font-size: 0.875rem; }
             .absolute.inset-0.flex.flex-col.items-center.justify-center span.text-xs { font-size: 0.625rem; }
@@ -353,11 +326,9 @@
             validWeek: true,
             metrics: { metodos: [], clientes_nuevos: {day:0,week:0,month:0}, inventario_bajo: [], ventas_series: {labels:[], values:[]}, prepay_clients: [], cancelados_count: 0, cancelados: [], morosos: [], morosos_count: 0, baja_temporal_count: 0 },
             chartMetodos: null,
-            chartClientes: null,
             metodoColors: ['#16a34a','#0ea5e9','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16'],
             currentRequest: null,
             lastMetodos: null,
-            lastClientes: null,
             init(){
                 this.loadMetrics(true);
                 // Reducir frecuencia de recarga a 2 minutos para mejorar rendimiento
@@ -412,10 +383,6 @@
                         if(JSON.stringify(data.metodos) !== JSON.stringify(this.lastMetodos)) {
                             this.renderMetodos();
                             this.lastMetodos = data.metodos;
-                        }
-                        if(JSON.stringify(data.clientes_nuevos) !== JSON.stringify(this.lastClientes)) {
-                            this.renderClientes();
-                            this.lastClientes = data.clientes_nuevos;
                         }
                         this.loading = false;
                     })
@@ -488,48 +455,7 @@
                     }
                 });
             },
-            renderClientes(){
-                const labels = ['Hoy', 'Semana', 'Mes'];
-                const values = [
-                    this.metrics.clientes_nuevos?.day ?? 0,
-                    this.metrics.clientes_nuevos?.week ?? 0,
-                    this.metrics.clientes_nuevos?.month ?? 0,
-                ];
-                const ctx = document.getElementById('chartClientes').getContext('2d');
-                if(this.chartClientes){ this.chartClientes.destroy(); }
-                this.chartClientes = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels,
-                        datasets: [{
-                            data: values,
-                            backgroundColor: [
-                                'rgba(14,165,233,0.85)',
-                                'rgba(22,163,74,0.85)',
-                                'rgba(245,158,11,0.85)',
-                            ],
-                            borderRadius: 8,
-                            borderSkipped: false,
-                        }]
-                    },
-                    options: {
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: { precision: 0, color: '#9ca3af', font: { size: 11 } },
-                                grid: { color: 'rgba(156,163,175,0.15)' },
-                            },
-                            x: {
-                                ticks: { color: '#9ca3af', font: { size: 11 } },
-                                grid: { display: false },
-                            }
-                        },
-                        animation: { duration: 700, easing: 'easeOutQuart' }
-                    }
-                });
-            },
-            renderVentas(){
+                        renderVentas(){
                 const labels = this.metrics.ventas_series?.labels || [];
                 const values = this.metrics.ventas_series?.values || [];
                 const ctx = document.getElementById('chartVentas').getContext('2d');

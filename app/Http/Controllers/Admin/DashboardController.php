@@ -492,6 +492,9 @@ class DashboardController extends Controller
             $ventasData = Factura::query()
                 ->whereNull('deleted_at')
                 ->whereBetween('created_at', [$range['from'], $range['to']])
+                ->whereHas('cajero', function ($q) {
+                    $q->whereNotIn('role', ['pozo_hondo', 'rosalito', 'chivato']);
+                })
                 ->select(['total', 'payload', 'created_at'])
                 ->get();
 
@@ -676,6 +679,9 @@ class DashboardController extends Controller
         $to = $date->copy()->endOfDay();
         $ventas = Factura::whereNull('deleted_at')
             ->whereBetween('created_at', [$from, $to])
+            ->whereHas('cajero', function ($q) {
+                $q->whereNotIn('role', ['pozo_hondo', 'rosalito', 'chivato']);
+            })
             ->orderBy('created_at')
             ->get();
         // Se omiten compras, gastos y devoluciones en el dashboard solicitado
@@ -945,7 +951,12 @@ class DashboardController extends Controller
             $fileBase = 'resumen-mensual-'.$month->format('Y-m');
         }
 
-        $ventas = Factura::whereNull('deleted_at')->whereBetween('created_at', [$range['from'], $range['to']])->get();
+        $ventas = Factura::whereNull('deleted_at')
+            ->whereBetween('created_at', [$range['from'], $range['to']])
+            ->whereHas('cajero', function ($q) {
+                $q->whereNotIn('role', ['pozo_hondo', 'rosalito', 'chivato']);
+            })
+            ->get();
 
         $rows = [];
         $totalSum = 0.0;
@@ -1153,6 +1164,9 @@ class DashboardController extends Controller
     {
         $ventas = Factura::whereNull('deleted_at')
             ->whereBetween('created_at', [$range['from'], $range['to']])
+            ->whereHas('cajero', function ($q) {
+                $q->whereNotIn('role', ['pozo_hondo', 'rosalito', 'chivato']);
+            })
             ->get(['created_at', 'total']);
         $buckets = [];
         if ($period === 'week' || $period === 'day') {

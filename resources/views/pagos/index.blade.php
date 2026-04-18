@@ -117,7 +117,7 @@
                     </div>
                 </div>
 
-               
+                <x-rosalito-payments-card />
             </div>
 
             {{-- Cancelaciones - Total sin filtro de período --}}
