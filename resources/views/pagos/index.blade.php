@@ -120,6 +120,11 @@
                 <x-rosalito-payments-card />
             </div>
 
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <x-perfil-chivato-payments-card />
+                <x-pozo-hondo-payments-card />
+            </div>
+
             {{-- Cancelaciones - Total sin filtro de período --}}
             <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-5 flex flex-col gap-4">
                 <div class="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">

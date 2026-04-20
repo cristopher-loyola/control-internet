@@ -8,6 +8,7 @@ use App\Models\Factura;
 use App\Models\Inventario;
 use App\Models\PrepaySetting;
 use App\Models\Usuario;
+use App\Services\LocationPaymentsService;
 use App\Services\PrepayDashboardService;
 use Dompdf\Dompdf;
 use Illuminate\Http\Request;
@@ -643,7 +644,7 @@ class DashboardController extends Controller
                 ->take(5)
                 ->all();
 
-            return [
+            $result = [
                 'ingresos' => round($ventasTotal, 2),
                 'ventas_total' => $ventasTotal,
                 'ventas_count' => $ventasCount,
@@ -659,6 +660,11 @@ class DashboardController extends Controller
                 'morosos_count' => $morososData['count'],
                 'prepay_clients' => $prepayClients,
             ] + $staticData;
+
+            // Agregar métricas de ubicaciones usando el servicio centralizado
+            $result = LocationPaymentsService::addLocationMetricsToArray($result, $range['from'], $range['to']);
+
+            return $result;
         });
 
         return response()->json([
