@@ -118,12 +118,6 @@
                 <x-rosalito-payments-card />
             </div>
 
-            {{-- Tarjetas de pagos por zona --}}
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <x-chivato-payments-card />
-                <x-pozo-hondo-payments-card />
-            </div>
-
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {{-- Pagos adelantados --}}
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-5 flex flex-col gap-4">
@@ -320,13 +314,159 @@
         }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    @include('components.payments-dashboard')
     <script>
     function adminDashboard(){
-        return window.PaymentsDashboard.init({
-            endpoint: '{{ route('admin.dashboard.metrics') }}',
-            exportEndpoint: '{{ route('admin.dashboard.export') }}'
-        });
+        return {
+            loading: true,
+            period: 'day',
+            dayDate: new Date().toISOString().slice(0,10),
+            weekFrom: null,
+            weekTo: null,
+            monthVal: null,
+            validWeek: true,
+            metrics: { metodos: [], clientes_nuevos: {day:0,week:0,month:0}, inventario_bajo: [], ventas_series: {labels:[], values:[]}, prepay_clients: [], cancelados_count: 0, cancelados: [], morosos: [], morosos_count: 0, baja_temporal_count: 0 },
+            chartMetodos: null,
+            metodoColors: ['#16a34a','#0ea5e9','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16'],
+            currentRequest: null,
+            lastMetodos: null,
+            init(){
+                this.loadMetrics(true);
+                // Reducir frecuencia de recarga a 2 minutos para mejorar rendimiento
+                setInterval(() => this.loadMetrics(false), 120000);
+            },
+            money(v){ return '$' + Number(v ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); },
+            metodoPct(monto){
+                const total = (this.metrics.metodos || []).reduce((s, m) => s + (m.monto || 0), 0);
+                if(!total) return 0;
+                return Math.round((monto / total) * 100);
+            },
+            exportar(fmt){
+                const url = new URL('{{ route('admin.dashboard.export') }}', window.location.origin);
+                url.searchParams.set('period', this.period);
+                url.searchParams.set('format', fmt);
+                if(this.period==='day'){
+                    url.searchParams.set('date', this.dayDate);
+                } else if(this.period==='week'){
+                    url.searchParams.set('from', this.weekFrom);
+                    url.searchParams.set('to', this.weekTo);
+                } else if(this.period==='month'){
+                    url.searchParams.set('month', this.monthVal);
+                }
+                window.location.href = url.toString();
+            },
+            loadMetrics(showLoader = true){
+                if(showLoader) this.loading = true;
+                const url = new URL('{{ route('admin.dashboard.metrics') }}', window.location.origin);
+                url.searchParams.set('period', this.period);
+                if(this.period==='day'){
+                    url.searchParams.set('date', this.dayDate);
+                } else if(this.period==='week'){
+                    url.searchParams.set('date', this.weekFrom || new Date().toISOString().slice(0,10));
+                } else if(this.period==='month'){
+                    const d = (this.monthVal ? this.monthVal+'-01' : new Date().toISOString().slice(0,7)+'-01');
+                    url.searchParams.set('date', d);
+                }
+                
+                // Abort controller para cancelar peticiones anteriores
+                if(this.currentRequest) this.currentRequest.abort();
+                this.currentRequest = new AbortController();
+                
+                fetch(url, { signal: this.currentRequest.signal })
+                    .then(r => r.json())
+                    .then(data => {
+                        if(!data.ok) {
+                            this.loading = false;
+                            return;
+                        }
+                        this.metrics = data;
+                        // Solo renderizar gráficas si los datos cambiaron
+                        if(JSON.stringify(data.metodos) !== JSON.stringify(this.lastMetodos)) {
+                            this.renderMetodos();
+                            this.lastMetodos = data.metodos;
+                        }
+                        this.loading = false;
+                    })
+                    .catch(err => {
+                        if(err.name !== 'AbortError') {
+                            console.error(err);
+                        }
+                        this.loading = false;
+                    });
+            },
+            onPeriodChange(){
+                if(this.period==='week'){
+                    const t = new Date();
+                    const day = t.getDay() || 7;
+                    const start = new Date(t); start.setDate(t.getDate() - (day-1));
+                    const end = new Date(start); end.setDate(start.getDate() + 6);
+                    this.weekFrom = start.toISOString().slice(0,10);
+                    this.weekTo = end.toISOString().slice(0,10);
+                    this.validWeek = true;
+                } else if(this.period==='month'){
+                    this.monthVal = new Date().toISOString().slice(0,7);
+                }
+                this.loadMetrics();
+            },
+            onWeekChange(which){
+                if(this.weekFrom && (!this.weekTo || which==='from')){
+                    const f = new Date(this.weekFrom);
+                    const e = new Date(f); e.setDate(f.getDate()+6);
+                    this.weekTo = e.toISOString().slice(0,10);
+                }
+                if(this.weekFrom && this.weekTo){
+                    const f = new Date(this.weekFrom);
+                    const t = new Date(this.weekTo);
+                    const diff = Math.round((t - f)/(1000*60*60*24));
+                    this.validWeek = (diff === 6);
+                } else {
+                    this.validWeek = false;
+                }
+            },
+            onMonthChange(){
+                this.loadMetrics();
+            },
+            isValidPeriod(){
+                if(this.period==='day'){ return !!this.dayDate; }
+                if(this.period==='week'){ return !!this.weekFrom && !!this.weekTo && this.validWeek; }
+                if(this.period==='month'){ return !!this.monthVal; }
+                return true;
+            },
+            renderMetodos(){
+                const labels = (this.metrics.metodos || []).map(m => m.metodo || 'N/D');
+                const values = (this.metrics.metodos || []).map(m => m.monto || 0);
+                const ctx = document.getElementById('chartMetodos').getContext('2d');
+                if(this.chartMetodos){ this.chartMetodos.destroy(); }
+                this.chartMetodos = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: this.metodoColors,
+                            borderWidth: 3,
+                            borderColor: '#ffffff',
+                            hoverOffset: 6,
+                        }]
+                    },
+                    options: {
+                        cutout: '72%',
+                        plugins: { legend: { display: false } },
+                        animation: { animateRotate: true, duration: 800 }
+                    }
+                });
+            },
+                        renderVentas(){
+                const labels = this.metrics.ventas_series?.labels || [];
+                const values = this.metrics.ventas_series?.values || [];
+                const ctx = document.getElementById('chartVentas').getContext('2d');
+                if(this.chartVentas){ this.chartVentas.destroy(); }
+                this.chartVentas = new Chart(ctx, {
+                    type: 'line',
+                    data: { labels, datasets: [{ data: values, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.2)', tension: 0.3, fill: true }] },
+                    options: { plugins: { legend: { display:false } }, scales: { y: { beginAtZero:true } } }
+                });
+            },
+        }
     }
     </script>
 </x-app-layout>

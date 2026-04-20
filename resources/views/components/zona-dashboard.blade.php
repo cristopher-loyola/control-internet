@@ -15,16 +15,6 @@
                 <div class="text-sm text-gray-500">Zona</div>
                 <div class="text-2xl font-semibold tracking-tight text-gray-900">{{ $title }}</div>
             </div>
-        </div>
-        
-        {{-- Tarjeta de pagos específica de la zona --}}
-        <div class="mt-6">
-            @if($title === 'Chivato')
-                <x-chivato-payments-card />
-            @elseif($title === 'Pozo Hondo')
-                <x-pozo-hondo-payments-card />
-            @endif
-        </div>
             <div class="flex flex-col sm:flex-row gap-2">
                 @if($zonaRoute)
                     <button id="btn-iniciar-corte"
