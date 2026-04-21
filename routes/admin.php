@@ -11,6 +11,11 @@ Route::middleware(['auth', 'role:admin'])
     ->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('index');
 
+        // Historial de pagos por ubicación
+        Route::get('/pagos/rosalito', [DashboardController::class, 'rosalitoPaymentsHistory'])->name('pagos.rosalito.history');
+        Route::get('/pagos/chivato', [DashboardController::class, 'chivatoPaymentsHistory'])->name('pagos.chivato.history');
+        Route::get('/pagos/pozo-hondo', [DashboardController::class, 'pozoHondoPaymentsHistory'])->name('pagos.pozo-hondo.history');
+
         // Módulo de Cortes
         Route::get('/cortes', [CortesController::class, 'index'])->name('cortes.index');
         Route::get('/cortes/export/pdf', [CortesController::class, 'exportPdf'])->name('cortes.export.pdf');

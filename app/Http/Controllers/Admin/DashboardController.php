@@ -680,6 +680,75 @@ class DashboardController extends Controller
         ] + $cachedData);
     }
 
+    /**
+     * Historial de pagos de Rosalito
+     */
+    public function rosalitoPaymentsHistory(Request $request)
+    {
+        $pagos = DB::table('facturas as f')
+            ->join('users as u', 'f.created_by', '=', 'u.id')
+            ->where('f.deleted_at', null)
+            ->where('u.role', 'rosalito')
+            ->orderBy('f.created_at', 'desc')
+            ->select([
+                'f.id',
+                'f.numero_servicio',
+                'f.total',
+                'f.created_at',
+                'f.payload',
+                'u.name as cajero'
+            ])
+            ->paginate(50);
+
+        return view('admin.payments.rosalito-history', compact('pagos'));
+    }
+
+    /**
+     * Historial de pagos de Chivato
+     */
+    public function chivatoPaymentsHistory(Request $request)
+    {
+        $pagos = DB::table('facturas as f')
+            ->join('users as u', 'f.created_by', '=', 'u.id')
+            ->where('f.deleted_at', null)
+            ->where('u.role', 'chivato')
+            ->orderBy('f.created_at', 'desc')
+            ->select([
+                'f.id',
+                'f.numero_servicio',
+                'f.total',
+                'f.created_at',
+                'f.payload',
+                'u.name as cajero'
+            ])
+            ->paginate(50);
+
+        return view('admin.payments.chivato-history', compact('pagos'));
+    }
+
+    /**
+     * Historial de pagos de Pozo Hondo
+     */
+    public function pozoHondoPaymentsHistory(Request $request)
+    {
+        $pagos = DB::table('facturas as f')
+            ->join('users as u', 'f.created_by', '=', 'u.id')
+            ->where('f.deleted_at', null)
+            ->where('u.role', 'pozo_hondo')
+            ->orderBy('f.created_at', 'desc')
+            ->select([
+                'f.id',
+                'f.numero_servicio',
+                'f.total',
+                'f.created_at',
+                'f.payload',
+                'u.name as cajero'
+            ])
+            ->paginate(50);
+
+        return view('admin.payments.pozo-hondo-history', compact('pagos'));
+    }
+
     public function corteCaja(Request $request)
     {
         $request->validate([
