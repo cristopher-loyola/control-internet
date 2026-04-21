@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CargoMora;
+use App\Models\CorteCaja;
 use App\Models\Factura;
 use App\Models\Inventario;
 use App\Models\PrepaySetting;
@@ -484,8 +485,12 @@ class DashboardController extends Controller
         // Cache key para datos que cambian poco
         $cacheKey = "dashboard_metrics_{$period}_{$range['from']->format('Y-m-d')}_{$range['to']->format('Y-m-d')}";
 
-        // Usar caché para datos estáticos por 5 minutos
-        $cachedData = cache()->remember($cacheKey, 300, function () use ($range, $period) {
+        // Verificar si hay cortes activos para reducir tiempo de caché
+        $hayCortesActivos = CorteCaja::where('estado', 'activo')->exists();
+        $cacheTime = $hayCortesActivos ? 60 : 300; // 1 minuto si hay cortes activos, 5 minutos si no
+
+        // Usar caché con tiempo dinámico según si hay cortes activos
+        $cachedData = cache()->remember($cacheKey, $cacheTime, function () use ($range, $period) {
             // Aplicar recargos automáticos después del día 7 (solo una vez al día)
             $this->applyMonthlySurchargesIfNeeded();
 

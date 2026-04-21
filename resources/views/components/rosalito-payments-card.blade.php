@@ -13,8 +13,9 @@
     </div>
     <div class="flex flex-col gap-4">
         <div class="text-center">
-            <div class="text-3xl font-bold text-gray-800 dark:text-white" x-text="money(metrics.rosalito_pagos ?? 0)"></div>
-            <div class="text-sm text-gray-500 mt-1">Total de pagos</div>
+            <div class="text-3xl font-bold text-gray-800 dark:text-white" x-text="money(metrics.rosalito_recaudado_corte ?? 0)"></div>
+            <div class="text-sm text-gray-500 mt-1">Recaudado en corte</div>
+            <div class="text-xs text-gray-400 mt-2" x-text="'Corte iniciado: ' + (metrics.rosalito_fecha_corte ?? 'Sin corte activo')"></div>
         </div>
         <div class="grid grid-cols-2 gap-4 text-center">
             <div class="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
