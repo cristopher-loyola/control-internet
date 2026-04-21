@@ -1414,17 +1414,19 @@
 <style>
 @page{ size:80mm auto; margin:0 }
 html,body{ margin:0; padding:0 }
-.ticket{ width:80mm; max-width:80mm; padding:8px 10px; font-family: Arial, sans-serif; font-size:12px; color:#111 }
+.ticket{ width:76mm; max-width:76mm; padding:6px 8px; font-family: Arial, sans-serif; font-size:12px; color:#111 }
 .logo{ text-align:center; margin-bottom:6px }
 .logo img{ max-width:70mm; height:auto }
 .banner{ text-align:center; margin-top:8px }
 .banner img{ max-width:70mm; height:auto }
 .center{ text-align:center }
 .title{ font-weight:700; font-size:14px; margin:6px 0 }
-.line{ display:flex; justify-content:space-between; gap:8px; margin:2px 0 }
-.line .l{ font-weight:600 }
+.line{ display:grid; grid-template-columns:auto 1fr; justify-content:space-between; gap:8px; margin:2px 0 }
+.line .l{ font-weight:600; white-space:nowrap }
+.line .l + div{ text-align:left; word-break:break-word; padding-left:4px }
 .sep{ border-top:1px dotted #555; margin:6px 0 }
 .folio{ font-weight:700; font-size:12px; margin-bottom:4px }
+.footer{ font-size:10px; font-weight:600; color:#555; margin-top:6px; padding-top:6px; border-top:1px solid #999; text-align:center }
 </style>
 </head>
 <body onload="window.print(); setTimeout(()=>window.close(), 300)">
@@ -1446,14 +1448,14 @@ html,body{ margin:0; padding:0 }
   ${saldoLine}
   ${prepayLine}
   <div class="line"><div class="l">Total (número)</div><div>${totalNum}</div></div>
-  <div class="line"><div class="l">Total (letra)</div><div style="max-width:42mm;text-align:right">${totalLetra}</div></div>
+  <div class="line"><div class="l">Total (letra)</div><div>${totalLetra}</div></div>
   <div class="sep"></div>
   <div class="line"><div class="l">Método de pago</div><div>${metodo}</div></div>
   <div class="line"><div class="l">Quién cobró</div><div>${cobro}</div></div>
   <div class="line"><div class="l">Fecha</div><div>${fecha}</div></div>
   <div class="line"><div class="l">Hora</div><div>${hora}</div></div>
   <div class="sep"></div>
-  <div class="center" style="font-size:10px; font-weight:600; color:#555; margin-top:6px; padding-top:6px; border-top:1px solid #999;">
+  <div class="footer">
     Horario de atención en pagos: Lunes a Viernes de 9:00 am a 5:00 pm, sabado y domingo 9:00 am a 3:00 pm<br>
     Recuerda que del 1 al 7 de mes se realizan los pagos correctamente, posterior a eso se cobrarán cargos por costo de reconexión.
   </div>

@@ -70,7 +70,10 @@
         request()->routeIs('contrataciones.clientes.*') ||
         request()->routeIs('tecnico.clientes.*');
 
-    $pagosActive = request()->routeIs('admin.pagos.*');
+    $pagosActive = request()->routeIs('admin.pagos.*') && 
+                   !request()->routeIs('admin.pagos.rosalito.history') &&
+                   !request()->routeIs('admin.pagos.chivato.history') &&
+                   !request()->routeIs('admin.pagos.pozo-hondo.history');
     $recibosActive = request()->routeIs('pagos.recibos*');
     $cortePagosActive = request()->routeIs('pagos.corte') || request()->routeIs('pagos.corte.*');
     $cortesPagosActive = request()->routeIs('pagos.cortes*');

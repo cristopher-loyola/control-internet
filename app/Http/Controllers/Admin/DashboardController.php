@@ -685,11 +685,10 @@ class DashboardController extends Controller
      */
     public function rosalitoPaymentsHistory(Request $request)
     {
-        $pagos = DB::table('facturas as f')
+        $query = DB::table('facturas as f')
             ->join('users as u', 'f.created_by', '=', 'u.id')
             ->where('f.deleted_at', null)
             ->where('u.role', 'rosalito')
-            ->orderBy('f.created_at', 'desc')
             ->select([
                 'f.id',
                 'f.numero_servicio',
@@ -697,8 +696,19 @@ class DashboardController extends Controller
                 'f.created_at',
                 'f.payload',
                 'u.name as cajero'
-            ])
-            ->paginate(50);
+            ]);
+
+        // Filtrar por número de folio si se proporciona
+        if ($request->filled('folio')) {
+            $query->where('f.id', $request->input('folio'));
+        }
+
+        // Filtrar por número de servicio si se proporciona
+        if ($request->filled('servicio')) {
+            $query->where('f.numero_servicio', $request->input('servicio'));
+        }
+
+        $pagos = $query->orderBy('f.created_at', 'desc')->paginate(50);
 
         return view('admin.payments.rosalito-history', compact('pagos'));
     }
@@ -708,11 +718,10 @@ class DashboardController extends Controller
      */
     public function chivatoPaymentsHistory(Request $request)
     {
-        $pagos = DB::table('facturas as f')
+        $query = DB::table('facturas as f')
             ->join('users as u', 'f.created_by', '=', 'u.id')
             ->where('f.deleted_at', null)
             ->where('u.role', 'chivato')
-            ->orderBy('f.created_at', 'desc')
             ->select([
                 'f.id',
                 'f.numero_servicio',
@@ -720,8 +729,19 @@ class DashboardController extends Controller
                 'f.created_at',
                 'f.payload',
                 'u.name as cajero'
-            ])
-            ->paginate(50);
+            ]);
+
+        // Filtrar por número de folio si se proporciona
+        if ($request->filled('folio')) {
+            $query->where('f.id', $request->input('folio'));
+        }
+
+        // Filtrar por número de servicio si se proporciona
+        if ($request->filled('servicio')) {
+            $query->where('f.numero_servicio', $request->input('servicio'));
+        }
+
+        $pagos = $query->orderBy('f.created_at', 'desc')->paginate(50);
 
         return view('admin.payments.chivato-history', compact('pagos'));
     }
@@ -731,11 +751,10 @@ class DashboardController extends Controller
      */
     public function pozoHondoPaymentsHistory(Request $request)
     {
-        $pagos = DB::table('facturas as f')
+        $query = DB::table('facturas as f')
             ->join('users as u', 'f.created_by', '=', 'u.id')
             ->where('f.deleted_at', null)
             ->where('u.role', 'pozo_hondo')
-            ->orderBy('f.created_at', 'desc')
             ->select([
                 'f.id',
                 'f.numero_servicio',
@@ -743,8 +762,19 @@ class DashboardController extends Controller
                 'f.created_at',
                 'f.payload',
                 'u.name as cajero'
-            ])
-            ->paginate(50);
+            ]);
+
+        // Filtrar por número de folio si se proporciona
+        if ($request->filled('folio')) {
+            $query->where('f.id', $request->input('folio'));
+        }
+
+        // Filtrar por número de servicio si se proporciona
+        if ($request->filled('servicio')) {
+            $query->where('f.numero_servicio', $request->input('servicio'));
+        }
+
+        $pagos = $query->orderBy('f.created_at', 'desc')->paginate(50);
 
         return view('admin.payments.pozo-hondo-history', compact('pagos'));
     }
