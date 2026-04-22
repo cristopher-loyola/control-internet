@@ -72,7 +72,6 @@ class PozoHondoController extends Controller
         }
 
         $pagos = $query->orderByDesc('created_at')
-            ->limit(100)
             ->get(['id', 'reference_number', 'numero_servicio', 'periodo', 'total', 'payload', 'created_at', 'corte_caja_id']);
 
         $items = $pagos->map(function ($f) {
@@ -123,7 +122,6 @@ class PozoHondoController extends Controller
                 $q->where('role', 'pozo_hondo');
             })
             ->orderByDesc('created_at')
-            ->limit(100)
             ->get(['id', 'reference_number', 'numero_servicio', 'periodo', 'total', 'payload', 'created_at', 'deleted_at']);
 
         $items = $pagos->map(function ($f) {
@@ -802,11 +800,12 @@ class PozoHondoController extends Controller
                 h2 { font-family: Arial, Helvetica, sans-serif; }
             </style></head><body>';
 
-            // Calcular reconexiones (pagos después del día 7 del mes = $50 de comisión)
+            // Calcular reconexiones (solo si hay recargos en el pago)
             $comisionReconexion = 0;
             foreach ($facturas as $f) {
-                $diaPago = (int) $f->created_at->format('j');
-                if ($diaPago >= 8) {
+                $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+                $recargoCobrado = isset($payload['recargo']) && $payload['recargo'] === 'si';
+                if ($recargoCobrado) {
                     $comisionReconexion += 50;
                 }
             }
@@ -850,9 +849,9 @@ class PozoHondoController extends Controller
                 $cobro = is_array($payload) ? ($payload['cobro'] ?? '-') : '-';
                 $folio = str_pad((string) $f->reference_number, 8, '0', STR_PAD_LEFT);
 
-                // Calcular comisión por reconexión
-                $diaPago = (int) $f->created_at->format('j');
-                $comisionPago = ($diaPago >= 8) ? 50 : 0;
+                // Calcular comisión por reconexión (solo si hay recargo en el pago)
+                $recargoCobrado = isset($payload['recargo']) && $payload['recargo'] === 'si';
+                $comisionPago = $recargoCobrado ? 50 : 0;
 
                 echo '<tr>';
                 echo '<td class="text">' . htmlspecialchars($folio) . '</td>';
