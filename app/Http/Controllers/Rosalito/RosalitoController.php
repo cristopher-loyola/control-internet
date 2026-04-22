@@ -111,6 +111,7 @@ class RosalitoController extends Controller
             'corteActivo' => $corteActivo,
             'totalComisionReconexion' => $totalComisionReconexion,
             'totalComisionRecibo' => $totalComisionRecibo,
+            'cobrador' => $user->name,
         ]);
     }
 

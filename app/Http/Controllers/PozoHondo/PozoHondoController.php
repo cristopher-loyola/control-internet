@@ -111,6 +111,7 @@ class PozoHondoController extends Controller
             'fechaFin' => $fechaFin,
             'totalComisionReconexion' => $totalComisionReconexion,
             'totalComisionRecibo' => $totalComisionRecibo,
+            'cobrador' => $user->name,
         ]);
     }
 

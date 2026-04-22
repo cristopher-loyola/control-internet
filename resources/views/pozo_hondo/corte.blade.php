@@ -186,10 +186,19 @@
                                 </p>
                             </div>
                         </div>
-                        <div class="p-3 bg-green-100 rounded-lg">
-                            <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
+                        <div class="flex flex-col gap-2">
+                            <div class="p-3 bg-green-100 rounded-lg">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <button onclick="imprimirTicketTermico()" 
+                                class="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                title="Imprimir ticket térmico">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                </svg>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -197,3 +206,91 @@
         </div>
     </div>
 </x-app-sidebar>
+
+<script>
+function imprimirTicketTermico() {
+  const totalCaja          = {{ $pagos->sum('total') }};
+  const comisionRecibo     = {{ $totalComisionRecibo }};
+  const comisionReconexion = {{ $totalComisionReconexion }};
+  const totalEntregar      = totalCaja - comisionRecibo - comisionReconexion;
+  const numPagos           = {{ $pagos->count() }};
+  const cobrador           = "{{ $cobrador }}";
+
+  const zona  = 'POZO HONDO';
+  const fecha = new Date().toLocaleString('es-MX', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+  const fmt = n => '$' + n.toFixed(2)
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+  const html = `
+  <html><head><meta charset="UTF-8">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box }
+    body {
+      font-family: 'Courier New', monospace;
+      font-size: 10px; color: #111;
+      padding: 8px 6px; width: 200px;
+    }
+    .center { text-align: center }
+    .right  { text-align: right }
+    table   { width: 100%; border-collapse: collapse }
+    td      { padding: 2px 0 }
+    .lbl    { color: #666; font-size: 9px }
+    .muted  { color: #999; font-size: 8px }
+    .bold   { font-weight: bold }
+    .total  { font-size: 12px; font-weight: bold }
+    .dash   { border-top: 1px dashed #bbb; margin: 4px 0 }
+    .solid  { border-top: 1px solid #222; margin: 4px 0 }
+    .footer { font-size: 7px; color: #aaa; letter-spacing: 1px }
+  </style></head><body>
+
+  <div class="center">
+    <div class="bold" style="font-size:12px">TICKET DE CORTE</div>
+    <div style="font-size:9px;letter-spacing:1px;color:#555">${zona}</div>
+  </div>
+
+  <hr class="dash">
+
+  <table>
+    <tr><td class="lbl">Fecha</td>
+        <td class="right">${fecha}</td></tr>
+    <tr><td class="lbl">Cobrador</td>
+        <td class="right bold">${cobrador}</td></tr>
+    <tr><td class="lbl">N° de pagos</td>
+        <td class="right bold">${numPagos}</td></tr>
+  </table>
+
+  <hr class="dash">
+
+  <table>
+    <tr><td class="lbl">Total recaudado</td>
+        <td class="right">${fmt(totalCaja)}</td></tr>
+    <tr><td class="muted">(-) Comisión recibo</td>
+        <td class="right muted">${fmt(comisionRecibo)}</td></tr>
+    ${comisionReconexion > 0 ? `
+    <tr><td class="muted">(-) Comisión reconexión</td>
+        <td class="right muted">${fmt(comisionReconexion)}</td></tr>
+    ` : ''}
+  </table>
+
+  <hr class="solid">
+
+  <table>
+    <tr><td class="bold">TOTAL A ENTREGAR</td>
+        <td class="right total">${fmt(totalEntregar)}</td></tr>
+  </table>
+
+  <hr class="dash">
+
+  <div class="center footer">--- FIN DEL TICKET ---</div>
+
+  </body></html>`;
+
+  const w = window.open('', '_blank', 'width=240,height=400,toolbar=0');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => { w.print(); w.close(); }, 600);
+}
+</script>
