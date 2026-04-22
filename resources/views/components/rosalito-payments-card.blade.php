@@ -6,7 +6,7 @@
             <div class="text-lg font-bold text-gray-800 dark:text-white mt-0.5">Pagos de Rosalito</div>
         </div>
         <div class="flex items-center gap-2">
-            <a href="{{ route('admin.pagos.rosalito.history') }}" class="inline-flex items-center justify-center px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors duration-200">
+            <a href="{{ route('pagos.rosalito.history') }}" class="inline-flex items-center justify-center px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors duration-200 no-underline">
                 Ver historial
             </a>
             <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background:rgba(59,130,246,0.12);">

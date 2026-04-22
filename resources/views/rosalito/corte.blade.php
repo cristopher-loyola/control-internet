@@ -232,25 +232,25 @@ function imprimirTicketTermico() {
     * { margin:0; padding:0; box-sizing:border-box }
     body {
       font-family: 'Courier New', monospace;
-      font-size: 10px; color: #111;
+      font-size: 10px; color: #000;
       padding: 8px 6px; width: 200px;
     }
     .center { text-align: center }
     .right  { text-align: right }
     table   { width: 100%; border-collapse: collapse }
     td      { padding: 2px 0 }
-    .lbl    { color: #666; font-size: 9px }
-    .muted  { color: #999; font-size: 8px }
+    .lbl    { color: #000; font-size: 9px; font-weight: bold }
+    .muted  { color: #000; font-size: 8px }
     .bold   { font-weight: bold }
     .total  { font-size: 12px; font-weight: bold }
-    .dash   { border-top: 1px dashed #bbb; margin: 4px 0 }
-    .solid  { border-top: 1px solid #222; margin: 4px 0 }
-    .footer { font-size: 7px; color: #aaa; letter-spacing: 1px }
+    .dash   { border-top: 1px solid #000; margin: 4px 0 }
+    .solid  { border-top: 2px solid #000; margin: 4px 0 }
+    .footer { font-size: 7px; color: #000; letter-spacing: 1px; font-weight: bold }
   </style></head><body>
 
   <div class="center">
     <div class="bold" style="font-size:12px">TICKET DE CORTE</div>
-    <div style="font-size:9px;letter-spacing:1px;color:#555">${zona}</div>
+    <div style="font-size:9px;letter-spacing:1px;color:#000;font-weight:bold">${zona}</div>
   </div>
 
   <hr class="dash">
@@ -269,11 +269,11 @@ function imprimirTicketTermico() {
   <table>
     <tr><td class="lbl">Total en caja</td>
         <td class="right">${fmt(totalCaja)}</td></tr>
-    <tr><td class="muted">(-) Comisión recibo</td>
-        <td class="right muted">${fmt(comisionRecibo)}</td></tr>
+    <tr><td class="lbl">(-) Comisión recibo</td>
+        <td class="right">${fmt(comisionRecibo)}</td></tr>
     ${comisionReconexion > 0 ? `
-    <tr><td class="muted">(-) Comisión reconexión</td>
-        <td class="right muted">${fmt(comisionReconexion)}</td></tr>
+    <tr><td class="lbl">(-) Comisión reconexión</td>
+        <td class="right">${fmt(comisionReconexion)}</td></tr>
     ` : ''}
   </table>
 
@@ -283,10 +283,6 @@ function imprimirTicketTermico() {
     <tr><td class="bold">TOTAL A ENTREGAR</td>
         <td class="right total">${fmt(totalEntregar)}</td></tr>
   </table>
-
-  <hr class="dash">
-
-  <div class="center footer">--- FIN DEL TICKET ---</div>
 
   </body></html>`;
 

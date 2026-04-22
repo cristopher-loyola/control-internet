@@ -61,6 +61,11 @@ Route::middleware(['auth', 'role:pagos'])
         Route::get('/recibos/historial/export', [PagosController::class, 'recibosHistorialExport'])->name('recibos.historial.export');
         Route::post('/recibos/facturas/{id}/cancel', [PagosController::class, 'recibosFacturaCancel'])->name('recibos.facturas.cancel');
 
+        // Historial de pagos por ubicación
+        Route::get('/rosalito', [DashboardController::class, 'rosalitoPaymentsHistory'])->name('rosalito.history');
+        Route::get('/chivato', [DashboardController::class, 'chivatoPaymentsHistory'])->name('chivato.history');
+        Route::get('/pozo-hondo', [DashboardController::class, 'pozoHondoPaymentsHistory'])->name('pozo-hondo.history');
+
         // Configuración de pago anticipado (consumido por la UI de pagos)
         Route::get('/prepay-settings', [PagosController::class, 'prepaySettings'])->name('prepay.settings');
         Route::get('/create', [PagosController::class, 'create'])->name('create');

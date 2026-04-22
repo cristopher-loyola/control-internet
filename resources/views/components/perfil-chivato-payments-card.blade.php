@@ -6,7 +6,7 @@
             <div class="text-lg font-bold text-gray-800 dark:text-white mt-0.5">Pagos de Perfil Chivato</div>
         </div>
         <div class="flex items-center gap-2">
-            <a href="{{ route('admin.pagos.chivato.history') }}" class="inline-flex items-center justify-center px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded transition-colors duration-200">
+            <a href="{{ route('pagos.chivato.history') }}" class="inline-flex items-center justify-center px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-medium rounded transition-colors duration-200 no-underline">
                 Ver historial
             </a>
             <div class="w-9 h-9 rounded-full flex items-center justify-center" style="background:rgba(16,185,129,0.12);">
