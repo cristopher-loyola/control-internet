@@ -160,6 +160,10 @@ class PozoHondoController extends Controller
         }
         
         // Soft delete
+        if ($factura->fingerprint) {
+            $factura->fingerprint = substr($factura->fingerprint, 0, 40).'_can_'.now()->timestamp;
+            $factura->save();
+        }
         $factura->delete();
         
         return redirect()->route('pozo_hondo.historial')->with('success', 'Pago eliminado correctamente.');

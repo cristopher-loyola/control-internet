@@ -1,0 +1,1 @@
+<?php foreach(\App\Models\Factura::onlyTrashed()->whereNotNull("fingerprint")->get() as $f) { if (strlen($f->fingerprint) == 64) { $f->fingerprint = substr($f->fingerprint, 0, 40) . "_can_" . time(); $f->save(); echo "Fixed " . $f->id . "\n"; } }
