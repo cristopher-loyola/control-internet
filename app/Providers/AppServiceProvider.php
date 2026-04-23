@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
+use App\Helpers\RouteHelper;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -19,6 +20,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Registrar helper para usar en Blade
+        \Blade::directive('historyRoute', function ($expression) {
+            return "<?php echo \\App\\Helpers\\RouteHelper::historyRoute({$expression}); ?>";
+        });
+
+        \Blade::directive('dashboardRoute', function () {
+            return "<?php echo \\App\\Helpers\\RouteHelper::dashboardRoute(); ?>";
+        });
     }
 }

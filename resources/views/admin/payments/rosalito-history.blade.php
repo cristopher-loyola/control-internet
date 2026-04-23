@@ -13,7 +13,7 @@
                         <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
                             Pagos realizados por Rosalito
                         </h3>
-                        <a href="{{ route('pagos.index') }}" class="btn btn-secondary">
+                        <a href="@dashboardRoute()" class="btn btn-secondary">
                             Volver al Dashboard
                         </a>
                     </div>

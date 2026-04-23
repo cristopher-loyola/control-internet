@@ -681,102 +681,69 @@ class DashboardController extends Controller
     }
 
     /**
-     * Historial de pagos de Rosalito
+     * Historial de pagos genérico por ubicación
+     */
+    public function paymentsHistory(Request $request, string $location)
+    {
+        // Mapeo de ubicaciones a roles de usuario
+        $roleMap = [
+            'rosalito' => 'rosalito',
+            'chivato' => 'chivato',
+            'pozo-hondo' => 'pozo_hondo'
+        ];
+
+        $role = $roleMap[$location] ?? $location;
+
+        $query = DB::table('facturas as f')
+            ->join('users as u', 'f.created_by', '=', 'u.id')
+            ->where('f.deleted_at', null)
+            ->where('u.role', $role)
+            ->select([
+                'f.id',
+                'f.numero_servicio',
+                'f.total',
+                'f.created_at',
+                'f.payload',
+                'u.name as cajero'
+            ]);
+
+        // Filtrar por número de folio si se proporciona
+        if ($request->filled('folio')) {
+            $query->where('f.id', $request->input('folio'));
+        }
+
+        // Filtrar por número de servicio si se proporciona
+        if ($request->filled('servicio')) {
+            $query->where('f.numero_servicio', $request->input('servicio'));
+        }
+
+        $pagos = $query->orderBy('f.created_at', 'desc')->paginate(50);
+
+        return view('payments.history', compact('pagos', 'location'));
+    }
+
+    /**
+     * Historial de pagos de Rosalito (Método de compatibilidad)
      */
     public function rosalitoPaymentsHistory(Request $request)
     {
-        $query = DB::table('facturas as f')
-            ->join('users as u', 'f.created_by', '=', 'u.id')
-            ->where('f.deleted_at', null)
-            ->where('u.role', 'rosalito')
-            ->select([
-                'f.id',
-                'f.numero_servicio',
-                'f.total',
-                'f.created_at',
-                'f.payload',
-                'u.name as cajero'
-            ]);
-
-        // Filtrar por número de folio si se proporciona
-        if ($request->filled('folio')) {
-            $query->where('f.id', $request->input('folio'));
-        }
-
-        // Filtrar por número de servicio si se proporciona
-        if ($request->filled('servicio')) {
-            $query->where('f.numero_servicio', $request->input('servicio'));
-        }
-
-        $pagos = $query->orderBy('f.created_at', 'desc')->paginate(50);
-
-        return view('admin.payments.rosalito-history', compact('pagos'));
+        return $this->paymentsHistory($request, 'rosalito');
     }
 
     /**
-     * Historial de pagos de Chivato
+     * Historial de pagos de Chivato (Método de compatibilidad)
      */
     public function chivatoPaymentsHistory(Request $request)
     {
-        $query = DB::table('facturas as f')
-            ->join('users as u', 'f.created_by', '=', 'u.id')
-            ->where('f.deleted_at', null)
-            ->where('u.role', 'chivato')
-            ->select([
-                'f.id',
-                'f.numero_servicio',
-                'f.total',
-                'f.created_at',
-                'f.payload',
-                'u.name as cajero'
-            ]);
-
-        // Filtrar por número de folio si se proporciona
-        if ($request->filled('folio')) {
-            $query->where('f.id', $request->input('folio'));
-        }
-
-        // Filtrar por número de servicio si se proporciona
-        if ($request->filled('servicio')) {
-            $query->where('f.numero_servicio', $request->input('servicio'));
-        }
-
-        $pagos = $query->orderBy('f.created_at', 'desc')->paginate(50);
-
-        return view('admin.payments.chivato-history', compact('pagos'));
+        return $this->paymentsHistory($request, 'chivato');
     }
 
     /**
-     * Historial de pagos de Pozo Hondo
+     * Historial de pagos de Pozo Hondo (Método de compatibilidad)
      */
     public function pozoHondoPaymentsHistory(Request $request)
     {
-        $query = DB::table('facturas as f')
-            ->join('users as u', 'f.created_by', '=', 'u.id')
-            ->where('f.deleted_at', null)
-            ->where('u.role', 'pozo_hondo')
-            ->select([
-                'f.id',
-                'f.numero_servicio',
-                'f.total',
-                'f.created_at',
-                'f.payload',
-                'u.name as cajero'
-            ]);
-
-        // Filtrar por número de folio si se proporciona
-        if ($request->filled('folio')) {
-            $query->where('f.id', $request->input('folio'));
-        }
-
-        // Filtrar por número de servicio si se proporciona
-        if ($request->filled('servicio')) {
-            $query->where('f.numero_servicio', $request->input('servicio'));
-        }
-
-        $pagos = $query->orderBy('f.created_at', 'desc')->paginate(50);
-
-        return view('admin.payments.pozo-hondo-history', compact('pagos'));
+        return $this->paymentsHistory($request, 'pozo-hondo');
     }
 
     public function corteCaja(Request $request)

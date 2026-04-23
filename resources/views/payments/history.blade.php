@@ -1,7 +1,7 @@
-<x-app-layout title="Historial de Pagos - Pozo Hondo">
+<x-app-layout title="Historial de Pagos - {{ ucfirst($location) }}">
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-white leading-tight">
-            Historial de Pagos - Pozo Hondo
+            Historial de Pagos - {{ ucfirst($location) }}
         </h2>
     </x-slot>
 
@@ -11,16 +11,16 @@
                 <div class="px-4 py-5 sm:p-6">
                     <div class="flex items-center justify-between mb-6">
                         <h3 class="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                            Pagos realizados por Pozo Hondo
+                            Pagos realizados por {{ ucfirst($location) }}
                         </h3>
-                        <a href="@dashboardRoute()" class="btn btn-secondary">
+                        <a href="{{ \App\Helpers\RouteHelper::dashboardRoute() }}" class="btn btn-secondary">
                             Volver al Dashboard
                         </a>
                     </div>
 
                     <!-- Formulario de búsqueda por folio y número de servicio -->
                     <div class="mb-6 bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
-                        <form method="GET" action="{{ route('admin.pagos.pozo-hondo.history') }}">
+                        <form method="GET" action="{{ \App\Helpers\RouteHelper::historyRoute($location) }}">
                             <div class="flex flex-col md:flex-row gap-4 items-end">
                                 <div class="flex-1">
                                     <label for="folio" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -53,7 +53,7 @@
                                         Buscar
                                     </button>
                                     @if(request('folio') || request('servicio'))
-                                        <a href="{{ route('admin.pagos.pozo-hondo.history') }}" class="px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap">
+                                        <a href="{{ \App\Helpers\RouteHelper::historyRoute($location) }}" class="px-6 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 whitespace-nowrap">
                                             Limpiar
                                         </a>
                                     @endif
@@ -105,7 +105,7 @@
                                 @empty
                                     <tr>
                                         <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500 dark:text-gray-400">
-                                            No se encontraron pagos realizados por Pozo Hondo
+                                            No se encontraron pagos realizados por {{ ucfirst($location) }}
                                         </td>
                                     </tr>
                                 @endforelse
