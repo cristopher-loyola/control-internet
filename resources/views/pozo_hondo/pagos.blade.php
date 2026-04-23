@@ -1112,11 +1112,8 @@ html,body{ margin:0; padding:0 }
   <div class="line"><div class="l">ID</div><div>${id}</div></div>
   <div class="line"><div class="l">Nombre</div><div>${nombre}</div></div>
   <div class="line"><div class="l">Mes</div><div>${mes}</div></div>
-  <div class="line"><div class="l">Otros</div><div>${otros}</div></div>
   <div class="line"><div class="l">Importe</div><div>${importe}</div></div>
-  <div class="line"><div class="l">Descuento</div><div>${this.appliedDiscount > 0 ? this.moneda(this.appliedDiscount) : '—'}</div></div>
   <div class="line"><div class="l">Recargo</div><div>${recargo}</div></div>
-  <div class="line"><div class="l">Pago por adelantado</div><div>${prepayLabel}</div></div>
   <div class="sep"></div>
   ${adeudoLine}
   ${adeudoPeriodoLine}
