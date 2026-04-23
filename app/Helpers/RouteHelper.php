@@ -12,6 +12,18 @@ class RouteHelper
     public static function historyRoute(string $location): string
     {
         $role = auth()->user()->role ?? 'admin';
+        
+        // Casos especiales donde la ruta no sigue el patrón estándar
+        if ($role === 'admin' && in_array($location, ['rosalito', 'chivato', 'pozo_hondo'])) {
+            $routeName = $location === 'pozo_hondo' ? 'pagos.pozo-hondo.history' : "pagos.{$location}.history";
+            return route($routeName);
+        }
+        
+        // Para perfiles específicos, usar su propia ruta de historial
+        if (in_array($role, ['rosalito', 'chivato', 'pozo_hondo']) && $location === $role) {
+            return route("{$role}.historial");
+        }
+        
         return route("{$role}.{$location}.history");
     }
 

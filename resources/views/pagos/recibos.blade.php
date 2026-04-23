@@ -155,8 +155,8 @@
     </div>
 
     <button class="btn btn-primary w-full shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150" @click="metodoValido() && openConfirm('ticket')">🧾 Imprimir Ticket</button>
-
-    <button class="btn btn-danger w-full shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150" @click="metodoValido() && openConfirm('receipt')">🖨️ Imprimir Recibo</button>
+<!-- para que aparezca el boton imprimir recibo solo quitar el display -->
+    <button style="display: none !important;" class="btn btn-danger w-full shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150" @click="metodoValido() && openConfirm('receipt')">🖨️ Imprimir Recibo</button>
 </div>
 </div>
 
