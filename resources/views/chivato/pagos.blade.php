@@ -1076,7 +1076,7 @@
                 const folio = this.refNumberPad();
                 const prepayLabel = this.form.prepay === 'si' ? 'SÍ' : 'NO';
                 const adeudoLine = (Number(this.adeudoCobro || 0) > 0) ? `<div class="line"><div class="l">Adeudo pendiente</div><div>${this.moneda(Number(this.adeudoCobro))}</div></div>` : '';
-                const adeudoPeriodoLine = (this.adeudo && Number(this.adeudo.meses||0) > 0) ? `<div class="line"><div class="l">Período adeudo</div><div style="max-width:42mm;text-align:right">${this.adeudoPeriodoLabel() || '—'}</div></div>` : '';
+                const adeudoPeriodoLine = (this.adeudo && Number(this.adeudo.meses||0) > 0) ? `<div class="line"><div class="l">Período adeudo</div><div style="max-width:42mm">${this.adeudoPeriodoLabel() || '—'}</div></div>` : '';
                 const saldoLine = (this.saldoDespues !== null) ? `<div class="line"><div class="l">Saldo pendiente</div><div>${this.moneda(Number(this.saldoDespues || 0))}</div></div>` : '';
                 const prepayLine = this.form.prepay === 'si' ? `<div class="line"><div class="l">Pago adelantado</div><div>${this.moneda(this.totales.prepay_total || 0)}</div></div><div class="line"><div class="l">Meses adelantados</div><div>${this.form.prepay_months} (hasta ${this.mesFinalCobertura(this.form.prepay_months)})</div></div><div class="sep"></div>` : '';
                 const discountLine = this.appliedDiscount > 0 ? `<div class="line"><div class="l">Descuento</div><div>${this.moneda(this.appliedDiscount)}</div></div>` : '';
@@ -1089,7 +1089,7 @@
 <style>
 @page{ size:80mm auto; margin:0 }
 html,body{ margin:0; padding:0 }
-.ticket{ width:76mm; max-width:76mm; padding:6px 8px; font-family: Arial, sans-serif; font-size:12px; color:#111 }
+.ticket{ width:72mm; max-width:72mm; margin:0 auto; padding:6px 4px; font-family: Arial, sans-serif; font-size:12px; color:#111 }
 .logo{ text-align:center; margin-bottom:6px }
 .logo img{ max-width:70mm; height:auto }
 .banner{ text-align:center; margin-top:8px }
@@ -1098,7 +1098,7 @@ html,body{ margin:0; padding:0 }
 .title{ font-weight:700; font-size:14px; margin:6px 0 }
 .line{ display:grid; grid-template-columns:auto 1fr; justify-content:space-between; gap:8px; margin:2px 0 }
 .line .l{ font-weight:600; white-space:nowrap }
-.line .l + div{ text-align:left; word-break:break-word; padding-left:4px }
+.line .l + div{ text-align:left !important; word-break:break-word; padding-left:4px }
 .sep{ border-top:1px dotted #555; margin:6px 0 }
 .folio{ font-weight:700; font-size:12px; margin-bottom:4px }
 .footer{ font-size:10px; font-weight:600; color:#555; margin-top:6px; padding-top:6px; border-top:1px solid #999; text-align:center }
