@@ -5,17 +5,23 @@ use App\Http\Controllers\Admin\CortesController;
 use App\Http\Controllers\Admin\DashboardController;
 use Illuminate\Support\Facades\Route;
 
+// Rutas de historial de pagos accesibles para admin y todos los perfiles de pago
+Route::middleware(['auth', 'role:admin,pagos,rosalito,chivato,pozo_hondo'])
+    ->prefix('admin')
+    ->name('pagos.')
+    ->group(function () {
+        Route::get('/pagos/rosalito', [DashboardController::class, 'rosalitoPaymentsHistory'])->name('rosalito.history');
+        Route::get('/pagos/chivato', [DashboardController::class, 'chivatoPaymentsHistory'])->name('chivato.history');
+        Route::get('/pagos/pozo-hondo', [DashboardController::class, 'pozoHondoPaymentsHistory'])->name('pozo-hondo.history');
+    });
+
 Route::middleware(['auth', 'role:admin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
         Route::get('/', [AdminController::class, 'index'])->name('index');
 
-        // Historial de pagos por ubicación
-        Route::get('/pagos/rosalito', [DashboardController::class, 'rosalitoPaymentsHistory'])->name('pagos.rosalito.history');
-        Route::get('/pagos/chivato', [DashboardController::class, 'chivatoPaymentsHistory'])->name('pagos.chivato.history');
-        Route::get('/pagos/pozo-hondo', [DashboardController::class, 'pozoHondoPaymentsHistory'])->name('pagos.pozo-hondo.history');
-
+        
         // Módulo de Cortes
         Route::get('/cortes', [CortesController::class, 'index'])->name('cortes.index');
         Route::get('/cortes/export/pdf', [CortesController::class, 'exportPdf'])->name('cortes.export.pdf');
