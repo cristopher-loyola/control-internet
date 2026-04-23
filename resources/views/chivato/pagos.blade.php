@@ -149,7 +149,7 @@
                         <div class="text-sm text-red-700">
                             <p class="mb-1">
                                 <strong>Cliente con adeudos:</strong>
-                                <span x-text="`Adeuda desde ${new Date(adeudo.desde_label).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })}`"></span>
+                                <span x-text="adeudo.desde_label && (adeudo.desde_label.toLowerCase().includes('adeuda') || adeudo.desde_label.toLowerCase().includes('abril')) ? adeudo.desde_label : `Adeuda desde ${adeudo.desde_label}`"></span>
                             </p>
                             <p class="mb-1">
                                 <strong>Total a pagar incluyendo adeudos:</strong>
