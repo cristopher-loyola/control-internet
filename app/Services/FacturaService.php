@@ -237,7 +237,7 @@ class FacturaService
     {
         return [
             'error' => false,
-            'total' => round((float) ($datos['payload']['total'] ?? 0), 2),
+            'total' => round((float) ($datos['request']->input('total', 0)), 2),
             'payload' => $datos['payload'],
         ];
     }
