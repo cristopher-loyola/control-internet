@@ -98,7 +98,6 @@
                                 <th class="px-4 py-3">Método</th>
                                 <th class="px-4 py-3">Quién cobró</th>
                                 <th class="px-4 py-3">Comisión Recibo</th>
-                                <th class="px-4 py-3">Comisión Rec.</th>
                                 <th class="px-4 py-3">Fecha</th>
                             </tr>
                         </thead>
@@ -120,15 +119,6 @@
                                         <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                             ${{ number_format($pago['comision_recibo'], 2) }}
                                         </span>
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        @if($pago['comision_reconexion'] > 0)
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                                ${{ number_format($pago['comision_reconexion'], 2) }}
-                                            </span>
-                                        @else
-                                            <span class="text-gray-400">-</span>
-                                        @endif
                                     </td>
                                     <td class="px-4 py-3">{{ $pago['fecha_formateada'] }}</td>
                                 </tr>
@@ -166,21 +156,10 @@
                                         {{ $pagos->count() }} recibo{{ $pagos->count() !== 1 ? 's' : '' }} cobrado{{ $pagos->count() !== 1 ? 's' : '' }}
                                     </p>
                                 </div>
-                                @if($totalComisionReconexion > 0)
-                                    <div class="mt-3 pt-3 border-t border-gray-200">
-                                        <p class="text-sm text-orange-600 font-medium">Comisión por Reconexión</p>
-                                        <p class="text-xl font-bold text-orange-600">
-                                            ${{ number_format($totalComisionReconexion, 2) }}
-                                        </p>
-                                        <p class="text-xs text-gray-500 mt-1">
-                                            $50 cuando se cobra recargo
-                                        </p>
-                                    </div>
-                                @endif
                                 <div class="mt-3 pt-3 border-t-2 border-gray-300">
                                     <p class="text-sm text-green-700 font-semibold">TOTAL A ENTREGAR</p>
                                     <p class="text-2xl font-bold text-green-700">
-                                        ${{ number_format($pagos->sum('total') - $totalComisionRecibo - $totalComisionReconexion, 2) }}
+                                        ${{ number_format($pagos->sum('total') - $totalComisionRecibo, 2) }}
                                     </p>
                                     <p class="text-xs text-gray-500 mt-1">
                                         Total recaudado menos comisiones
@@ -213,8 +192,7 @@
 function imprimirTicketTermico() {
   const totalCaja          = {{ $pagos->sum('total') }};
   const comisionRecibo     = {{ $totalComisionRecibo }};
-  const comisionReconexion = {{ $totalComisionReconexion }};
-  const totalEntregar      = totalCaja - comisionRecibo - comisionReconexion;
+  const totalEntregar      = totalCaja - comisionRecibo;
   const numPagos           = {{ $pagos->count() }};
   const cobrador           = "{{ $cobrador }}";
 
@@ -266,15 +244,10 @@ function imprimirTicketTermico() {
 
   <hr class="dash">
 
-  <table>
     <tr><td class="lbl">Total en caja</td>
         <td class="right">${fmt(totalCaja)}</td></tr>
     <tr><td class="lbl">(-) Comisión recibo</td>
         <td class="right">${fmt(comisionRecibo)}</td></tr>
-    ${comisionReconexion > 0 ? `
-    <tr><td class="lbl">(-) Comisión reconexión</td>
-        <td class="right">${fmt(comisionReconexion)}</td></tr>
-    ` : ''}
   </table>
 
   <hr class="solid">

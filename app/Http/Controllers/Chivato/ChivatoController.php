@@ -89,19 +89,17 @@ class ChivatoController extends Controller
                 'reference_number' => $f->reference_number,
                 'numero_servicio' => $f->numero_servicio,
                 'periodo' => $f->periodo,
-                'total' => (float) $f->total,
+                'total' => (float) $f->total - $comisionReconexion,
                 'metodo' => $payload['metodo'] ?? ($payload['pago_metodo'] ?? '-'),
                 'cobro' => $payload['cobro'] ?? '-',
                 'nombre' => $payload['nombre'] ?? '-',
                 'fecha' => $f->created_at ? $f->created_at->toDateTimeString() : null,
                 'fecha_formateada' => $f->created_at ? $f->created_at->format('d/m/Y H:i') : null,
-                'comision_reconexion' => $comisionReconexion,
                 'comision_recibo' => $comisionRecibo,
             ];
         });
 
         // Calcular totales de comisiones
-        $totalComisionReconexion = $items->sum('comision_reconexion');
         $totalComisionRecibo = $items->sum('comision_recibo');
 
         return view('chivato.corte', [
@@ -109,7 +107,6 @@ class ChivatoController extends Controller
             'fechaInicio' => $fechaInicio,
             'fechaFin' => $fechaFin,
             'corteActivo' => $corteActivo,
-            'totalComisionReconexion' => $totalComisionReconexion,
             'totalComisionRecibo' => $totalComisionRecibo,
             'cobrador' => $user->name,
         ]);
@@ -642,7 +639,11 @@ class ChivatoController extends Controller
             ->whereNull('deleted_at')
             ->get();
 
-        $totalRecaudado = $facturas->sum('total');
+        $totalRecaudado = $facturas->sum(function($f) {
+            $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+            $recargo = (isset($payload['recargo']) && $payload['recargo'] === 'si') ? 50 : 0;
+            return $f->total - $recargo;
+        });
         $totalPagos = $facturas->count();
 
         // Actualizar corte
@@ -744,7 +745,11 @@ class ChivatoController extends Controller
                 'id' => $corte->id,
                 'fecha_inicio' => $corte->fecha_inicio->toDateTimeString(),
                 'estado' => $corte->estado,
-                'total_recaudado' => $facturas->sum('total'),
+                'total_recaudado' => $facturas->sum(function($f) {
+                    $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+                    $recargo = (isset($payload['recargo']) && $payload['recargo'] === 'si') ? 50 : 0;
+                    return $f->total - $recargo;
+                }),
                 'total_pagos' => $facturas->count(),
             ],
         ]);
@@ -797,16 +802,6 @@ class ChivatoController extends Controller
                 h2 { font-family: Arial, Helvetica, sans-serif; }
             </style></head><body>';
 
-            // Calcular reconexiones (solo si hay recargos en el pago)
-            $comisionReconexion = 0;
-            foreach ($facturas as $f) {
-                $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
-                $recargoCobrado = isset($payload['recargo']) && $payload['recargo'] === 'si';
-                if ($recargoCobrado) {
-                    $comisionReconexion += 50;
-                }
-            }
-
             // Información del corte
             echo '<h2>Reporte de Corte de Caja - ' . htmlspecialchars($zonaNombre) . '</h2>';
             echo '<table style="margin-bottom: 15px;">';
@@ -815,12 +810,15 @@ class ChivatoController extends Controller
             echo '<tr><td><strong>Fecha de Inicio:</strong></td><td>' . $corte->fecha_inicio->format('d/m/Y H:i:s') . '</td></tr>';
             echo '<tr><td><strong>Total de Pagos:</strong></td><td>' . $facturas->count() . '</td></tr>';
             echo '<tr><td><strong>Total Recaudado:</strong></td><td class="money">' . number_format($facturas->sum('total'), 2, '.', '') . '</td></tr>';
-            $totalRecaudado = $facturas->sum('total');
+            $totalRecaudado = $facturas->sum(function($f) {
+                $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+                $recargo = (isset($payload['recargo']) && $payload['recargo'] === 'si') ? 50 : 0;
+                return $f->total - $recargo;
+            });
             $totalComisionRecibo = $facturas->count() * 10;
-            $totalAEntregar = $totalRecaudado - $totalComisionRecibo - $comisionReconexion;
+            $totalAEntregar = $totalRecaudado - $totalComisionRecibo;
 
             echo '<tr class="comision-recibo-row"><td><strong>Comisión por Recibo ($10 c/u):</strong></td><td class="money">' . number_format($totalComisionRecibo, 2, '.', '') . '</td></tr>';
-            echo '<tr class="comision-row"><td><strong>Comisión por Reconexión ($50 c/u):</strong></td><td class="money">' . number_format($comisionReconexion, 2, '.', '') . '</td></tr>';
             echo '<tr class="total-entregar-row"><td><strong>TOTAL A ENTREGAR:</strong></td><td class="money">' . number_format($totalAEntregar, 2, '.', '') . '</td></tr>';
             echo '</table>';
 
@@ -836,7 +834,6 @@ class ChivatoController extends Controller
                 <th>Método de Pago</th>
                 <th>Quién Cobró</th>
                 <th>Comisión Recibo</th>
-                <th>Comisión Reconexión</th>
             </tr></thead><tbody>';
 
             foreach ($facturas as $f) {
@@ -848,19 +845,20 @@ class ChivatoController extends Controller
 
                 // Calcular comisión por reconexión (solo si hay recargo en el pago)
                 $recargoCobrado = isset($payload['recargo']) && $payload['recargo'] === 'si';
-                $comisionPago = $recargoCobrado ? 50 : 0;
+
+                // Mostrar el monto sin el recargo
+                $montoMostrar = $f->total - ($recargoCobrado ? 50 : 0);
 
                 echo '<tr>';
                 echo '<td class="text">' . htmlspecialchars($folio) . '</td>';
-                echo '<td class="date">' . htmlspecialchars($f->created_at->format('d/m/Y H:i')) . '</td>';
+                echo '<td class="date">' . htmlspecialchars($f->created_at->format('d/m/Y H:i:s')) . '</td>';
                 echo '<td class="text">' . htmlspecialchars((string) $f->numero_servicio) . '</td>';
                 echo '<td>' . htmlspecialchars($nombre) . '</td>';
                 echo '<td class="text">' . htmlspecialchars($f->periodo) . '</td>';
-                echo '<td class="money">' . number_format((float) $f->total, 2, '.', '') . '</td>';
+                echo '<td class="money">' . number_format($montoMostrar, 2, '.', '') . '</td>';
                 echo '<td>' . htmlspecialchars($metodo) . '</td>';
                 echo '<td>' . htmlspecialchars($cobro) . '</td>';
                 echo '<td class="money">$10.00</td>';
-                echo '<td class="money">' . ($comisionPago > 0 ? '$50.00' : '-') . '</td>';
                 echo '</tr>';
             }
 
@@ -868,10 +866,9 @@ class ChivatoController extends Controller
             echo '</tbody><tfoot><tr class="total-row">';
             echo '<td class="text"></td>';
             echo '<td colspan="4" style="text-align: right;">TOTAL RECAUDADO:</td>';
-            echo '<td class="money">' . number_format($facturas->sum('total'), 2, '.', '') . '</td>';
+            echo '<td class="money">' . number_format($totalRecaudado, 2, '.', '') . '</td>';
             echo '<td colspan="2"></td>';
             echo '<td class="money">' . number_format($facturas->count() * 10, 2, '.', '') . '</td>';
-            echo '<td class="money">' . number_format($comisionReconexion, 2, '.', '') . '</td>';
             echo '</tr></tfoot></table>';
 
             echo '</body></html>';
