@@ -15,7 +15,14 @@ class TecnicoController extends Controller
 {
     public function index()
     {
-        return view('tecnico.index');
+        $q = trim('');
+        $tec = trim('');
+        
+        $clientes = Usuario::with(['estado', 'estatusServicio'])
+            ->orderBy('numero_servicio', 'asc')
+            ->paginate(50);
+            
+        return view('tecnico.clientes.index', compact('clientes'));
     }
 
     public function create()
