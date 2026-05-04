@@ -101,9 +101,7 @@
                             <tr>
                                 <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Número</th>
                                 <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nombre</th>
-                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Acción</th>
-                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Estatus en ese momento</th>
-                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha de registro</th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha de cancelación</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -111,23 +109,11 @@
                                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                                     <td class="px-4 py-3 font-semibold text-gray-900 dark:text-white">{{ $h->numero_servicio }}</td>
                                     <td class="px-4 py-3 text-gray-800 dark:text-gray-100">{{ $h->nombre_cliente }}</td>
-                                    <td class="px-4 py-3">
-                                        @if($h->accion === 'delete')
-                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 uppercase">Eliminado</span>
-                                        @else
-                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700 uppercase">Cambio Estatus</span>
-                                        @endif
-                                    </td>
-                                    <td class="px-4 py-3">
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">
-                                            {{ optional($h->estatusServicio)->nombre ?? 'N/A' }}
-                                        </span>
-                                    </td>
                                     <td class="px-4 py-3 text-gray-500">{{ optional($h->captured_at)->format('Y-m-d H:i') }}</td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="py-10 text-center text-gray-400 italic">Sin historial registrado</td>
+                                    <td colspan="3" class="py-10 text-center text-gray-400 italic">Sin historial registrado</td>
                                 </tr>
                             @endforelse
                         </tbody>
