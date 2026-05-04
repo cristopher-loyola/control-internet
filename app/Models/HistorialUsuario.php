@@ -32,6 +32,10 @@ class HistorialUsuario extends Model
         'fecha_contratacion',
     ];
 
+    protected $casts = [
+        'captured_at' => 'datetime',
+    ];
+
     public function estado()
     {
         return $this->belongsTo(Estado::class);

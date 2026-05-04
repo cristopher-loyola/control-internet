@@ -33,13 +33,23 @@ class DashboardController extends Controller
                 $q->whereIn('nombre', $cancelNames);
             })
             ->orderBy('updated_at', 'desc')
-            ->paginate(50);
+            ->paginate(50, ['*'], 'usuarios_page');
 
         $estados = \App\Models\Estado::query()
             ->whereIn('id', [1, 2])
             ->get();
 
-        return view('admin.usuarios_cancelados', compact('usuarios', 'estados'));
+        // Historial de todas las cancelaciones (desde el historial de usuarios)
+        $canceladoEstatusId = \App\Models\EstatusServicio::where('nombre', 'Cancelado')->value('id') ?: 3;
+        $historial = \App\Models\HistorialUsuario::with(['estado', 'estatusServicio'])
+            ->where(function($q) use ($canceladoEstatusId) {
+                $q->where('estatus_servicio_id', $canceladoEstatusId)
+                  ->orWhere('accion', 'delete');
+            })
+            ->orderBy('captured_at', 'desc')
+            ->paginate(50, ['*'], 'historial_page');
+
+        return view('admin.usuarios_cancelados', compact('usuarios', 'estados', 'historial'));
     }
 
     public function prepaySettings(Request $request)

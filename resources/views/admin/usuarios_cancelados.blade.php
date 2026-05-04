@@ -87,7 +87,53 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="mt-4">{{ $usuarios->links() }}</div>
+                <div class="mt-4">{{ $usuarios->appends(['historial_page' => $historial->currentPage()])->links() }}</div>
+            </div>
+
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-5 mt-8">
+                <div class="border-b border-gray-100 dark:border-gray-700 pb-3 mb-4">
+                    <div class="text-lg font-bold text-gray-800 dark:text-white">Historial de cancelaciones realizadas</div>
+                    <div class="text-xs text-gray-500 mt-1">Registros históricos de bajas y eliminaciones</div>
+                </div>
+                <div class="overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                        <thead class="bg-gray-50 dark:bg-gray-900">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Número</th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nombre</th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Acción</th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Estatus en ese momento</th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha de registro</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                            @forelse($historial as $h)
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                                    <td class="px-4 py-3 font-semibold text-gray-900 dark:text-white">{{ $h->numero_servicio }}</td>
+                                    <td class="px-4 py-3 text-gray-800 dark:text-gray-100">{{ $h->nombre_cliente }}</td>
+                                    <td class="px-4 py-3">
+                                        @if($h->accion === 'delete')
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 uppercase">Eliminado</span>
+                                        @else
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-100 text-orange-700 uppercase">Cambio Estatus</span>
+                                        @endif
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">
+                                            {{ optional($h->estatusServicio)->nombre ?? 'N/A' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3 text-gray-500">{{ optional($h->captured_at)->format('Y-m-d H:i') }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="py-10 text-center text-gray-400 italic">Sin historial registrado</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-4">{{ $historial->appends(['usuarios_page' => $usuarios->currentPage()])->links() }}</div>
             </div>
         </div>
     </div>
