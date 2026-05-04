@@ -1094,6 +1094,7 @@
                 }
                 const logo = '{{ asset('images/logo.png') }}';
                 const banner = '{{ asset('images/reportes.png') }}';
+                const cuenta = '{{ asset('images/cuenta.png') }}';
                 const nombre = this.datos.nombre || '—';
                 const id = this.form.numero || '—';
                 const mes = this.mesEnCursoCompleto();
@@ -1167,6 +1168,7 @@ Sábados y domingos de 9:00 a.m. a 3:00 p.m.
 Le recordamos que los pagos deben realizarse del día 1 al 7 de cada mes. Posterior a esta fecha, se aplicará un cargo adicional de $50.00 por pago tardío
   </div>
 
+  <div class="banner"><img src="${cuenta}" onerror="this.style.display='none'"></div>
   <div class="banner"><img src="${banner}" onerror="this.style.display='none'"></div>
 </div>
 </body>
