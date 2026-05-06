@@ -263,7 +263,7 @@ class FacturaService
      */
     private function procesarEdicionManual(array $datos, float &$total, array &$payload): ?array
     {
-        if (! ($datos['payload']['manual_total_enabled'] ?? false) || $datos['tipo'] === 'baja_temporal') {
+        if (! ($datos['payload']['manual_total_enabled'] ?? false)) {
             return null;
         }
 
