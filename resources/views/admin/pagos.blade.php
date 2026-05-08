@@ -45,14 +45,61 @@
 
             <div>
                 <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Método de pago</label>
-                <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                    x-model="form.metodo" :disabled="readOnlyMode" required @change="inputChanged(true)">
-                    <option value="">Selecciona...</option>
-                    <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
-                    <option value="Cheque">Cheque</option>
-                    <option value="Deposito a cuenta">Depósito a cuenta</option>
-                    <option value="Efectivo">Efectivo</option>
-                </select>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button type="button"
+                        class="inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        :class="form.metodo === 'Tarjeta de Crédito'
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow'
+                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:border-indigo-400'"
+                        :disabled="readOnlyMode"
+                        @click="form.metodo = 'Tarjeta de Crédito'; inputChanged(true)">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+                            <path d="M2 10h20"></path>
+                        </svg>
+                        <span>Tarjeta</span>
+                    </button>
+                    <button type="button"
+                        class="inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        :class="form.metodo === 'Cheque'
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow'
+                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:border-indigo-400'"
+                        :disabled="readOnlyMode"
+                        @click="form.metodo = 'Cheque'; inputChanged(true)">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="3" y="6" width="18" height="12" rx="2"></rect>
+                            <path d="M7 12h10"></path>
+                        </svg>
+                        <span>Cheque</span>
+                    </button>
+                    <button type="button"
+                        class="inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        :class="form.metodo === 'Deposito a cuenta'
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow'
+                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:border-indigo-400'"
+                        :disabled="readOnlyMode"
+                        @click="form.metodo = 'Deposito a cuenta'; inputChanged(true)">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 3v18"></path>
+                            <path d="M7 8h10"></path>
+                            <path d="M7 16h10"></path>
+                        </svg>
+                        <span>Depósito</span>
+                    </button>
+                    <button type="button"
+                        class="inline-flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-xs font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        :class="form.metodo === 'Efectivo'
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow'
+                            : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:border-indigo-400'"
+                        :disabled="readOnlyMode"
+                        @click="form.metodo = 'Efectivo'; inputChanged(true)">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                            <rect x="2" y="6" width="20" height="12" rx="2"></rect>
+                            <circle cx="12" cy="12" r="2.5"></circle>
+                        </svg>
+                        <span>Efectivo</span>
+                    </button>
+                </div>
             </div>
 
             <div class="col-span-2 grid grid-cols-3 gap-3">
