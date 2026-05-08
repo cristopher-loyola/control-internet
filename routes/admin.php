@@ -70,6 +70,8 @@ Route::middleware(['auth', 'role:admin'])
         Route::post('/clientes/editar', [AdminController::class, 'clientesEditStore'])->name('clientes.edit');
         Route::get('/clientes/historial/buscar', [AdminController::class, 'clientesHistorialBuscar'])->name('clientes.historial.buscar');
         Route::get('/clientes/numeros-disponibles', [AdminController::class, 'numerosDisponibles'])->name('clientes.numeros-disponibles');
+        Route::post('/clientes/numeros-disponibles/apartar', [AdminController::class, 'apartarNumero'])->name('clientes.numeros-disponibles.apartar');
+        Route::post('/clientes/numeros-disponibles/liberar', [AdminController::class, 'liberarNumero'])->name('clientes.numeros-disponibles.liberar');
         Route::get('/clientes/numeros-disponibles/export', [AdminController::class, 'exportNumerosDisponibles'])->name('clientes.numeros-disponibles.export');
         Route::get('/clientes/{id}', [AdminController::class, 'clientesShow'])->name('clientes.show');
         Route::get('/clientes/{numero}/historial', [AdminController::class, 'clientesHistorial'])->name('clientes.historial');

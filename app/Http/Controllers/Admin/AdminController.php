@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
 use App\Models\HistorialUsuario;
+use App\Models\NumeroApartado;
 use App\Models\Usuario;
 use App\Services\MegasAssigner;
 use App\Services\FacturaService;
@@ -576,38 +577,88 @@ class AdminController extends Controller
             ->pluck('numero_servicio')
             ->toArray();
 
-        // Filtrar números desocupados
-        $numerosDisponibles = array_diff($rangoCompleto, $numerosOcupados);
+        // Obtener números apartados en ese rango
+        $numerosApartados = NumeroApartado::whereBetween('numero_servicio', [$rangoInicio, $rangoFin])
+            ->pluck('numero_servicio')
+            ->toArray();
 
-        // Ordenar y convertir a colección
-        $numerosDisponibles = collect(array_values($numerosDisponibles))->sort();
+        // Filtrar números desocupados
+        $numerosDisponiblesRaw = array_diff($rangoCompleto, $numerosOcupados);
+
+        // Transformar a una estructura con estado
+        $numerosFinales = collect($numerosDisponiblesRaw)->map(function ($numero) use ($numerosApartados) {
+            return [
+                'numero' => $numero,
+                'esta_apartado' => in_array($numero, $numerosApartados),
+            ];
+        });
 
         // Búsqueda específica
         $busqueda = request('busqueda');
         if ($busqueda) {
-            $numerosDisponibles = $numerosDisponibles->filter(function ($numero) use ($busqueda) {
-                return str_contains($numero, $busqueda);
+            $numerosFinales = $numerosFinales->filter(function ($item) use ($busqueda) {
+                return str_contains((string) $item['numero'], $busqueda);
             });
         }
+
+        // Ordenar
+        $numerosFinales = $numerosFinales->sortBy('numero')->values();
 
         // Paginar resultados (20 por página para el modal)
         $page = request('page', 1);
         $perPage = 20;
         $offset = ($page - 1) * $perPage;
 
-        $numerosPaginados = $numerosDisponibles->slice($offset, $perPage);
+        $numerosPaginados = $numerosFinales->slice($offset, $perPage);
 
         return response()->json([
             'numeros' => $numerosPaginados->values(),
-            'total' => $numerosDisponibles->count(),
+            'total' => $numerosFinales->count(),
             'ultimoNumero' => $ultimoNumero,
             'rango_inicio' => $rangoInicio,
             'rango_fin' => $rangoFin,
             'current_page' => $page,
             'per_page' => $perPage,
-            'last_page' => ceil($numerosDisponibles->count() / $perPage),
+            'last_page' => ceil($numerosFinales->count() / $perPage),
             'busqueda' => $busqueda,
         ]);
+    }
+
+    public function apartarNumero(Request $request)
+    {
+        $request->validate([
+            'numero' => 'required|numeric',
+        ]);
+
+        $numero = $request->numero;
+
+        // Verificar si ya está ocupado por un usuario
+        if (Usuario::where('numero_servicio', $numero)->exists()) {
+            return response()->json(['message' => 'Este número ya está ocupado por un cliente.'], 422);
+        }
+
+        // Verificar si ya está apartado
+        if (NumeroApartado::where('numero_servicio', $numero)->exists()) {
+            return response()->json(['message' => 'Este número ya está apartado.'], 422);
+        }
+
+        NumeroApartado::create([
+            'numero_servicio' => $numero,
+            'user_id' => auth()->id(),
+        ]);
+
+        return response()->json(['message' => 'Número apartado correctamente.']);
+    }
+
+    public function liberarNumero(Request $request)
+    {
+        $request->validate([
+            'numero' => 'required|numeric',
+        ]);
+
+        NumeroApartado::where('numero_servicio', $request->numero)->delete();
+
+        return response()->json(['message' => 'Número liberado correctamente.']);
     }
 
     public function exportNumerosDisponibles()
@@ -630,6 +681,11 @@ class AdminController extends Controller
             ->pluck('numero_servicio')
             ->toArray();
 
+        // Obtener números apartados en ese rango
+        $numerosApartados = NumeroApartado::whereBetween('numero_servicio', [$rangoInicio, $rangoFin])
+            ->pluck('numero_servicio')
+            ->toArray();
+
         // Filtrar números desocupados
         $numerosDisponibles = array_diff($rangoCompleto, $numerosOcupados);
         $numerosDisponibles = array_values($numerosDisponibles);
@@ -641,7 +697,7 @@ class AdminController extends Controller
             'Cache-Control' => 'max-age=0',
         ];
 
-        $callback = function () use ($numerosDisponibles, $rangoInicio, $rangoFin) {
+        $callback = function () use ($numerosDisponibles, $numerosApartados, $rangoInicio, $rangoFin) {
             echo "\xEF\xBB\xBF";
             echo '<html><head><meta charset="utf-8">';
             echo '<style>
@@ -649,15 +705,17 @@ class AdminController extends Controller
             th,td{ border:1px solid #888; padding:6px 8px; font-family:Arial, Helvetica, sans-serif; font-size:11pt; }
             thead th{ background:#2e7d32; color:#fff; }
             .text{ mso-number-format:"\@"; }
+            .apartado{ color:#b45309; font-weight:bold; }
             </style></head><body>';
             echo '<h3>Números de Cliente Disponibles ('.$rangoInicio.' - '.$rangoFin.')</h3>';
             echo '<p>Total disponibles: '.count($numerosDisponibles).'</p>';
             echo '<table>';
             echo '<thead><tr><th>Número de Cliente</th><th>Estado</th></tr></thead><tbody>';
             foreach ($numerosDisponibles as $numero) {
+                $esApartado = in_array($numero, $numerosApartados);
                 echo '<tr>';
                 echo '<td class="text">'.htmlspecialchars((string) $numero).'</td>';
-                echo '<td>Disponible</td>';
+                echo '<td class="'.($esApartado ? 'apartado' : '').'">'.($esApartado ? 'Apartado' : 'Disponible').'</td>';
                 echo '</tr>';
             }
             echo '</tbody></table></body></html>';

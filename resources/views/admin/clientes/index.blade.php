@@ -5,164 +5,7 @@
         </h2>
     </x-slot>
 
-    <div class="py-12" x-data="{
-        selected: null,
-        isLoading: false,
-        numerosDisponibles: [],
-        numerosFiltrados: [],
-        totalDisponibles: 0,
-        ultimoNumero: 0,
-        current_page: 1,
-        last_page: 1,
-        busquedaNumero: '',
-        rangoInicio: 1000,
-        rangoFin: null,
-        busquedaActual: '',
-        isNuevoCliente: true,
-        deleteId: null,
-        createMegasReadonly: false,
-        editMegasReadonly: false,
-        form: { id: null, numero_servicio: '', nombre_cliente: '', domicilio: '', comunidad: '', telefono: '', uso: '', megas: '', tecnologia: '', dispositivo: '', tarifa: '', estado_id: '', estatus_servicio_id: '' },
-        selectRow(row) {
-            this.selected = row.id;
-            this.form = {
-                id: row.id,
-                numero_servicio: row.numero_servicio ?? '',
-                nombre_cliente: row.nombre_cliente ?? '',
-                domicilio: row.domicilio ?? '',
-                comunidad: row.comunidad ?? '',
-                telefono: row.telefono ?? '',
-                uso: row.uso ?? '',
-                megas: row.megas ?? '',
-                tecnologia: row.tecnologia ?? '',
-                dispositivo: row.dispositivo ?? '',
-                tarifa: row.tarifa ?? '',
-                estado_id: row.estado_id ?? '',
-                estatus_servicio_id: row.estatus_servicio_id ?? '',
-            };
-        },
-        parseCost(val) {
-            if (!val) return null;
-            if (typeof val === 'string') val = parseFloat(val);
-            return Math.round(val);
-        },
-        assignMegas(costo, tecnologia) {
-            const c = this.parseCost(costo);
-            const t = (tecnologia || '').toUpperCase();
-            const validC = [300, 400, 500, 600];
-            const validT = ['FOD', 'FOI', 'INA'];
-            if (!validC.includes(c) || !validT.includes(t)) return null;
-            const matrix = {
-                300: { FOD: 30, FOI: 20, INA: 12 },
-                400: { FOD: 50, FOI: 30, INA: 20 },
-                500: { FOD: 70, FOI: 40, INA: 30 },
-                600: { FOD: 100, FOI: 50, INA: 40 },
-            };
-            return matrix[c][t];
-        },
-        updateMegasCreate() {
-            const costo = this.$refs.createTarifa?.value;
-            const tec = this.$refs.createTecnologia?.value;
-            const m = this.assignMegas(costo, tec);
-            if (m !== null && this.$refs.createMegas) {
-                this.$refs.createMegas.value = m;
-                this.createMegasReadonly = true;
-            } else {
-                this.createMegasReadonly = false;
-            }
-        },
-        updateMegasEdit() {
-            const m = this.assignMegas(this.form.tarifa, this.form.tecnologia);
-            if (m !== null) {
-                this.form.megas = m;
-                this.editMegasReadonly = true;
-            } else {
-                this.editMegasReadonly = false;
-            }
-        },
-        openEdit() {
-            if (this.form.id) this.$dispatch('open-modal', 'admin-clientes-edit')
-        },
-        cargarNumerosDisponibles() {
-            const url = new URL('{{ route("admin.clientes.numeros-disponibles") }}', window.location.origin);
-            if (this.rangoInicio) url.searchParams.set('rango_inicio', this.rangoInicio);
-            if (this.rangoFin) url.searchParams.set('rango_fin', this.rangoFin);
-
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    this.numerosDisponibles = data.numeros;
-                    this.numerosFiltrados = [...data.numeros];
-                    this.totalDisponibles = data.total;
-                    this.ultimoNumero = data.ultimoNumero;
-                    this.rangoInicio = data.rango_inicio;
-                    this.rangoFin = data.rango_fin;
-                    this.current_page = data.current_page;
-                    this.last_page = data.last_page;
-                    this.busquedaActual = data.busqueda || '';
-                })
-                .catch(error => {
-                    console.error('Error al cargar números disponibles:', error);
-                });
-        },
-        copiarNumero(numero) {
-            navigator.clipboard.writeText(numero).then(() => {
-                Swal.fire({
-                    icon: 'success',
-                    title: '¡Copiado!',
-                    text: 'Número ' + numero + ' copiado al portapapeles',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
-            }).catch(err => {
-                console.error('Error al copiar:', err);
-            });
-        },
-        cargarPagina(page) {
-            const url = new URL('{{ route("admin.clientes.numeros-disponibles") }}', window.location.origin);
-            url.searchParams.set('page', page);
-            if (this.busquedaNumero) url.searchParams.set('busqueda', this.busquedaNumero);
-            if (this.rangoInicio) url.searchParams.set('rango_inicio', this.rangoInicio);
-            if (this.rangoFin) url.searchParams.set('rango_fin', this.rangoFin);
-            
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    this.numerosDisponibles = data.numeros;
-                    this.numerosFiltrados = [...data.numeros];
-                    this.totalDisponibles = data.total;
-                    this.ultimoNumero = data.ultimoNumero;
-                    this.current_page = data.current_page;
-                    this.last_page = data.last_page;
-                    this.busquedaActual = data.busqueda || '';
-                })
-                .catch(error => {
-                    console.error('Error al cargar números disponibles:', error);
-                });
-        },
-        filtrarNumeros() {
-            const url = new URL('{{ route("admin.clientes.numeros-disponibles") }}', window.location.origin);
-            if (this.busquedaNumero) url.searchParams.set('busqueda', this.busquedaNumero);
-            if (this.rangoInicio) url.searchParams.set('rango_inicio', this.rangoInicio);
-            if (this.rangoFin) url.searchParams.set('rango_fin', this.rangoFin);
-            url.searchParams.set('page', 1);
-            
-            fetch(url)
-                .then(response => response.json())
-                .then(data => {
-                    this.numerosDisponibles = data.numeros;
-                    this.numerosFiltrados = [...data.numeros];
-                    this.totalDisponibles = data.total;
-                    this.ultimoNumero = data.ultimoNumero;
-                    this.current_page = data.current_page;
-                    this.last_page = data.last_page;
-                    this.busquedaActual = data.busqueda || '';
-                })
-                .catch(error => {
-                    console.error('Error al filtrar números:', error);
-                });
-        }
-    }">
+    <div class="py-12" x-data="clientesAdminComponent()">
         <div class="max-w-none w-full mx-auto sm:px-4 lg:px-8">
         @if (session('import_report'))
             <div class="mb-4">
@@ -899,26 +742,57 @@
                                 </tr>
                             </thead>
                             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                <template x-for="(numero, index) in numerosFiltrados" :key="numero">
+                                <template x-for="(item, index) in numerosFiltrados" :key="item.numero">
                                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors" :class="index % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-700/20'">
                                         <td class="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">
                                             <span class="inline-flex items-center gap-1">
-                                                <svg class="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <svg x-show="!item.esta_apartado" class="w-3 h-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                                 </svg>
-                                                <span x-text="numero"></span>
+                                                <svg x-show="item.esta_apartado" class="w-3 h-3 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                                </svg>
+                                                <span x-text="item.numero" :class="item.esta_apartado ? 'text-yellow-600 dark:text-yellow-400' : ''"></span>
+                                                <span x-show="item.esta_apartado" class="ml-2 text-[10px] bg-yellow-100 text-yellow-800 px-1 rounded font-bold uppercase">Apartado</span>
                                             </span>
                                         </td>
                                         <td class="px-3 py-2 whitespace-nowrap text-sm text-center">
-                                            <button 
-                                                type="button" 
-                                                class="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
-                                                x-on:click="copiarNumero(numero)"
-                                            >
-                                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
-                                                </svg>
-                                            </button>
+                                            <div class="flex items-center justify-center gap-2">
+                                                <button 
+                                                    type="button" 
+                                                    class="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded transition-colors"
+                                                    x-on:click="copiarNumero(item.numero)"
+                                                    title="Copiar número"
+                                                >
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                                                    </svg>
+                                                </button>
+
+                                                <button 
+                                                    x-show="!item.esta_apartado"
+                                                    type="button" 
+                                                    class="inline-flex items-center gap-1 px-2 py-1 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-medium rounded transition-colors"
+                                                    x-on:click="apartarNumero(item.numero)"
+                                                    title="Apartar número"
+                                                >
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                                    </svg>
+                                                </button>
+
+                                                <button 
+                                                    x-show="item.esta_apartado"
+                                                    type="button" 
+                                                    class="inline-flex items-center gap-1 px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded transition-colors"
+                                                    x-on:click="liberarNumero(item.numero)"
+                                                    title="Liberar número"
+                                                >
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path>
+                                                    </svg>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 </template>
@@ -977,4 +851,231 @@
             </div>
         </x-modal>
     </div>
+
+    <script>
+        function clientesAdminComponent() {
+            return {
+                selected: null,
+                isLoading: false,
+                numerosDisponibles: [],
+                numerosFiltrados: [],
+                totalDisponibles: 0,
+                ultimoNumero: 0,
+                current_page: 1,
+                last_page: 1,
+                busquedaNumero: '',
+                rangoInicio: 1000,
+                rangoFin: null,
+                busquedaActual: '',
+                isNuevoCliente: true,
+                deleteId: null,
+                createMegasReadonly: false,
+                editMegasReadonly: false,
+                form: { id: null, numero_servicio: '', nombre_cliente: '', domicilio: '', comunidad: '', telefono: '', uso: '', megas: '', tecnologia: '', dispositivo: '', tarifa: '', estado_id: '', estatus_servicio_id: '' },
+                selectRow(row) {
+                    this.selected = row.id;
+                    this.form = {
+                        id: row.id,
+                        numero_servicio: row.numero_servicio ?? '',
+                        nombre_cliente: row.nombre_cliente ?? '',
+                        domicilio: row.domicilio ?? '',
+                        comunidad: row.comunidad ?? '',
+                        telefono: row.telefono ?? '',
+                        uso: row.uso ?? '',
+                        megas: row.megas ?? '',
+                        tecnologia: row.tecnologia ?? '',
+                        dispositivo: row.dispositivo ?? '',
+                        tarifa: row.tarifa ?? '',
+                        estado_id: row.estado_id ?? '',
+                        estatus_servicio_id: row.estatus_servicio_id ?? '',
+                    };
+                },
+                parseCost(val) {
+                    if (!val) return null;
+                    if (typeof val === 'string') val = parseFloat(val);
+                    return Math.round(val);
+                },
+                assignMegas(costo, tecnologia) {
+                    const c = this.parseCost(costo);
+                    const t = (tecnologia || '').toUpperCase();
+                    const validC = [300, 400, 500, 600];
+                    const validT = ['FOD', 'FOI', 'INA'];
+                    if (!validC.includes(c) || !validT.includes(t)) return null;
+                    const matrix = {
+                        300: { FOD: 30, FOI: 20, INA: 12 },
+                        400: { FOD: 50, FOI: 30, INA: 20 },
+                        500: { FOD: 70, FOI: 40, INA: 30 },
+                        600: { FOD: 100, FOI: 50, INA: 40 },
+                    };
+                    return matrix[c][t];
+                },
+                updateMegasCreate() {
+                    const costo = this.$refs.createTarifa?.value;
+                    const tec = this.$refs.createTecnologia?.value;
+                    const m = this.assignMegas(costo, tec);
+                    if (m !== null && this.$refs.createMegas) {
+                        this.$refs.createMegas.value = m;
+                        this.createMegasReadonly = true;
+                    } else {
+                        this.createMegasReadonly = false;
+                    }
+                },
+                updateMegasEdit() {
+                    const m = this.assignMegas(this.form.tarifa, this.form.tecnologia);
+                    if (m !== null) {
+                        this.form.megas = m;
+                        this.editMegasReadonly = true;
+                    } else {
+                        this.editMegasReadonly = false;
+                    }
+                },
+                openEdit() {
+                    if (this.form.id) this.$dispatch('open-modal', 'admin-clientes-edit')
+                },
+                cargarNumerosDisponibles() {
+                    const url = new URL('{{ route("admin.clientes.numeros-disponibles") }}', window.location.origin);
+                    if (this.rangoInicio) url.searchParams.set('rango_inicio', this.rangoInicio);
+                    if (this.rangoFin) url.searchParams.set('rango_fin', this.rangoFin);
+
+                    fetch(url)
+                        .then(response => response.json())
+                        .then(data => {
+                            this.numerosDisponibles = data.numeros;
+                            this.numerosFiltrados = [...data.numeros];
+                            this.totalDisponibles = data.total;
+                            this.ultimoNumero = data.ultimoNumero;
+                            this.rangoInicio = data.rango_inicio;
+                            this.rangoFin = data.rango_fin;
+                            this.current_page = data.current_page;
+                            this.last_page = data.last_page;
+                            this.busquedaActual = data.busqueda || '';
+                        })
+                        .catch(error => {
+                            console.error('Error al cargar números disponibles:', error);
+                        });
+                },
+                copiarNumero(numero) {
+                    navigator.clipboard.writeText(numero).then(() => {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '¡Copiado!',
+                            text: 'Número ' + numero + ' copiado al portapapeles',
+                            timer: 2000,
+                            showConfirmButton: false
+                        });
+                    }).catch(err => {
+                        console.error('Error al copiar:', err);
+                    });
+                },
+                apartarNumero(numero) {
+                    Swal.fire({
+                        title: '¿Deseas apartar este número?',
+                        text: "El número " + numero + " quedará reservado.",
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Sí, apartar',
+                        cancelButtonText: 'Cancelar'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            fetch('{{ route("admin.clientes.numeros-disponibles.apartar") }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                },
+                                body: JSON.stringify({ numero: numero })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                this.filtrarNumeros();
+                                Swal.fire('¡Apartado!', data.message, 'success');
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                Swal.fire('Error', 'No se pudo apartar el número', 'error');
+                            });
+                        }
+                    });
+                },
+                liberarNumero(numero) {
+                    Swal.fire({
+                        title: '¿Deseas liberar este número?',
+                        text: "El número " + numero + " volverá a estar disponible.",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33',
+                        confirmButtonText: 'Sí, liberar',
+                        cancelButtonText: 'Cancelar'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            fetch('{{ route("admin.clientes.numeros-disponibles.liberar") }}', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                                },
+                                body: JSON.stringify({ numero: numero })
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                this.filtrarNumeros();
+                                Swal.fire('¡Liberado!', data.message, 'success');
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                Swal.fire('Error', 'No se pudo liberar el número', 'error');
+                            });
+                        }
+                    });
+                },
+                cargarPagina(page) {
+                    const url = new URL('{{ route("admin.clientes.numeros-disponibles") }}', window.location.origin);
+                    url.searchParams.set('page', page);
+                    if (this.busquedaNumero) url.searchParams.set('busqueda', this.busquedaNumero);
+                    if (this.rangoInicio) url.searchParams.set('rango_inicio', this.rangoInicio);
+                    if (this.rangoFin) url.searchParams.set('rango_fin', this.rangoFin);
+                    
+                    fetch(url)
+                        .then(response => response.json())
+                        .then(data => {
+                            this.numerosDisponibles = data.numeros;
+                            this.numerosFiltrados = [...data.numeros];
+                            this.totalDisponibles = data.total;
+                            this.ultimoNumero = data.ultimoNumero;
+                            this.current_page = data.current_page;
+                            this.last_page = data.last_page;
+                            this.busquedaActual = data.busqueda || '';
+                        })
+                        .catch(error => {
+                            console.error('Error al cargar números disponibles:', error);
+                        });
+                },
+                filtrarNumeros() {
+                    const url = new URL('{{ route("admin.clientes.numeros-disponibles") }}', window.location.origin);
+                    if (this.busquedaNumero) url.searchParams.set('busqueda', this.busquedaNumero);
+                    if (this.rangoInicio) url.searchParams.set('rango_inicio', this.rangoInicio);
+                    if (this.rangoFin) url.searchParams.set('rango_fin', this.rangoFin);
+                    url.searchParams.set('page', 1);
+                    
+                    fetch(url)
+                        .then(response => response.json())
+                        .then(data => {
+                            this.numerosDisponibles = data.numeros;
+                            this.numerosFiltrados = [...data.numeros];
+                            this.totalDisponibles = data.total;
+                            this.ultimoNumero = data.ultimoNumero;
+                            this.current_page = data.current_page;
+                            this.last_page = data.last_page;
+                            this.busquedaActual = data.busqueda || '';
+                        })
+                        .catch(error => {
+                            console.error('Error al filtrar números:', error);
+                        });
+                }
+            }
+        }
+    </script>
 </x-app-layout>
