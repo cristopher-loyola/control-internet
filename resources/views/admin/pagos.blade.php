@@ -80,9 +80,10 @@
                         :disabled="readOnlyMode"
                         @click="form.metodo = 'Deposito a cuenta'; inputChanged(true)">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M12 3v18"></path>
-                            <path d="M7 8h10"></path>
-                            <path d="M7 16h10"></path>
+                            <rect x="3" y="11" width="18" height="9" rx="2"></rect>
+                            <path d="M7 15h10"></path>
+                            <path d="M12 3v6"></path>
+                            <path d="M9 6l3-3 3 3"></path>
                         </svg>
                         <span>Depósito</span>
                     </button>
