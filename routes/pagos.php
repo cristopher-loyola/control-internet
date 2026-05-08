@@ -46,6 +46,7 @@ Route::middleware(['auth', 'role:pagos'])
         Route::post('/clientes/editar', [PagosController::class, 'clientesEditStore'])->name('clientes.edit');
         Route::get('/clientes/historial/buscar', [PagosController::class, 'clientesHistorialBuscar'])->name('clientes.historial.buscar');
         Route::get('/clientes/numeros-disponibles', [PagosController::class, 'numerosDisponibles'])->name('clientes.numeros-disponibles');
+        Route::get('/clientes/numeros-disponibles/export', [PagosController::class, 'exportNumerosDisponibles'])->name('clientes.numeros-disponibles.export');
         Route::get('/clientes/{id}', [PagosController::class, 'clientesShow'])->name('clientes.show');
         Route::get('/clientes/{numero}/historial', [PagosController::class, 'clientesHistorial'])->name('clientes.historial');
         Route::delete('/clientes/{id}', [PagosController::class, 'clientesDestroy'])->name('clientes.destroy');

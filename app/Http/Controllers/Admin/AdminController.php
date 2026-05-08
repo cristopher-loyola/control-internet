@@ -601,6 +601,55 @@ class AdminController extends Controller
         ]);
     }
 
+    public function exportNumerosDisponibles()
+    {
+        // Obtener el último número de cliente registrado
+        $ultimoNumero = Usuario::max('numero_servicio') ?? 7418;
+
+        // Generar rango de números desde 1000 hasta el último registro
+        $rangoCompleto = range(1000, $ultimoNumero);
+
+        // Obtener números ocupados (>= 1000)
+        $numerosOcupados = Usuario::where('numero_servicio', '>=', 1000)
+            ->pluck('numero_servicio')
+            ->toArray();
+
+        // Filtrar números desocupados
+        $numerosDisponibles = array_diff($rangoCompleto, $numerosOcupados);
+        $numerosDisponibles = array_values($numerosDisponibles);
+        sort($numerosDisponibles);
+
+        $headers = [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="numeros_disponibles.xls"',
+            'Cache-Control' => 'max-age=0',
+        ];
+
+        $callback = function () use ($numerosDisponibles, $ultimoNumero) {
+            echo "\xEF\xBB\xBF";
+            echo '<html><head><meta charset="utf-8">';
+            echo '<style>
+            table{ border-collapse:collapse; }
+            th,td{ border:1px solid #888; padding:6px 8px; font-family:Arial, Helvetica, sans-serif; font-size:11pt; }
+            thead th{ background:#2e7d32; color:#fff; }
+            .text{ mso-number-format:"\@"; }
+            </style></head><body>';
+            echo '<h3>Números de Cliente Disponibles (1000 - '.$ultimoNumero.')</h3>';
+            echo '<p>Total disponibles: '.count($numerosDisponibles).'</p>';
+            echo '<table>';
+            echo '<thead><tr><th>Número de Cliente</th><th>Estado</th></tr></thead><tbody>';
+            foreach ($numerosDisponibles as $numero) {
+                echo '<tr>';
+                echo '<td class="text">'.htmlspecialchars((string) $numero).'</td>';
+                echo '<td>Disponible</td>';
+                echo '</tr>';
+            }
+            echo '</tbody></table></body></html>';
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
     public function clientesShow(int $id)
     {
         $cliente = Usuario::with(['estado', 'estatusServicio'])->findOrFail($id);
