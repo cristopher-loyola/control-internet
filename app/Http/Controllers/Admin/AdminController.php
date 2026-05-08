@@ -561,11 +561,18 @@ class AdminController extends Controller
         // Obtener el último número de cliente registrado
         $ultimoNumero = Usuario::max('numero_servicio') ?? 7418;
 
-        // Generar rango de números desde 1000 hasta el último registro
-        $rangoCompleto = range(1000, $ultimoNumero);
+        $rangoInicio = request('rango_inicio', 1000);
+        $rangoFin = request('rango_fin', $ultimoNumero);
 
-        // Obtener números ocupados (>= 1000)
-        $numerosOcupados = Usuario::where('numero_servicio', '>=', 1000)
+        // Asegurar que el rango sea válido
+        $rangoInicio = max(1000, (int) $rangoInicio);
+        $rangoFin = max($rangoInicio, (int) $rangoFin);
+
+        // Generar rango de números
+        $rangoCompleto = range($rangoInicio, $rangoFin);
+
+        // Obtener números ocupados en ese rango
+        $numerosOcupados = Usuario::whereBetween('numero_servicio', [$rangoInicio, $rangoFin])
             ->pluck('numero_servicio')
             ->toArray();
 
@@ -594,6 +601,8 @@ class AdminController extends Controller
             'numeros' => $numerosPaginados->values(),
             'total' => $numerosDisponibles->count(),
             'ultimoNumero' => $ultimoNumero,
+            'rango_inicio' => $rangoInicio,
+            'rango_fin' => $rangoFin,
             'current_page' => $page,
             'per_page' => $perPage,
             'last_page' => ceil($numerosDisponibles->count() / $perPage),
@@ -606,11 +615,18 @@ class AdminController extends Controller
         // Obtener el último número de cliente registrado
         $ultimoNumero = Usuario::max('numero_servicio') ?? 7418;
 
-        // Generar rango de números desde 1000 hasta el último registro
-        $rangoCompleto = range(1000, $ultimoNumero);
+        $rangoInicio = request('rango_inicio', 1000);
+        $rangoFin = request('rango_fin', $ultimoNumero);
 
-        // Obtener números ocupados (>= 1000)
-        $numerosOcupados = Usuario::where('numero_servicio', '>=', 1000)
+        // Asegurar que el rango sea válido
+        $rangoInicio = max(1000, (int) $rangoInicio);
+        $rangoFin = max($rangoInicio, (int) $rangoFin);
+
+        // Generar rango de números
+        $rangoCompleto = range($rangoInicio, $rangoFin);
+
+        // Obtener números ocupados
+        $numerosOcupados = Usuario::whereBetween('numero_servicio', [$rangoInicio, $rangoFin])
             ->pluck('numero_servicio')
             ->toArray();
 
@@ -625,7 +641,7 @@ class AdminController extends Controller
             'Cache-Control' => 'max-age=0',
         ];
 
-        $callback = function () use ($numerosDisponibles, $ultimoNumero) {
+        $callback = function () use ($numerosDisponibles, $rangoInicio, $rangoFin) {
             echo "\xEF\xBB\xBF";
             echo '<html><head><meta charset="utf-8">';
             echo '<style>
@@ -634,7 +650,7 @@ class AdminController extends Controller
             thead th{ background:#2e7d32; color:#fff; }
             .text{ mso-number-format:"\@"; }
             </style></head><body>';
-            echo '<h3>Números de Cliente Disponibles (1000 - '.$ultimoNumero.')</h3>';
+            echo '<h3>Números de Cliente Disponibles ('.$rangoInicio.' - '.$rangoFin.')</h3>';
             echo '<p>Total disponibles: '.count($numerosDisponibles).'</p>';
             echo '<table>';
             echo '<thead><tr><th>Número de Cliente</th><th>Estado</th></tr></thead><tbody>';

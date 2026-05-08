@@ -16,6 +16,8 @@
         current_page: 1,
         last_page: 1,
         busquedaNumero: '',
+        rangoInicio: 1000,
+        rangoFin: null,
         busquedaActual: '',
         form: { id: null, numero_servicio: '', nombre_cliente: '', domicilio: '', comunidad: '', telefono: '', uso: '', megas: '', tecnologia: '', dispositivo: '', tarifa: '', estado_id: '', estatus_servicio_id: '' },
         editMegasReadonly: false,
@@ -81,13 +83,19 @@
             if (this.form.id) this.$dispatch('open-modal', 'pagos-clientes-edit')
         },
         cargarNumerosDisponibles() {
-            fetch('{{ route("pagos.clientes.numeros-disponibles") }}')
+            const url = new URL('{{ route("pagos.clientes.numeros-disponibles") }}', window.location.origin);
+            if (this.rangoInicio) url.searchParams.set('rango_inicio', this.rangoInicio);
+            if (this.rangoFin) url.searchParams.set('rango_fin', this.rangoFin);
+
+            fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     this.numerosDisponibles = data.numeros;
-                    this.numerosFiltrados = [...data.numeros]; // Inicializar filtered
+                    this.numerosFiltrados = [...data.numeros];
                     this.totalDisponibles = data.total;
                     this.ultimoNumero = data.ultimoNumero;
+                    this.rangoInicio = data.rango_inicio;
+                    this.rangoFin = data.rango_fin;
                     this.current_page = data.current_page;
                     this.last_page = data.last_page;
                     this.busquedaActual = data.busqueda || '';
@@ -112,15 +120,15 @@
         cargarPagina(page) {
             const url = new URL('{{ route("pagos.clientes.numeros-disponibles") }}', window.location.origin);
             url.searchParams.set('page', page);
-            if (this.busquedaNumero) {
-                url.searchParams.set('busqueda', this.busquedaNumero);
-            }
+            if (this.busquedaNumero) url.searchParams.set('busqueda', this.busquedaNumero);
+            if (this.rangoInicio) url.searchParams.set('rango_inicio', this.rangoInicio);
+            if (this.rangoFin) url.searchParams.set('rango_fin', this.rangoFin);
             
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     this.numerosDisponibles = data.numeros;
-                    this.numerosFiltrados = [...data.numeros]; // Ya viene filtrado del backend
+                    this.numerosFiltrados = [...data.numeros];
                     this.totalDisponibles = data.total;
                     this.ultimoNumero = data.ultimoNumero;
                     this.current_page = data.current_page;
@@ -132,18 +140,17 @@
                 });
         },
         filtrarNumeros() {
-            // Buscar con backend incluyendo búsqueda
             const url = new URL('{{ route("pagos.clientes.numeros-disponibles") }}', window.location.origin);
-            if (this.busquedaNumero) {
-                url.searchParams.set('busqueda', this.busquedaNumero);
-            }
-            url.searchParams.set('page', 1); // Resetear a página 1 al buscar
+            if (this.busquedaNumero) url.searchParams.set('busqueda', this.busquedaNumero);
+            if (this.rangoInicio) url.searchParams.set('rango_inicio', this.rangoInicio);
+            if (this.rangoFin) url.searchParams.set('rango_fin', this.rangoFin);
+            url.searchParams.set('page', 1);
             
             fetch(url)
                 .then(response => response.json())
                 .then(data => {
                     this.numerosDisponibles = data.numeros;
-                    this.numerosFiltrados = [...data.numeros]; // Ya viene filtrado del backend
+                    this.numerosFiltrados = [...data.numeros];
                     this.totalDisponibles = data.total;
                     this.ultimoNumero = data.ultimoNumero;
                     this.current_page = data.current_page;
@@ -521,7 +528,7 @@
                         </div>
                     </div>
                     <div class="flex gap-2">
-                        <a href="{{ route('pagos.clientes.numeros-disponibles.export') }}" class="btn btn-success btn-sm flex items-center gap-1" title="Exportar a Excel">
+                        <a :href="`{{ route('pagos.clientes.numeros-disponibles.export') }}?rango_inicio=${rangoInicio || 1000}&rango_fin=${rangoFin || ultimoNumero}`" class="btn btn-success btn-sm flex items-center gap-1" title="Exportar a Excel">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                             </svg>
@@ -538,26 +545,50 @@
                         </svg>
                         Click para copiar
                     </div>
-                    <!-- Búsqueda específica -->
-                    <div class="flex items-center gap-2">
-                        <div class="flex-1 relative">
-                            <input 
-                                type="number" 
-                                x-model="busquedaNumero"
-                                x-on:input="filtrarNumeros()"
-                                placeholder="Buscar número específico..."
-                                class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                                min="1000"
-                            />
+                    <!-- Búsqueda específica y Rango -->
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 relative">
+                                <label class="block text-[10px] text-gray-500 uppercase font-bold mb-0.5">Buscar número</label>
+                                <input 
+                                    type="number" 
+                                    x-model="busquedaNumero"
+                                    x-on:input="filtrarNumeros()"
+                                    placeholder="Número específico..."
+                                    class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                    min="1000"
+                                />
+                            </div>
+                            <div class="w-24">
+                                <label class="block text-[10px] text-gray-500 uppercase font-bold mb-0.5">Inicio</label>
+                                <input 
+                                    type="number" 
+                                    x-model="rangoInicio"
+                                    x-on:input.debounce.500ms="filtrarNumeros()"
+                                    class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                    min="1000"
+                                />
+                            </div>
+                            <div class="w-24">
+                                <label class="block text-[10px] text-gray-500 uppercase font-bold mb-0.5">Fin</label>
+                                <input 
+                                    type="number" 
+                                    x-model="rangoFin"
+                                    x-on:input.debounce.500ms="filtrarNumeros()"
+                                    :placeholder="ultimoNumero"
+                                    class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                            </div>
                         </div>
-                        <button 
-                            x-show="busquedaNumero"
-                            type="button"
-                            x-on:click="busquedaNumero = ''; filtrarNumeros()"
-                            class="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors"
-                        >
-                            Limpiar
-                        </button>
+                        <div x-show="busquedaNumero || rangoInicio != 1000 || (rangoFin && rangoFin != ultimoNumero)" class="flex justify-end">
+                            <button 
+                                type="button"
+                                x-on:click="busquedaNumero = ''; rangoInicio = 1000; rangoFin = ultimoNumero; filtrarNumeros()"
+                                class="px-2 py-1 text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition-colors"
+                            >
+                                Limpiar filtros
+                            </button>
+                        </div>
                     </div>
                 </div>
 
