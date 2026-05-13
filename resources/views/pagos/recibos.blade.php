@@ -107,7 +107,7 @@
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pago por adelantado</label>
                     <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
-                        x-model="form.prepay" :disabled="readOnlyMode" @change="inputChanged(true)">
+                        x-model="form.prepay" :disabled="readOnlyMode" @change="onPrepayChange()">
                         <option value="no">No</option>
                         <option value="si">Sí</option>
                     </select>
@@ -1095,8 +1095,20 @@
                 }
                 this.recalcular();
             },
+            onPrepayChange(){
+                if (this.form.prepay === 'si' && this.ref && this.ref.id) {
+                    this.ref = { numero: null, id: null, created_at: null };
+                }
+                this.inputChanged(true);
+            },
             validarOtro(e) {
                 const selected = e.target.value;
+
+                // Si cambia a un tipo especial y ya hay un pago registrado, resetear ref para permitir un nuevo pago
+                if ((selected === 'baja_temporal' || selected === 'cancelacion') && this.ref && this.ref.id) {
+                    this.ref = { numero: null, id: null, created_at: null };
+                }
+
                 if (selected === 'baja_temporal') {
                     this.form.prepay = 'no';
                     this.form.recargo = 'no';

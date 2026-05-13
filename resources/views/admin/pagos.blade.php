@@ -107,7 +107,7 @@
                 <div>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pago por adelantado</label>
                     <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
-                        x-model="form.prepay" :disabled="readOnlyMode" @change="inputChanged(true)">
+                        x-model="form.prepay" :disabled="readOnlyMode" @change="onPrepayChange()">
                         <option value="no">No</option>
                         <option value="si">Sí</option>
                     </select>
@@ -1165,10 +1165,21 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 }
                 this.recalcular();
             },
+            onPrepayChange(){
+                if (this.form.prepay === 'si' && this.ref && this.ref.id) {
+                    this.ref = { numero: null, id: null, created_at: null };
+                }
+                this.inputChanged(true);
+            },
             validarOtro(e){
                 const valor = e.target.value;
                 this.otroError = '';
-                
+
+                // Si cambia a un tipo especial y ya hay un pago registrado, resetear ref para permitir un nuevo pago
+                if ((valor === 'baja_temporal' || valor === 'cancelacion') && this.ref && this.ref.id) {
+                    this.ref = { numero: null, id: null, created_at: null };
+                }
+
                 // Si selecciona baja temporal, verificar que no tenga adeudos
                 if(valor === 'baja_temporal'){
                     this.form.prepay = 'no';
@@ -1177,7 +1188,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 } else {
                     this.form.baja_temporal_months = 1;
                 }
-                
+
                 this.inputChanged();
             },
             async fetchAdeudo(){

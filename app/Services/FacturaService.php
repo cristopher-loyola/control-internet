@@ -86,6 +86,7 @@ class FacturaService
             'tipo' => match(true) {
                 ($payload['otro'] ?? null) === 'baja_temporal' => 'baja_temporal',
                 ($payload['otro'] ?? null) === 'cancelacion' => 'cancelacion',
+                ($payload['prepay'] ?? null) === 'si' => 'prepay',
                 default => 'normal',
             },
         ];
@@ -297,7 +298,7 @@ class FacturaService
      */
     private function buscarDuplicado(array $datos, array $payload, float $total): ?Factura
     {
-        if ($datos['tipo'] !== 'normal') {
+        if (in_array($datos['tipo'], ['baja_temporal', 'cancelacion'])) {
             return null;
         }
 
@@ -338,6 +339,11 @@ class FacturaService
         if ($trashed) {
             $trashed->is_trashed = true;
             return $trashed;
+        }
+
+        // Los pagos adelantados pueden coexistir con el pago mensual del mismo periodo
+        if ($datos['tipo'] === 'prepay') {
+            return null;
         }
 
         // Validar duplicado por periodo
