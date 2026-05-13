@@ -23,6 +23,7 @@
                 <input id="numero" type="number" placeholder="Ingresa el ID..."
                     class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm text-base focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
                     x-model.trim="form.numero" :disabled="readOnlyMode"
+                    @focus="form.numero && $event.target.select()"
                     @change="!readOnlyMode && buscar()" @keydown.enter.prevent="!readOnlyMode && buscar()">
                 <p class="text-xs text-red-500 mt-1" x-text="error" x-show="error"></p>
             </div>
