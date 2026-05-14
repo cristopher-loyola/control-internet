@@ -5,7 +5,7 @@
         </h2>
     </x-slot>
 
-    <div class="py-6" x-data="{ cancelId:null, motivo:'' }">
+    <div class="py-6" x-data="{ cancelId:null, motivo:'', metodoId:null, metodoActual:'', nuevoMetodo:'' }">
         <div class="mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-gray-100">
@@ -48,6 +48,7 @@
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Motivo Cancelación</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Usuario</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cobró</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Método</th>
                                     <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
                                 </tr>
                             </thead>
@@ -82,10 +83,12 @@
                                         </td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm">{{ $r->user_name ?? '—' }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm">{{ $r->cobro ?? '—' }}</td>
+                                        <td class="px-4 py-2 whitespace-nowrap text-sm">{{ $r->metodo ?? '—' }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-right">
                                             @if(!$r->deleted_at)
                                                 <!-- <a href="{{ route('admin.pagos.index') }}?folio={{ $r->reference_number }}&readonly=1" class="btn btn-info btn-sm">Re-imprimir</a> -->
                                                 <a href="{{ route('admin.pagos.index') }}?folio={{ $r->reference_number }}&ticket=1&readonly=1" class="btn btn-primary btn-sm ms-1">Ticket</a>
+                                                <button type="button" class="btn btn-sm ms-1 text-white" style="background:#f97316" x-on:click.prevent="metodoId={{ $r->id }}; metodoActual='{{ addslashes($r->metodo ?? 'Efectivo') }}'; nuevoMetodo='{{ addslashes($r->metodo ?? 'Efectivo') }}'; $dispatch('open-modal','admin-pagos-metodo')">Método</button>
                                                 <button type="button" class="btn btn-danger btn-sm ms-1" x-on:click.prevent="cancelId={{ $r->id }}; motivo=''; $dispatch('open-modal','admin-pagos-cancelar')">Cancelar</button>
                                             @else
                                                 <span class="text-xs text-gray-500">—</span>
@@ -102,6 +105,27 @@
                 </div>
             </div>
         </div>
+
+        <x-modal name="admin-pagos-metodo" maxWidth="sm" focusable>
+            <form method="POST" :action="metodoId ? '{{ route('admin.pagos.facturas.update-metodo', ['id'=>'__ID__']) }}'.replace('__ID__', metodoId) : '#'" class="p-6">
+                @csrf
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Cambiar método de pago</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Método actual: <span class="font-semibold" x-text="metodoActual"></span></p>
+                <div>
+                    <x-input-label for="nuevo_metodo" value="Nuevo método" />
+                    <select id="nuevo_metodo" name="metodo" class="form-select mt-1 block w-full" x-model="nuevoMetodo">
+                        <option value="Efectivo">Efectivo</option>
+                        <option value="Tarjeta de Crédito">Tarjeta de Crédito</option>
+                        <option value="Depósito">Depósito</option>
+                        <option value="Cheque">Cheque</option>
+                    </select>
+                </div>
+                <div class="mt-6 flex justify-end">
+                    <x-secondary-button x-on:click="$dispatch('close')">Cerrar</x-secondary-button>
+                    <button type="submit" class="ms-3 btn text-white" style="background:#f97316" :disabled="!metodoId || !nuevoMetodo">Guardar</button>
+                </div>
+            </form>
+        </x-modal>
 
         <x-modal name="admin-pagos-cancelar" maxWidth="sm" focusable>
             <form method="POST" :action="cancelId ? '{{ route('admin.pagos.facturas.cancel', ['id'=>'__ID__']) }}'.replace('__ID__', cancelId) : '#'" class="p-6">
@@ -136,6 +160,9 @@
                 } else if (message.includes('ya estaba cancelada')) {
                     icon = 'warning';
                     title = 'Ya estaba cancelado';
+                } else if (message.includes('Método de pago actualizado')) {
+                    icon = 'success';
+                    title = 'Método actualizado';
                 }
 
                 Swal.fire({

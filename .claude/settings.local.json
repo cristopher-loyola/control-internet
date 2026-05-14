@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\laragon\\\\www\\\\control-internet\\\\routes\" -Filter \"*.php\")",
+      "Bash(Select-Object Name)",
+      "Bash(xargs grep -l \"pagos\\\\|facturas\")"
+    ]
+  }
+}

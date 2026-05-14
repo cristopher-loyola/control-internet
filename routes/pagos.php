@@ -63,6 +63,7 @@ Route::middleware(['auth', 'role:pagos'])
         Route::get('/recibos/historial', [PagosController::class, 'recibosHistorial'])->name('recibos.historial');
         Route::get('/recibos/historial/export', [PagosController::class, 'recibosHistorialExport'])->name('recibos.historial.export');
         Route::post('/recibos/facturas/{id}/cancel', [PagosController::class, 'recibosFacturaCancel'])->name('recibos.facturas.cancel');
+        Route::post('/recibos/facturas/{id}/metodo', [PagosController::class, 'recibosFacturaUpdateMetodo'])->name('recibos.facturas.update-metodo');
 
         // Historial de pagos por ubicación
         Route::get('/rosalito', [DashboardController::class, 'rosalitoPaymentsHistory'])->name('rosalito.history');

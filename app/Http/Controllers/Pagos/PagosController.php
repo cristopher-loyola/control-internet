@@ -549,6 +549,7 @@ class PagosController extends Controller
                 'motivo_cancelacion' => $reasons[($f->numero_servicio ?? '').'|'.($f->periodo ?? '')] ?? null,
                 'descuento' => $payload['descuento'] ?? 0,
                 'cobro' => $payload['cobro'] ?? null,
+                'metodo' => $payload['metodo'] ?? 'Efectivo',
             ];
         });
 
@@ -725,6 +726,54 @@ thead th{ background:#2e7d32; color:#fff; }
         ]);
 
         return back()->with('status', 'Recibo cancelado correctamente.');
+    }
+
+    public function recibosFacturaUpdateMetodo(\Illuminate\Http\Request $request, int $id)
+    {
+        $request->validate([
+            'metodo' => ['required', 'string', 'in:Efectivo,Tarjeta de Crédito,Depósito,Cheque'],
+        ]);
+
+        $f = Factura::findOrFail($id);
+        $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+        $metodoAnterior = $payload['metodo'] ?? 'Efectivo';
+        $nuevoMetodo = $request->input('metodo');
+        $payload['metodo'] = $nuevoMetodo;
+
+        if ($f->fingerprint) {
+            $fingerprintData = [
+                'numero_servicio' => $f->numero_servicio,
+                'periodo' => $f->periodo,
+                'total' => (float) $f->total,
+                'nombre' => $payload['nombre'] ?? null,
+                'mensualidad' => $payload['mensualidad'] ?? null,
+                'recargo' => $payload['recargo'] ?? null,
+                'pago_anterior' => $payload['pago_anterior'] ?? null,
+                'metodo' => $nuevoMetodo,
+            ];
+            $f->fingerprint = hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        }
+
+        $f->payload = $payload;
+        $f->save();
+
+        \Illuminate\Support\Facades\DB::table('audit_logs')->insert([
+            'actor_user_id' => optional($request->user())->id,
+            'actor_role' => optional($request->user())->role,
+            'actor_name' => optional($request->user())->name,
+            'action' => 'factura_metodo_pago_update',
+            'table_name' => 'facturas',
+            'entity_type' => Factura::class,
+            'entity_id' => (string) $f->id,
+            'prev_values' => json_encode(['metodo' => $metodoAnterior]),
+            'new_values' => json_encode(['metodo' => $nuevoMetodo]),
+            'ip' => $request->ip(),
+            'user_agent' => (string) $request->userAgent(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return back()->with('status', 'Método de pago actualizado a "' . $nuevoMetodo . '" correctamente.');
     }
 
     public function create()
