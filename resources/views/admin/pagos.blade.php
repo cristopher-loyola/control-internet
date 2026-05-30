@@ -663,6 +663,7 @@
             adeudoListaMeses: [],
             saldoDespues: null,
             pagadoMesActual: false,
+            pagarMesSiguiente: false,
             prepayActivo: false,
             prepayHastaLabel: '',
             prepayConfig:{ enabled:{}, matrix:{} },
@@ -774,8 +775,17 @@
 
                 return partes.length > 0 ? partes.join(' - ') : 'No';
             },
-            mesEnCurso(){ return new Date().toLocaleDateString('es-MX',{month:'long'}).charAt(0).toUpperCase() + new Date().toLocaleDateString('es-MX',{month:'long'}).slice(1) },
-            mesEnCursoCompleto(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleDateString('es-MX',{month:'long'})+' de '+d.getFullYear() },
+            mesEnCurso(){
+                const d = new Date();
+                if (this.pagarMesSiguiente) d.setMonth(d.getMonth() + 1);
+                const m = d.toLocaleDateString('es-MX',{month:'long'});
+                return m.charAt(0).toUpperCase() + m.slice(1);
+            },
+            mesEnCursoCompleto(){
+                const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date();
+                if (this.pagarMesSiguiente) d.setMonth(d.getMonth() + 1);
+                return d.toLocaleDateString('es-MX',{month:'long'})+' de '+d.getFullYear();
+            },
             fecha(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) },
             hora(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleTimeString('es-MX') },
             mesYearLabel(d){
@@ -938,6 +948,7 @@
                                 this.saldoDespues = null;
                                 this.appliedDiscount = Number(p.descuento || 0);
                                 this.savedOtroLabel = p.otro_label || '';
+                                this.pagarMesSiguiente = !!(p.mes_siguiente);
                                 this.totales.total = Number(d.total) || 0;
                                 this.totales.letra = toWords(this.totales.total);
                                 if(asTicket){
@@ -1288,6 +1299,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                             }
                         } catch(_) {}
                         this.pagadoMesActual = paidThisMonth;
+                        this.pagarMesSiguiente = paidThisMonth;
                         if (!this.recargoManual) {
                             if (day >= 8 && !paidThisMonth) {
                                 this.form.recargo = 'si';
@@ -1299,6 +1311,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                         this.form.pago_anterior = 0;
                         this.pagoAnteriorFecha = '';
                         this.pagadoMesActual = false;
+                        this.pagarMesSiguiente = false;
                         // Si no hay pagos previos y estamos después del día 7, aplicar recargo
                         if (!this.recargoManual) {
                             const now = new Date();
@@ -1313,6 +1326,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                     this.form.pago_anterior = 0;
                     this.pagoAnteriorFecha = '';
                     this.pagadoMesActual = false;
+                    this.pagarMesSiguiente = false;
                     if (!this.recargoManual) {
                         const now = new Date();
                         if (now.getDate() >= 8) {
@@ -1444,6 +1458,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 this.adeudoCobro = adeudoPendiente > 0 ? adeudoPendiente : 0;
                                 this.saldoDespues = null;
                                 this.appliedDiscount = Number(p.descuento || 0);
+                                this.pagarMesSiguiente = !!(p.mes_siguiente);
                                 this.totales.total = Number(d.total) || 0;
                         this.totales.letra = toWords(this.totales.total);
                         await this.doPrintOnce();
@@ -1488,7 +1503,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 fecha: this.fecha(),
                                 hora: this.hora(),
                                 descuento: this.appliedDiscount || 0,
-                                otro_label: this.otroLabel()
+                                otro_label: this.otroLabel(),
+                                mes_siguiente: this.pagarMesSiguiente
                             }
                         })
                     });
@@ -1546,7 +1562,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 fecha: this.fecha(),
                                 hora: this.hora(),
                                 descuento: this.appliedDiscount || 0,
-                                otro_label: this.otroLabel()
+                                otro_label: this.otroLabel(),
+                                mes_siguiente: this.pagarMesSiguiente
                             }
                         })
                     });
@@ -1703,6 +1720,7 @@ Le recordamos que los pagos deben realizarse del día 1 al 7 de cada mes. Poster
                 this.adeudoListaMeses = [];
                 this.saldoDespues = null;
                 this.pagadoMesActual = false;
+                this.pagarMesSiguiente = false;
                 this.pagoAnteriorFecha = '';
                 this.appliedDiscount = 0; // Resetear descuento aplicado
                 this.datos = { nombre: '', mensualidad: 0 };

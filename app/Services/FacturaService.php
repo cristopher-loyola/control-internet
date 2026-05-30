@@ -77,8 +77,13 @@ class FacturaService
     {
         $payload = $request->input('payload', []);
 
+        $mesSiguiente = !empty($payload['mes_siguiente']);
+        $periodo = $mesSiguiente
+            ? now()->addMonth()->format('Y-m')
+            : now()->format('Y-m');
+
         return [
-            'periodo' => now()->format('Y-m'),
+            'periodo' => $periodo,
             'numero' => $request->input('numero_servicio'),
             'usuarioId' => $request->input('usuario_id'),
             'payload' => $payload,

@@ -362,7 +362,10 @@ class PozoHondoController extends Controller
         }
 
         return DB::transaction(function () use ($request) {
-            $periodo = now()->format('Y-m');
+            $payloadInput = $request->input('payload', []);
+            $periodo = !empty($payloadInput['mes_siguiente'])
+                ? now()->addMonth()->format('Y-m')
+                : now()->format('Y-m');
             $numero = $request->input('numero_servicio');
             $usuarioId = $request->input('usuario_id');
             $user = $request->user();
@@ -406,7 +409,7 @@ class PozoHondoController extends Controller
                 ]);
                 $row = (object) ['current_value' => 0];
             }
-            $payload = $request->input('payload', []);
+            $payload = $payloadInput;
             $fingerprintData = [
                 'numero_servicio' => $request->input('numero_servicio'),
                 'periodo' => $periodo,
