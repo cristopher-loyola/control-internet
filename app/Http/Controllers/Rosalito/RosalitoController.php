@@ -363,9 +363,10 @@ class RosalitoController extends Controller
 
         return DB::transaction(function () use ($request) {
             $payloadInput = $request->input('payload', []);
-            $periodo = !empty($payloadInput['mes_siguiente'])
-                ? now()->addMonth()->format('Y-m')
-                : now()->format('Y-m');
+            $periodoOverride = isset($payloadInput['periodo_override']) && preg_match('/^\d{4}-\d{2}$/', $payloadInput['periodo_override'])
+                ? $payloadInput['periodo_override'] : null;
+            $periodo = $periodoOverride
+                ?? (!empty($payloadInput['mes_siguiente']) ? now()->addMonth()->format('Y-m') : now()->format('Y-m'));
             $numero = $request->input('numero_servicio');
             $usuarioId = $request->input('usuario_id');
             $user = $request->user();

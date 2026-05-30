@@ -1007,6 +1007,7 @@ class DashboardController extends Controller
                 'dias_retraso' => $diasRetraso,
                 'meses_adeudo' => $mesesAdeudo,
                 'desde_periodo' => $u->adeudo_descripcion ?: $desdePeriodo,
+                'desde_periodo_raw' => $desdePeriodo,
                 'moroso' => $pendiente > 0,
             ];
         }

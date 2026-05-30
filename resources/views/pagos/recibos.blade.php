@@ -673,6 +673,7 @@
             saldoDespues: null,
             pagadoMesActual: false,
             pagarMesSiguiente: false,
+            periodoOverride: null,
             prepayActivo: false,
             prepayHastaLabel: '',
             prepayConfig:{ enabled:{}, matrix:{} },
@@ -784,15 +785,22 @@
 
                 return partes.length > 0 ? partes.join(' - ') : 'No';
             },
+            _fechaMesBase(){
+                if(this.periodoOverride){
+                    const [py,pm] = this.periodoOverride.split('-').map(Number);
+                    return new Date(py, pm-1, 1);
+                }
+                const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date();
+                if(this.pagarMesSiguiente) d.setMonth(d.getMonth()+1);
+                return d;
+            },
             mesEnCurso(){
-                const d = new Date();
-                if (this.pagarMesSiguiente) d.setMonth(d.getMonth() + 1);
+                const d = this._fechaMesBase();
                 const m = d.toLocaleDateString('es-MX',{month:'long'});
                 return m.charAt(0).toUpperCase() + m.slice(1);
             },
             mesEnCursoCompleto(){
-                const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date();
-                if (this.pagarMesSiguiente) d.setMonth(d.getMonth() + 1);
+                const d = this._fechaMesBase();
                 return d.toLocaleDateString('es-MX',{month:'long'})+' de '+d.getFullYear();
             },
             fecha(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) },
@@ -938,6 +946,7 @@
                                 this.appliedDiscount = Number(p.descuento || 0);
                                 this.savedOtroLabel = p.otro_label || '';
                                 this.pagarMesSiguiente = !!(p.mes_siguiente);
+                                this.periodoOverride = p.periodo_override || null;
                                 this.totales.total = Number(d.total) || 0;
                                 this.totales.letra = toWords(this.totales.total);
                                 if(asTicket){
@@ -948,6 +957,19 @@
                                 }
                             }catch(_){}
                         })();
+                    }
+                }catch(_){}
+                // Auto-cargar cliente desde URL ?numero=
+                try{
+                    const params = new URLSearchParams(window.location.search);
+                    const numeroUrl = params.get('numero');
+                    if(numeroUrl && !this.form.numero){
+                        this.form.numero = numeroUrl;
+                        await this.buscar();
+                        const montoTransf = Number(params.get('monto_transferencia') || 0);
+                        if(montoTransf > 0){ this.form.metodo = 'Deposito a cuenta'; }
+                        const periodoTransf = params.get('periodo_transferencia');
+                        if(periodoTransf){ this.periodoOverride = periodoTransf; this.pagarMesSiguiente = false; }
                     }
                 }catch(_){}
             },
@@ -1427,7 +1449,8 @@
                                 hora: this.hora(),
                                 descuento: this.appliedDiscount || 0,
                                 otro_label: this.otroLabel(),
-                                mes_siguiente: this.pagarMesSiguiente
+                                mes_siguiente: this.pagarMesSiguiente,
+                                periodo_override: this.periodoOverride || null
                             }
                         })
                     });
@@ -1483,7 +1506,8 @@
                                 hora: this.hora(),
                                 descuento: this.appliedDiscount || 0,
                                 otro_label: this.otroLabel(),
-                                mes_siguiente: this.pagarMesSiguiente
+                                mes_siguiente: this.pagarMesSiguiente,
+                                periodo_override: this.periodoOverride || null
                             }
                         })
                     });
@@ -1607,6 +1631,7 @@ Le recordamos que los pagos deben realizarse del día 1 al 7 de cada mes. Poster
                 this.saldoDespues = null;
                 this.pagadoMesActual = false;
                 this.pagarMesSiguiente = false;
+                this.periodoOverride = null;
                 this.pagoAnteriorFecha = '';
                 this.appliedDiscount = 0; // Resetear descuento aplicado
                 this.datos = { nombre: '', mensualidad: 0 };

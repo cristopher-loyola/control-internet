@@ -78,9 +78,11 @@ class FacturaService
         $payload = $request->input('payload', []);
 
         $mesSiguiente = !empty($payload['mes_siguiente']);
-        $periodo = $mesSiguiente
-            ? now()->addMonth()->format('Y-m')
-            : now()->format('Y-m');
+        $periodoOverride = isset($payload['periodo_override']) && preg_match('/^\d{4}-\d{2}$/', $payload['periodo_override'])
+            ? $payload['periodo_override']
+            : null;
+        $periodo = $periodoOverride
+            ?? ($mesSiguiente ? now()->addMonth()->format('Y-m') : now()->format('Y-m'));
 
         return [
             'periodo' => $periodo,
