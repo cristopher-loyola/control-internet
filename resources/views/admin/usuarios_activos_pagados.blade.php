@@ -16,8 +16,16 @@
                 <div x-data x-init="Swal.fire({ icon: 'success', title: '¡Eliminado!', text: 'El cliente ha sido eliminado correctamente.', timer: 3000, showConfirmButton: false })"></div>
             @endif
             <div class="bg-white dark:bg-gray-800 rounded shadow p-4">
-                <div class="flex items-center justify-between mb-3">
+                <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                     <div class="text-sm text-gray-600">Total: {{ $usuarios->total() }} clientes que han pagado</div>
+                    <form method="GET" action="" class="flex items-center gap-2">
+                        <input type="text" name="buscar" value="{{ $buscar }}" placeholder="Buscar por número..."
+                            class="form-input rounded-lg border-gray-300 dark:border-gray-600 shadow-sm text-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 w-48">
+                        <button type="submit" class="btn btn-primary text-sm px-3 py-1.5">Buscar</button>
+                        @if($buscar !== '')
+                            <a href="{{ request()->url() }}" class="btn btn-secondary text-sm px-3 py-1.5">Limpiar</a>
+                        @endif
+                    </form>
                     <a href="{{ route($routePrefix . '.index') }}" class="btn btn-primary">Regresar al dashboard</a>
                 </div>
                 <div class="overflow-x-auto">
@@ -28,6 +36,7 @@
                                 <th class="py-2">Nombre</th>
                                 <th class="py-2">Estatus</th>
                                 <th class="py-2">Estado</th>
+                                <th class="py-2">Mes pagado</th>
                                 <th class="py-2">Actualizado</th>
                             </tr>
                         </thead>
@@ -45,6 +54,19 @@
                                     <span class="px-2 py-1 rounded text-xs font-semibold bg-blue-100 text-blue-800">
                                         {{ optional($u->estado)->nombre }}
                                     </span>
+                                </td>
+                                <td class="py-2">
+                                    @if($u->ultimo_periodo)
+                                        @php
+                                            [$y, $m] = explode('-', $u->ultimo_periodo);
+                                            $meses = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+                                        @endphp
+                                        <span class="px-2 py-1 rounded text-xs font-semibold bg-indigo-100 text-indigo-800">
+                                            {{ $meses[(int)$m] ?? $m }} {{ $y }}
+                                        </span>
+                                    @else
+                                        <span class="text-gray-400 text-xs">—</span>
+                                    @endif
                                 </td>
                                 <td class="py-2">{{ optional($u->updated_at)->format('Y-m-d H:i') }}</td>
                                 <td class="py-2">

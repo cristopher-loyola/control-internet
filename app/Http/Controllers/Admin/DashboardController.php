@@ -87,18 +87,30 @@ class DashboardController extends Controller
     {
         $estadoActivos = ['Activado', 'Activo'];
         $estatusPagado = ['Pagado'];
+        $buscar = trim($request->input('buscar', ''));
 
         $usuarios = Usuario::with(['estado', 'estatusServicio'])
+            ->addSelect([
+                'ultimo_periodo' => \App\Models\Factura::select('periodo')
+                    ->whereColumn('numero_servicio', 'usuarios.numero_servicio')
+                    ->whereNull('deleted_at')
+                    ->latest('id')
+                    ->limit(1),
+            ])
             ->whereHas('estado', function ($q) use ($estadoActivos) {
                 $q->whereIn('nombre', $estadoActivos);
             })
             ->whereHas('estatusServicio', function ($q) use ($estatusPagado) {
                 $q->whereIn('nombre', $estatusPagado);
             })
+            ->when($buscar !== '', function ($q) use ($buscar) {
+                $q->where('numero_servicio', 'like', '%' . $buscar . '%');
+            })
             ->orderBy('numero_servicio', 'asc')
-            ->paginate(50);
+            ->paginate(50)
+            ->withQueryString();
 
-        return view('admin.usuarios_activos_pagados', compact('usuarios'));
+        return view('admin.usuarios_activos_pagados', compact('usuarios', 'buscar'));
     }
 
     public function bajaTemporalIndex(Request $request)
