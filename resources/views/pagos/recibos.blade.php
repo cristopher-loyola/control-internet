@@ -173,7 +173,8 @@
                     <option value="Luz">Luz</option>
                     <option value="Jaime">Jaime</option>
                     <option value="Nancy">Nancy</option>
-                    <option value="Ivan">Ivan</option>
+                    <option value="Alan">Alan</option>
+                    <option value="Cristopher">Cristopher</option>
                 </select>
             </div>
         </div>

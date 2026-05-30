@@ -175,12 +175,13 @@
         <option value="Luz">Luz</option>
         <option value="Jaime">Jaime</option>
         <option value="Nancy">Nancy</option>
-        <option value="Ivan">Ivan</option>
+        <option value="Alan">Alan</option>
+        <option value="Cristopher">Cristopher</option>
     </select>
 </div>
         </div>
     </div>      
-                             {{-- <div class="flex items-end justify-end md:justify-start gap-2">
+                             <!-- <div class="flex items-end justify-end md:justify-start gap-2">
                                 <button class="btn btn-secondary" @click="openHistorial()">Historial</button>
                                 <button class="btn btn-secondary" @click="toggleEditor()"
                                     x-text="editMode ? 'Cerrar editor de plantilla' : 'Editar plantilla'"></button>
@@ -190,7 +191,7 @@
                                 <button class="btn btn-secondary" x-show="editMode" @click="resetLayout()">Restablecer</button>
                                 <button class="btn btn-secondary" x-show="editMode" @click="saveAsDefault()">Guardar cambios</button>
                                 <button class="btn btn-danger" @click="openConfirm()">Exportar a PDF</button>
-                            </div>  NO ELIMINAR, SIRVE PARA EDITAR LA PLANTILLA     --}}
+                            </div>  NO ELIMINAR, SIRVE PARA EDITAR LA PLANTILLA      -->
   <div class="flex flex-col items-center justify-center gap-3 bg-gray-50 dark:bg-gray-700 rounded-xl p-5 shadow-inner">
     <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 dark:text-gray-300">Acciones</h3>
 
