@@ -10,7 +10,7 @@
         $routePrefix = $isPagos ? 'pagos' : 'admin';
     @endphp
 
-    <div class="py-6" x-data="canceladosManager()">
+    <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @if (session('status') === 'cliente-eliminado')
                 <div x-data x-init="Swal.fire({ icon: 'success', title: '¡Eliminado!', text: 'El cliente ha sido eliminado correctamente.', timer: 3000, showConfirmButton: false })"></div>
@@ -32,7 +32,7 @@
                                 <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">IP</th>
                                 <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">MAC</th>
                                 <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Estatus</th>
-                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Estado</th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Motivo de cancelación</th>
                                 <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Actualizado</th>
                                 <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Acciones</th>
                             </tr>
@@ -57,17 +57,8 @@
                                             {{ optional($u->estatusServicio)->nombre }}
                                         </span>
                                     </td>
-                                    <td class="px-4 py-3">
-                                        <select
-                                            class="form-select text-xs rounded-md border-gray-300 dark:bg-gray-700 dark:border-gray-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                                            @change="actualizarEstado($event, {{ $u->id }})"
-                                        >
-                                            @foreach($estados as $estado)
-                                                <option value="{{ $estado->id }}" {{ (int) $u->estado_id === (int) $estado->id ? 'selected' : '' }}>
-                                                    {{ $estado->nombre }}
-                                                </option>
-                                            @endforeach
-                                        </select>
+                                    <td class="px-4 py-3 text-gray-700 dark:text-gray-300 text-xs">
+                                        {{ $motivosPorNumero[$u->numero_servicio] ?? '—' }}
                                     </td>
                                     <td class="px-4 py-3 text-gray-500">{{ optional($u->updated_at)->format('Y-m-d H:i') }}</td>
                                     <td class="px-4 py-3 text-right">
@@ -81,7 +72,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="8" class="py-10 text-center text-gray-400 italic">Sin registros</td>
+                                    <td colspan="7" class="py-10 text-center text-gray-400 italic">Sin registros</td>
                                 </tr>
                             @endforelse
                         </tbody>
@@ -124,35 +115,4 @@
         </div>
     </div>
 
-    <script>
-        function canceladosManager() {
-            return {
-                actualizarEstado(e, id) {
-                    const estadoId = e.target.value;
-                    const url = `{{ route($routePrefix . '.dashboard.cancelados.estado', ':id') }}`.replace(':id', id);
-                    const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-
-                    fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': token,
-                            'Accept': 'application/json',
-                        },
-                        body: JSON.stringify({ estado_id: estadoId }),
-                    })
-                        .then((res) => res.json())
-                        .then((data) => {
-                            if (!data.ok) {
-                                alert('Error al actualizar el estado');
-                            }
-                        })
-                        .catch((err) => {
-                            console.error(err);
-                            alert('Error al actualizar el estado');
-                        });
-                },
-            }
-        }
-    </script>
 </x-app-layout>

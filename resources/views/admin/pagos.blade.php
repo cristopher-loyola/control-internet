@@ -159,6 +159,18 @@
                         <option value="6">6</option>
                     </select>
                 </div>
+                <div x-show="form.otro==='cancelacion'" x-cloak class="col-span-2">
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Motivo de cancelación</label>
+                    <input type="text" maxlength="200" placeholder="Motivo..."
+                        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                        x-model.trim="form.cancelacion_motivo" :disabled="readOnlyMode">
+                </div>
+                <div x-show="form.otro==='cancelacion'" x-cloak>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Monto a cobrar</label>
+                    <input type="number" step="0.01" min="0" placeholder="0.00"
+                        class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                        x-model.number="form.cancelacion_monto" :disabled="readOnlyMode" @input="inputChanged(true)">
+                </div>
             </div>
 
            <div>
@@ -452,6 +464,7 @@
                                 <div>Mes</div><div x-text="mesEnCursoCompleto()"></div>
                                 <div>Mensualidad de Internet</div><div x-text="moneda(datos.mensualidad)"></div>
                                 <div>Otros</div><div x-text="otroLabel()"></div>
+                                <div x-show="form.otro==='cancelacion' && form.cancelacion_motivo">Motivo cancelación</div><div x-show="form.otro==='cancelacion' && form.cancelacion_motivo" x-text="form.cancelacion_motivo"></div>
                                 <div>Importe</div><div x-text="moneda(bajaTemporalImporte())"></div>
                                 <div x-show="appliedDiscount > 0">Descuento</div><div x-show="appliedDiscount > 0" x-text="moneda(appliedDiscount)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
@@ -491,6 +504,7 @@
                                 <div>Mes</div><div x-text="mesEnCursoCompleto()"></div>
                                 <div>Mensualidad de Internet</div><div x-text="moneda(datos.mensualidad)"></div>
                                 <div>Otros</div><div x-text="otroLabel()"></div>
+                                <div x-show="form.otro==='cancelacion' && form.cancelacion_motivo">Motivo cancelación</div><div x-show="form.otro==='cancelacion' && form.cancelacion_motivo" x-text="form.cancelacion_motivo"></div>
                                 <div>Importe</div><div x-text="moneda(bajaTemporalImporte())"></div>
                                 <div x-show="appliedDiscount > 0">Descuento</div><div x-show="appliedDiscount > 0" x-text="moneda(appliedDiscount)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
@@ -649,7 +663,7 @@
             loadingClient: false,
             recargoManual: false,
             otroError: '',
-            form:{ numero:'', recargo:getDefaultRecargo(), pago_anterior:0, metodo:'', cobro:'', prepay:'no', prepay_months:6, otro:'no', baja_temporal_months:1 },
+            form:{ numero:'', recargo:getDefaultRecargo(), pago_anterior:0, metodo:'', cobro:'', prepay:'no', prepay_months:6, otro:'no', baja_temporal_months:1, cancelacion_motivo:'', cancelacion_monto:0 },
             manualEditEnabled: false,
             manualTotal: 0,
             manualReason: '',
@@ -1153,8 +1167,10 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 const recargoSrv = Number(this.adeudo && this.adeudo.recargo ? this.adeudo.recargo : 0) || 0;
                 const rec = this.recargoMonto();
                 let total = 0;
-                
-                if (this.form.otro === 'baja_temporal') {
+
+                if (this.form.otro === 'cancelacion' && Number(this.form.cancelacion_monto) > 0) {
+                    total = Math.round(Number(this.form.cancelacion_monto) * 100) / 100;
+                } else if (this.form.otro === 'baja_temporal') {
                     this.totales.prepay_total = 0;
                     const adeudoPendiente = Number(this.adeudoCobro || (this.adeudo && this.adeudo.pendiente ? Number(this.adeudo.pendiente) : 0) || 0);
                     const adeudoBase = this.adeudo ? Math.max(0, adeudoPendiente - recargoSrv) : adeudoPendiente;
@@ -1476,6 +1492,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 this.form.otro = p.otro || 'no';
                                 this.manualReasonSaved = String(p.manual_total_reason || '').trim();
                                 this.form.baja_temporal_months = p.baja_temporal_months || 1;
+                                this.form.cancelacion_motivo = p.cancelacion_motivo || '';
+                                this.form.cancelacion_monto = Number(p.cancelacion_monto) || 0;
                                 this.form.prepay = p.prepay || 'no';
                                 this.form.prepay_months = p.prepay_months || null;
                                 this.totales.prepay_total = Number(p.prepay_total)||0;
@@ -1524,6 +1542,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 otro: this.form.otro,
                                 baja_temporal_months: this.form.otro==='baja_temporal' ? this.form.baja_temporal_months : null,
                                 baja_temporal_total: this.form.otro==='baja_temporal' ? this.bajaTemporalImporte() : null,
+                                cancelacion_motivo: this.form.otro==='cancelacion' ? (this.form.cancelacion_motivo || '') : null,
+                                cancelacion_monto: this.form.otro==='cancelacion' ? (Number(this.form.cancelacion_monto) || 0) : null,
                                 manual_total_enabled: this.manualEditEnabled,
                                 manual_total_value: this.manualEditEnabled ? (Number(this.manualTotal) || 0) : null,
                                 manual_total_reason: this.manualEditEnabled ? (String(this.manualReason || '').trim()) : null,
@@ -1584,6 +1604,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 otro: this.form.otro,
                                 baja_temporal_months: this.form.otro==='baja_temporal' ? this.form.baja_temporal_months : null,
                                 baja_temporal_total: this.form.otro==='baja_temporal' ? this.bajaTemporalImporte() : null,
+                                cancelacion_motivo: this.form.otro==='cancelacion' ? (this.form.cancelacion_motivo || '') : null,
+                                cancelacion_monto: this.form.otro==='cancelacion' ? (Number(this.form.cancelacion_monto) || 0) : null,
                                 manual_total_enabled: this.manualEditEnabled,
                                 manual_total_value: this.manualEditEnabled ? (Number(this.manualTotal) || 0) : null,
                                 manual_total_reason: this.manualEditEnabled ? (String(this.manualReason || '').trim()) : null,

@@ -35,6 +35,23 @@ class DashboardController extends Controller
             ->orderBy('updated_at', 'desc')
             ->paginate(50, ['*'], 'usuarios_page');
 
+        // Obtener motivo de cancelación desde la última factura de cada usuario
+        $numeros = $usuarios->pluck('numero_servicio')->filter()->values();
+        $motivosPorNumero = \App\Models\Factura::whereIn('numero_servicio', $numeros)
+            ->whereNotNull('payload')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->groupBy('numero_servicio')
+            ->map(function ($facturas) {
+                foreach ($facturas as $f) {
+                    $payload = is_array($f->payload) ? $f->payload : [];
+                    if (!empty($payload['cancelacion_motivo'])) {
+                        return $payload['cancelacion_motivo'];
+                    }
+                }
+                return null;
+            });
+
         $estados = \App\Models\Estado::query()
             ->whereIn('id', [1, 2])
             ->get();
@@ -49,7 +66,7 @@ class DashboardController extends Controller
             ->orderBy('captured_at', 'desc')
             ->paginate(50, ['*'], 'historial_page');
 
-        return view('admin.usuarios_cancelados', compact('usuarios', 'estados', 'historial'));
+        return view('admin.usuarios_cancelados', compact('usuarios', 'estados', 'historial', 'motivosPorNumero'));
     }
 
     public function prepaySettings(Request $request)
