@@ -188,9 +188,11 @@
 
 <script>
 function imprimirTicketTermico() {
-  const totalCaja          = {{ $pagos->sum('total') }};
-  const numPagos           = {{ $pagos->count() }};
-  const cobrador           = "{{ $cobrador }}";
+  const totalCaja      = {{ $pagos->sum('total') }};
+  const numPagos       = {{ $pagos->count() }};
+  const cobrador       = "{{ $cobrador }}";
+  const comisionRecibo = {{ $totalComisionRecibo ?? 0 }};
+  const totalEntregar  = totalCaja - comisionRecibo;
 
   const zona  = 'POZO HONDO';
   const fecha = new Date().toLocaleString('es-MX', {

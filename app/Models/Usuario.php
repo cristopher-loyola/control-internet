@@ -41,6 +41,8 @@ class Usuario extends Model
         'fecha_corte',
         'adeudo_descripcion',
         'adeudo_monto',
+        'proximo_pago',
+        'proximo_pago_monto',
     ];
 
     public function estado()

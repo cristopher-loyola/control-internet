@@ -69,8 +69,48 @@ class MorosidadService
                 $desdePeriodo = $lp->copy()->addMonth()->format('Y-m');
             }
         } else {
-            $mesesAdeudo = 1;
-            $desdePeriodo = $periodo;
+            // Sin facturas (ej. importado de Excel). Inferir desde cuándo debe.
+            if (!empty($usuario->proximo_pago) && preg_match('/^\d{4}-\d{2}$/', $usuario->proximo_pago)) {
+                // proximo_pago indica el primer período impago; el mes anterior fue el último cubierto.
+                try {
+                    $proxPago = Carbon::createFromFormat('Y-m', $usuario->proximo_pago)->startOfMonth();
+                    $lp = $proxPago->copy()->subMonth();
+                    if ($lp->lessThan($curStart)) {
+                        $mesesAdeudo = $lp->diffInMonths($curStart);
+                        $desdePeriodo = $lp->copy()->addMonth()->format('Y-m');
+                    } else {
+                        $mesesAdeudo = 0;
+                        $desdePeriodo = $periodo;
+                    }
+                } catch (\Throwable $e) {
+                    $mesesAdeudo = 1;
+                    $desdePeriodo = $periodo;
+                }
+            } elseif (!empty($usuario->adeudo_descripcion)) {
+                // Intentar extraer el período de inicio desde la descripción (ej. "Adeuda mayo 2026").
+                $parsedPeriodo = $this->parsePeriodoFromDescripcion((string) $usuario->adeudo_descripcion);
+                if ($parsedPeriodo) {
+                    try {
+                        $descStart = Carbon::createFromFormat('Y-m', $parsedPeriodo)->startOfMonth();
+                        if ($descStart->lessThanOrEqualTo($curStart)) {
+                            $desdePeriodo = $parsedPeriodo;
+                            $mesesAdeudo = $descStart->diffInMonths($curStart->copy()->addMonth());
+                        } else {
+                            $mesesAdeudo = 1;
+                            $desdePeriodo = $periodo;
+                        }
+                    } catch (\Throwable $e) {
+                        $mesesAdeudo = 1;
+                        $desdePeriodo = $periodo;
+                    }
+                } else {
+                    $mesesAdeudo = 1;
+                    $desdePeriodo = $periodo;
+                }
+            } else {
+                $mesesAdeudo = 1;
+                $desdePeriodo = $periodo;
+            }
         }
 
         $recargo = ($today->day >= 8 && $mesesAdeudo >= 1) ? 50.0 : 0.0;
@@ -249,6 +289,21 @@ class MorosidadService
         $base = $mensualidad * $months;
 
         return round($base * (1 - ($percent / 100)), 2);
+    }
+
+    private function parsePeriodoFromDescripcion(string $desc): ?string
+    {
+        $meses = [
+            'enero' => 1, 'febrero' => 2, 'marzo' => 3, 'abril' => 4,
+            'mayo' => 5, 'junio' => 6, 'julio' => 7, 'agosto' => 8,
+            'septiembre' => 9, 'octubre' => 10, 'noviembre' => 11, 'diciembre' => 12,
+        ];
+        $pattern = '/(' . implode('|', array_keys($meses)) . ')\s+(\d{4})/i';
+        if (preg_match($pattern, strtolower($desc), $m)) {
+            return sprintf('%04d-%02d', (int) $m[2], $meses[$m[1]]);
+        }
+
+        return null;
     }
 
     private function maxPeriodo(?string $a, ?string $b): ?string

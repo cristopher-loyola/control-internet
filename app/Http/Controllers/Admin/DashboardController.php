@@ -959,6 +959,15 @@ class DashboardController extends Controller
             if ($prepay && (! $ultimoCubierto || $prepay > $ultimoCubierto)) {
                 $ultimoCubierto = $prepay;
             }
+            // Si el admin configuró un próximo pago, derivar el último cubierto como el mes anterior
+            if (! empty($u->proximo_pago) && preg_match('/^\d{4}-\d{2}$/', $u->proximo_pago)) {
+                try {
+                    $ppCubierto = Carbon::createFromFormat('Y-m', $u->proximo_pago)->subMonth()->format('Y-m');
+                    if (! $ultimoCubierto || $ppCubierto > $ultimoCubierto) {
+                        $ultimoCubierto = $ppCubierto;
+                    }
+                } catch (\Throwable $_) {}
+            }
 
             $mesesAdeudo = 0;
             $desdePeriodo = $periodo;

@@ -521,7 +521,10 @@ class AdminController extends Controller
                 'domicilio' => $u->domicilio,
                 'telefono' => $u->telefono,
                 'paquete' => $u->paquete,
-                'tarifa' => $u->tarifa,
+                'tarifa' => $u->proximo_pago_monto ?? $u->tarifa,
+                'tarifa_normal' => $u->tarifa,
+                'proximo_pago' => $u->proximo_pago,
+                'proximo_pago_monto' => $u->proximo_pago_monto,
                 'primer_pago' => $u->primer_pago,
                 'primer_pago_vencimiento' => $u->primer_pago_vencimiento,
                 'fecha_contratacion' => $u->fecha_contratacion,
@@ -1051,6 +1054,30 @@ class AdminController extends Controller
     public function destroy(int $id)
     {
         return response('Admin destroy '.$id);
+    }
+
+    public function clientesProximoPago(Request $request, int $id)
+    {
+        $usuario = Usuario::findOrFail($id);
+        $periodo = $request->input('proximo_pago');
+        $monto   = $request->input('proximo_pago_monto');
+
+        if ($periodo && !preg_match('/^\d{4}-\d{2}$/', $periodo)) {
+            return response()->json(['ok' => false, 'message' => 'Formato de periodo inválido'], 422);
+        }
+        if ($monto !== null && $monto !== '' && (!is_numeric($monto) || $monto < 0)) {
+            return response()->json(['ok' => false, 'message' => 'Monto inválido'], 422);
+        }
+
+        $usuario->proximo_pago       = $periodo ?: null;
+        $usuario->proximo_pago_monto = ($monto !== null && $monto !== '') ? round((float) $monto, 2) : null;
+        $usuario->save();
+
+        return response()->json([
+            'ok'                  => true,
+            'proximo_pago'        => $usuario->proximo_pago,
+            'proximo_pago_monto'  => $usuario->proximo_pago_monto,
+        ]);
     }
 
     public function clientesDestroy(Request $request, int $id)

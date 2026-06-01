@@ -235,6 +235,25 @@
                                             </a>
                                             <button
                                                 type="button"
+                                                title="Modificar siguiente pago"
+                                                class="btn btn-sm"
+                                                style="background-color: #0ea5e9; border-color: #0284c7; color: #fff;"
+                                                x-on:click.stop="abrirProximoPago({
+                                                    id: {{ $c->id }},
+                                                    nombre: '{{ addslashes($c->nombre_cliente) }}',
+                                                    numero: '{{ $c->numero_servicio }}',
+                                                    tarifa: {{ (float)($c->tarifa ?? 0) }},
+                                                    actualPeriodo: '{{ $c->proximo_pago ?? '' }}',
+                                                    actualMonto: '{{ $c->proximo_pago_monto ?? '' }}',
+                                                    url: '{{ route('admin.clientes.proximo-pago', $c->id) }}'
+                                                })"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                                </svg>
+                                            </button>
+                                            <button
+                                                type="button"
                                                 class="btn btn-danger btn-sm"
                                                 aria-label="Eliminar cliente"
                                                 x-on:click.stop="deleteId = {{ $c->id }}; $dispatch('open-modal', 'admin-clientes-delete-confirm')"
@@ -850,6 +869,96 @@
                 </div>
             </div>
         </x-modal>
+
+        <!-- Modal: Siguiente pago — dentro del x-data para acceder al estado Alpine -->
+        <div x-show="ppModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+             @keydown.escape.window="ppModal = false">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm mx-4" @click.stop>
+                <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-sky-100 text-sky-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                        </span>
+                        <span class="text-sm font-semibold text-gray-800 dark:text-gray-100 uppercase tracking-wider">Siguiente pago</span>
+                    </div>
+                    <button @click="ppModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="px-5 py-4 space-y-4">
+                    <!-- Info cliente -->
+                    <div class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-700 pb-3">
+                        <div>
+                            <div class="font-semibold text-gray-800 dark:text-gray-100" x-text="ppCliente.nombre"></div>
+                            <div class="text-xs text-gray-400">ID <span x-text="ppCliente.numero"></span> · Tarifa normal: $<span x-text="Number(ppCliente.tarifa).toFixed(2)"></span></div>
+                        </div>
+                    </div>
+
+                    <!-- Mes del próximo pago -->
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
+                            Mes del próximo pago
+                        </label>
+                        <input type="month" x-model="ppPeriodo"
+                            class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-200 focus:ring-opacity-50 text-sm">
+                        <p class="text-xs text-gray-400 mt-1">Vacío = calculado automáticamente</p>
+                    </div>
+
+                    <!-- Monto del próximo pago -->
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
+                            Monto del próximo pago
+                        </label>
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-sm">$</span>
+                            <input type="number" step="0.01" min="0" x-model="ppMonto"
+                                class="form-input pl-7 w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-200 focus:ring-opacity-50 text-sm"
+                                placeholder="0.00">
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">Vacío = usa la tarifa normal del cliente</p>
+                    </div>
+
+                    <!-- Resumen -->
+                    <div x-show="ppPeriodo || ppMonto" class="text-xs bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-700 rounded-lg px-3 py-2 text-sky-700 dark:text-sky-300 space-y-0.5">
+                        <div x-show="ppPeriodo">
+                            📅 Próximo mes: <strong x-text="(()=>{ if(!ppPeriodo) return ''; const [y,m]=ppPeriodo.split('-'); const n=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']; return n[parseInt(m)]+' '+y; })()"></strong>
+                        </div>
+                        <div x-show="ppMonto">
+                            💰 Monto configurado: <strong x-text="'$' + Number(ppMonto || 0).toFixed(2)"></strong>
+                        </div>
+                    </div>
+
+                    <!-- Resultado -->
+                    <div x-show="ppResultado" x-cloak
+                        :class="ppResultado?.ok ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'"
+                        class="border rounded-lg px-3 py-2 text-sm font-medium" x-text="ppResultado?.msg"></div>
+                </div>
+                <div class="px-5 pb-5 flex flex-col gap-2">
+                    <button @click="guardarProximoPago()" :disabled="ppGuardando"
+                        class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700 active:scale-95 transition-all duration-150 shadow disabled:opacity-50">
+                        <template x-if="ppGuardando">
+                            <svg class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                        </template>
+                        <span x-text="ppGuardando ? 'Guardando...' : 'Guardar próximo pago'"></span>
+                    </button>
+                    <button @click="limpiarProximoPago()" type="button"
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        Restablecer a valores normales
+                    </button>
+                    <button @click="ppModal = false"
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -869,6 +978,52 @@
                 busquedaActual: '',
                 isNuevoCliente: true,
                 deleteId: null,
+                // --- Próximo pago ---
+                ppModal: false,
+                ppCliente: {},
+                ppPeriodo: '',
+                ppMonto: '',
+                ppGuardando: false,
+                ppResultado: null,
+                abrirProximoPago(data) {
+                    this.ppCliente = data;
+                    this.ppPeriodo = data.actualPeriodo || '';
+                    this.ppMonto   = data.actualMonto !== '' ? data.actualMonto : data.tarifa;
+                    this.ppResultado = null;
+                    this.ppGuardando = false;
+                    this.ppModal = true;
+                },
+                async guardarProximoPago() {
+                    if (this.ppGuardando) return;
+                    this.ppGuardando = true;
+                    this.ppResultado = null;
+                    const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
+                    try {
+                        const r = await fetch(this.ppCliente.url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token },
+                            body: JSON.stringify({
+                                proximo_pago: this.ppPeriodo || null,
+                                proximo_pago_monto: this.ppMonto !== '' ? Number(this.ppMonto) : null,
+                            })
+                        });
+                        const j = await r.json();
+                        if (r.ok && j?.ok) {
+                            this.ppResultado = { ok: true, msg: '✓ Guardado correctamente' };
+                            setTimeout(() => { this.ppModal = false; }, 900);
+                        } else {
+                            this.ppResultado = { ok: false, msg: j?.message || 'Error al guardar' };
+                        }
+                    } catch (_) {
+                        this.ppResultado = { ok: false, msg: 'Error de conexión' };
+                    }
+                    this.ppGuardando = false;
+                },
+                limpiarProximoPago() {
+                    this.ppPeriodo = '';
+                    this.ppMonto   = this.ppCliente.tarifa;
+                },
+                // ---
                 createMegasReadonly: false,
                 editMegasReadonly: false,
                 form: { id: null, numero_servicio: '', nombre_cliente: '', domicilio: '', comunidad: '', telefono: '', uso: '', megas: '', tecnologia: '', dispositivo: '', tarifa: '', estado_id: '', estatus_servicio_id: '' },
