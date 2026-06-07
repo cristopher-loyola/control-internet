@@ -76,13 +76,28 @@ class FacturaService
     private function extraerDatosBase(Request $request): array
     {
         $payload = $request->input('payload', []);
+        $esAdeudoManual = !empty($payload['es_adeudo_manual']);
 
         $mesSiguiente = !empty($payload['mes_siguiente']);
         $periodoOverride = isset($payload['periodo_override']) && preg_match('/^\d{4}-\d{2}$/', $payload['periodo_override'])
             ? $payload['periodo_override']
             : null;
-        $periodo = $periodoOverride
-            ?? ($mesSiguiente ? now()->addMonth()->format('Y-m') : now()->format('Y-m'));
+
+        // Si es adeudo manual, intentamos parsear de la descripción o del periodo_override
+        $periodo = $periodoOverride;
+        if ($esAdeudoManual) {
+            $desc = $payload['label'] ?? '';
+            $parsed = $this->morosidadService->parsePeriodoFromDescripcion($desc);
+            if ($parsed) {
+                $periodo = $parsed;
+            }
+            // Si no se pudo parsear y no hay override, NO asignamos mes actual para adeudos manuales
+        }
+
+        // Si aún no hay periodo y no es adeudo manual, usamos el default (mes actual o siguiente)
+        if (!$periodo && !$esAdeudoManual) {
+            $periodo = $mesSiguiente ? now()->addMonth()->format('Y-m') : now()->format('Y-m');
+        }
 
         return [
             'periodo' => $periodo,
@@ -321,6 +336,7 @@ class FacturaService
             'recargo' => $payload['recargo'] ?? null,
             'pago_anterior' => $payload['pago_anterior'] ?? null,
             'metodo' => $payload['metodo'] ?? 'Efectivo',
+            'manual_label' => !empty($payload['es_adeudo_manual']) ? ($payload['label'] ?? null) : null,
         ];
 
         $fingerprint = hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
@@ -353,21 +369,23 @@ class FacturaService
             return null;
         }
 
-        // Validar duplicado por periodo
-        $dup = Factura::where('periodo', $periodoFactura)
-            ->where(function ($q) use ($datos) {
-                if ($datos['numero']) {
-                    $q->where('numero_servicio', $datos['numero']);
-                }
-                if (! empty($datos['usuarioId'])) {
-                    $q->orWhere('usuario_id', $datos['usuarioId']);
-                }
-            })
-            ->first();
+        // Validar duplicado por periodo (solo si el periodo no es null)
+        if ($periodoFactura !== null) {
+            $dup = Factura::where('periodo', $periodoFactura)
+                ->where(function ($q) use ($datos) {
+                    if ($datos['numero']) {
+                        $q->where('numero_servicio', $datos['numero']);
+                    }
+                    if (! empty($datos['usuarioId'])) {
+                        $q->orWhere('usuario_id', $datos['usuarioId']);
+                    }
+                })
+                ->first();
 
-        if ($dup) {
-            $dup->is_duplicate_period = true;
-            return $dup;
+            if ($dup) {
+                $dup->is_duplicate_period = true;
+                return $dup;
+            }
         }
 
         return null;
@@ -446,6 +464,7 @@ class FacturaService
             'recargo' => $payload['recargo'] ?? null,
             'pago_anterior' => $payload['pago_anterior'] ?? null,
             'metodo' => $payload['metodo'] ?? 'Efectivo',
+            'manual_label' => !empty($payload['es_adeudo_manual']) ? ($payload['label'] ?? null) : null,
         ];
 
         $fingerprint = in_array($datos['tipo'], ['baja_temporal', 'cancelacion'])
@@ -569,17 +588,29 @@ class FacturaService
         $adeudoMonto = (float) ($usuario->adeudo_monto ?? 0);
         $mensualidad = (float) preg_replace('/[^\d.]/', '', (string) ($usuario->tarifa ?? 0));
         $totalPagado = (float) ($factura->total ?? 0);
+        
+        $payload = is_array($factura->payload) ? $factura->payload : (is_string($factura->payload) ? @json_decode($factura->payload, true) : []);
+        $esAdeudoManual = !empty($payload['es_adeudo_manual']);
+
+        // Primero, actualizar el adeudo manual si corresponde
+        // Lo limpiamos si es un pago marcado como manual O si el pago es suficiente para cubrir la deuda de Excel
+        $limpiarAdeudoManual = $esAdeudoManual || ($adeudoMonto > 0 && $totalPagado >= ($mensualidad - 0.01));
+        
+        if ($limpiarAdeudoManual && $adeudoMonto > 0) {
+            $usuario->adeudo_monto = 0;
+            $usuario->adeudo_descripcion = null;
+            $usuario->save();
+        }
+
+        // Ahora calcular el adeudo real para decidir el estatus
+        // IMPORTANTE: calcularAdeudoUsuario usa el periodo actual por defecto
+        $adeudoReal = $this->morosidadService->calcularAdeudoUsuario($usuario->numero_servicio, null);
+        $tienePendiente = (float) ($adeudoReal['pendiente'] ?? 0) > 0.01;
 
         $updateData = [
-            'estatus_servicio_id' => 1,
+            'estatus_servicio_id' => $tienePendiente ? 4 : 1, // 4: Pendiente, 1: Pagado
             'estado_id' => 1,
         ];
-
-        // Limpiar adeudo del Excel cuando el pago cubre al menos la mensualidad del mes
-        if ($adeudoMonto <= 0 || $totalPagado >= ($mensualidad - 0.01)) {
-            $updateData['adeudo_monto'] = 0;
-            $updateData['adeudo_descripcion'] = null;
-        }
 
         $usuario->update($updateData);
     }

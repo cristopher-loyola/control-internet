@@ -139,25 +139,31 @@ class MorosidadService
         // Si el usuario tiene adeudo manual (por importación de cartera), lo sumamos o lo usamos
         if ($usuario->adeudo_monto > 0) {
             $pendiente += (float) $usuario->adeudo_monto;
+            // Si el adeudo manual NO es del periodo actual (ej. es de Mayo y estamos en Junio), 
+            // nos aseguramos de que mesesAdeudo sea al menos 1 para que el sistema sepa que hay deuda.
+            if ($mesesAdeudo <= 0) {
+                $mesesAdeudo = 1;
+                $desdePeriodo = $periodo;
+            }
         }
 
         $desdeMes = $usuario->adeudo_descripcion ?: Carbon::createFromFormat('Y-m', $desdePeriodo)->locale('es')->translatedFormat('F Y');
         $hastaMes = $curStart->locale('es')->translatedFormat('F Y');
 
         $listaMeses = [];
-        // REQUERIMIENTO: Si el usuario tiene adeudo manual (importado de Excel), priorizamos esa descripción.
+        // REQUERIMIENTO: Si el usuario tiene adeudo manual (importado de Excel), lo incluimos en la lista.
         if ($usuario->adeudo_monto > 0) {
             $listaMeses[] = $usuario->adeudo_descripcion ?: 'Adeudo anterior';
-        } else {
-            // Si NO tiene adeudo manual, usamos la lógica de meses adeudados desde su último pago
-            if ($mesesAdeudo > 0) {
-                $temp = Carbon::createFromFormat('Y-m', $desdePeriodo)->startOfMonth();
-                for ($i = 0; $i < $mesesAdeudo; $i++) {
-                    if ($temp->format('Y-m') !== $periodo) {
-                        $listaMeses[] = $temp->locale('es')->translatedFormat('F Y');
-                    }
-                    $temp->addMonth();
+        }
+        
+        // Si NO tiene adeudo manual o además tiene adeudos por meses, los incluimos
+        if ($mesesAdeudo > 0) {
+            $temp = Carbon::createFromFormat('Y-m', $desdePeriodo)->startOfMonth();
+            for ($i = 0; $i < $mesesAdeudo; $i++) {
+                if ($temp->format('Y-m') !== $periodo) {
+                    $listaMeses[] = $temp->locale('es')->translatedFormat('F Y');
                 }
+                $temp->addMonth();
             }
         }
 
@@ -166,7 +172,7 @@ class MorosidadService
             'numero' => $numero,
             'mensualidad' => round($mensualidad, 2),
             'es_primer_periodo' => $esPrimerPeriodo,
-            'meses_adeudo' => (int) $mesesAdeudo + ($usuario->adeudo_monto > 0 ? 1 : 0), // Ajuste visual si hay adeudo manual
+            'meses_adeudo' => (int) $mesesAdeudo, // Sin ajuste visual, solo meses reales del calendario
             'lista_meses' => $listaMeses,
             'desde_periodo' => $desdePeriodo,
             'desde_mes_label' => $desdeMes,
@@ -293,7 +299,7 @@ class MorosidadService
         return round($base * (1 - ($percent / 100)), 2);
     }
 
-    private function parsePeriodoFromDescripcion(string $desc): ?string
+    public function parsePeriodoFromDescripcion(string $desc): ?string
     {
         $meses = [
             'enero' => 1, 'febrero' => 2, 'marzo' => 3, 'abril' => 4,
@@ -303,6 +309,12 @@ class MorosidadService
         $pattern = '/(' . implode('|', array_keys($meses)) . ')\s+(\d{4})/i';
         if (preg_match($pattern, strtolower($desc), $m)) {
             return sprintf('%04d-%02d', (int) $m[2], $meses[$m[1]]);
+        }
+
+        // Intento secundario: buscar mes sin año (asumir año actual si es adeudo manual)
+        $patternMes = '/(' . implode('|', array_keys($meses)) . ')/i';
+        if (preg_match($patternMes, strtolower($desc), $m)) {
+            return sprintf('%04d-%02d', (int) date('Y'), $meses[$m[1]]);
         }
 
         return null;

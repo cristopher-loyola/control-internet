@@ -69,6 +69,8 @@
                                             pendiente: {{ (float)$r['pendiente'] }},
                                             meses: {{ (int)$r['meses_adeudo'] }},
                                             desdeRaw: '{{ $r['desde_periodo_raw'] }}',
+                                            adeudoManual: {{ (float)($r['adeudo_manual'] ?? 0) }},
+                                            descripcionManual: '{{ addslashes($r['descripcion_manual'] ?? '') }}',
                                             storeUrl: '{{ $routePrefix === 'pagos' ? route('pagos.recibos.facturas.store') : route('admin.pagos.facturas.store') }}'
                                         })"
                                         class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 hover:text-emerald-900 transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-emerald-400">
@@ -253,7 +255,7 @@
                 // 1. Generar meses adeudados
                 const adeudados = [];
                 const { y: y0, m: m0 } = parsePeriodo(data.desdeRaw || '{{ now()->format("Y-m") }}');
-                for (let i = 0; i < (data.meses || 1); i++) {
+                for (let i = 0; i < (data.meses || 0); i++) {
                     const { y, m } = addMeses(y0, m0, i);
                     const value = `${y}-${String(m + 1).padStart(2, '0')}`;
                     const recargo = (i === 0 && data.recargo > 0) ? data.recargo : 0;
@@ -261,9 +263,27 @@
                         esActual: (y === mesActualY && m === mesActualM), esAdeudo: true });
                 }
 
-                // 2. Prepend 5 meses extra anteriores al primer adeudo (desmarcados)
-                const extras = [];
-                for (let i = 5; i >= 1; i--) {
+                // 2. Agregar adeudo manual si existe
+                if (data.adeudoManual > 0) {
+                    adeudados.unshift({ 
+                        value: 'manual', 
+                        label: data.descripcionManual || 'Adeudo anterior', 
+                        total: data.adeudoManual,
+                        esActual: false, 
+                        esAdeudo: true 
+                    });
+                }
+
+                // Si no hay meses ni adeudo manual, al menos mostrar el mes actual como opción
+                if (adeudados.length === 0) {
+                    const value = `${mesActualY}-${String(mesActualM + 1).padStart(2, '0')}`;
+                    adeudados.push({ value, label: labelMes(mesActualY, mesActualM), total: data.mensualidad,
+                        esActual: true, esAdeudo: false });
+                }
+
+                // 3. Prepend 5 meses extra anteriores al primer adeudo (desmarcados)
+                 const extras = [];
+                 for (let i = 5; i >= 1; i--) {
                     const { y, m } = addMeses(y0, m0, -i);
                     const value = `${y}-${String(m + 1).padStart(2, '0')}`;
                     extras.push({ value, label: labelMes(y, m), total: data.mensualidad,
@@ -341,7 +361,9 @@
                                     prepay: 'no',
                                     pago_anterior: 0,
                                     mes_siguiente: false,
-                                    periodo_override: periodo,
+                                    periodo_override: periodo === 'manual' ? null : periodo,
+                                    es_adeudo_manual: periodo === 'manual',
+                                    label: mes?.label || '',
                                     fecha,
                                     hora,
                                 }

@@ -1255,21 +1255,20 @@
                     if(r.ok && j?.ok){
                         this.form.pago_anterior = Number(j.data.monto)||0;
                         this.pagoAnteriorFecha = this.fechaLocal(j.data.fecha || j.data.created_at);
+                        
                         const now = new Date();
-                        const day = now.getDate();
-                        let paidThisMonth = false;
-                        try {
-                            const paidDate = j.data.created_at ? new Date(j.data.created_at) : (j.data.fecha ? new Date(j.data.fecha) : null);
-                            if (paidDate) {
-                                paidThisMonth = (paidDate.getFullYear() === now.getFullYear() && paidDate.getMonth() === now.getMonth());
-                            }
-                        } catch(_) {}
+                        const currentPeriod = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+                        
+                        // Solo marcar como pagado este mes si el PERIODO de la factura coincide con el mes actual
+                        const paidThisMonth = (j.data.periodo === currentPeriod);
+                        
                         this.pagadoMesActual = paidThisMonth;
                         this.pagarMesSiguiente = paidThisMonth;
+                        
                         if (!this.recargoManual) {
-                            if (day >= 8 && !paidThisMonth) {
+                            if (now.getDate() >= 8 && !paidThisMonth) {
                                 this.form.recargo = 'si';
-                            } else if (day < 8) {
+                            } else {
                                 this.form.recargo = 'no';
                             }
                         }
@@ -1280,11 +1279,7 @@
                         this.pagarMesSiguiente = false;
                         if (!this.recargoManual) {
                             const now = new Date();
-                            if (now.getDate() >= 8) {
-                                this.form.recargo = 'si';
-                            } else {
-                                this.form.recargo = 'no';
-                            }
+                            this.form.recargo = (now.getDate() >= 8) ? 'si' : 'no';
                         }
                     }
                 }catch(_){
@@ -1292,14 +1287,6 @@
                     this.pagoAnteriorFecha = '';
                     this.pagadoMesActual = false;
                     this.pagarMesSiguiente = false;
-                    if (!this.recargoManual) {
-                        const now = new Date();
-                        if (now.getDate() >= 8) {
-                            this.form.recargo = 'si';
-                        } else {
-                            this.form.recargo = 'no';
-                        }
-                    }
                 }
                 this.recalcular();
                 await this.fetchAdeudo();

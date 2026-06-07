@@ -1015,7 +1015,7 @@ class DashboardController extends Controller
             // Integrar adeudo manual (importado)
             if ($u->adeudo_monto > 0) {
                 $pendiente += (float) $u->adeudo_monto;
-                $mesesAdeudo += 1; // Ajuste visual
+                // Eliminamos el $mesesAdeudo += 1 que causaba el desfase
             }
 
             if ($pendiente <= 0 || ($mesesAdeudo <= 0 && $u->adeudo_monto <= 0)) {
@@ -1034,6 +1034,8 @@ class DashboardController extends Controller
                 'meses_adeudo' => $mesesAdeudo,
                 'desde_periodo' => $u->adeudo_descripcion ?: $desdePeriodo,
                 'desde_periodo_raw' => $desdePeriodo,
+                'adeudo_manual' => (float) $u->adeudo_monto,
+                'descripcion_manual' => $u->adeudo_descripcion ?: 'Adeudo anterior',
                 'moroso' => $pendiente > 0,
             ];
         }
