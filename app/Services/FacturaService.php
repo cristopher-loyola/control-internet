@@ -566,12 +566,22 @@ class FacturaService
 
         if (! $usuario) return;
 
-        $usuario->update([
-            'estatus_servicio_id' => 1, // Pagado
-            'estado_id' => 1,           // Activado
-            'adeudo_monto' => 0,
-            'adeudo_descripcion' => null,
-        ]);
+        $adeudoMonto = (float) ($usuario->adeudo_monto ?? 0);
+        $mensualidad = (float) preg_replace('/[^\d.]/', '', (string) ($usuario->tarifa ?? 0));
+        $totalPagado = (float) ($factura->total ?? 0);
+
+        $updateData = [
+            'estatus_servicio_id' => 1,
+            'estado_id' => 1,
+        ];
+
+        // Limpiar adeudo del Excel cuando el pago cubre al menos la mensualidad del mes
+        if ($adeudoMonto <= 0 || $totalPagado >= ($mensualidad - 0.01)) {
+            $updateData['adeudo_monto'] = 0;
+            $updateData['adeudo_descripcion'] = null;
+        }
+
+        $usuario->update($updateData);
     }
 
     /**

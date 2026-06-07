@@ -153,7 +153,9 @@ class MorosidadService
             if ($mesesAdeudo > 0) {
                 $temp = Carbon::createFromFormat('Y-m', $desdePeriodo)->startOfMonth();
                 for ($i = 0; $i < $mesesAdeudo; $i++) {
-                    $listaMeses[] = $temp->locale('es')->translatedFormat('F Y');
+                    if ($temp->format('Y-m') !== $periodo) {
+                        $listaMeses[] = $temp->locale('es')->translatedFormat('F Y');
+                    }
                     $temp->addMonth();
                 }
             }

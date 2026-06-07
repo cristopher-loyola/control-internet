@@ -1188,12 +1188,19 @@ thead th{ background:#2e7d32; color:#fff; }
                     }
 
                     if ($descripcionAdeudo !== null) {
-                        $updateData['adeudo_descripcion'] = $descripcionAdeudo;
+                        $updateData['adeudo_descripcion'] = $descripcionAdeudo ?: null;
                     }
                     if ($montoAdeudo !== null) {
                         $ma = str_replace(['$', ' ', ','], ['', '', ''], $montoAdeudo);
                         if (is_numeric($ma)) {
                             $updateData['adeudo_monto'] = (float) $ma;
+                            if ((float) $ma == 0) {
+                                $updateData['adeudo_descripcion'] = null;
+                            }
+                        } else {
+                            // Celda vacía = sin adeudo → limpiar
+                            $updateData['adeudo_monto'] = 0;
+                            $updateData['adeudo_descripcion'] = null;
                         }
                     }
 
