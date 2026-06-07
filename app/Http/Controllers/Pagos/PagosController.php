@@ -327,6 +327,7 @@ class PagosController extends Controller
                 'fecha' => $f->created_at->toIso8601String(),
                 'created_at' => $f->created_at->toIso8601String(),
                 'reference_number' => $f->reference_number,
+                'periodo' => $f->periodo,
             ],
         ]);
     }

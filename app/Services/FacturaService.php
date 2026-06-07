@@ -603,7 +603,9 @@ class FacturaService
         }
 
         // Ahora calcular el adeudo real para decidir el estatus
-        // IMPORTANTE: calcularAdeudoUsuario usa el periodo actual por defecto
+        // Usamos el periodo de la factura para calcular el adeudo del mes actual
+        // Si la factura es de un mes anterior, el sistema calculará el adeudo del mes actual
+        $periodoFactura = $factura->periodo ?? now()->format('Y-m');
         $adeudoReal = $this->morosidadService->calcularAdeudoUsuario($usuario->numero_servicio, null);
         $tienePendiente = (float) ($adeudoReal['pendiente'] ?? 0) > 0.01;
 

@@ -1335,9 +1335,16 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                         const day = now.getDate();
                         let paidThisMonth = false;
                         try {
-                            const paidDate = j.data.created_at ? new Date(j.data.created_at) : (j.data.fecha ? new Date(j.data.fecha) : null);
-                            if (paidDate) {
-                                paidThisMonth = (paidDate.getFullYear() === now.getFullYear() && paidDate.getMonth() === now.getMonth());
+                            // Usar el periodo de la factura (YYYY-MM) en lugar de la fecha de creación
+                            if (j.data.periodo) {
+                                const [year, month] = j.data.periodo.split('-').map(Number);
+                                paidThisMonth = (year === now.getFullYear() && (month - 1) === now.getMonth());
+                            } else {
+                                // Fallback a fecha de creación si no hay periodo
+                                const paidDate = j.data.created_at ? new Date(j.data.created_at) : (j.data.fecha ? new Date(j.data.fecha) : null);
+                                if (paidDate) {
+                                    paidThisMonth = (paidDate.getFullYear() === now.getFullYear() && paidDate.getMonth() === now.getMonth());
+                                }
                             }
                         } catch(_) {}
                         this.pagadoMesActual = paidThisMonth;
