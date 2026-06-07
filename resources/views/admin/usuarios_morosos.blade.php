@@ -255,7 +255,8 @@
                 // 1. Generar meses adeudados
                 const adeudados = [];
                 const { y: y0, m: m0 } = parsePeriodo(data.desdeRaw || '{{ now()->format("Y-m") }}');
-                for (let i = 0; i < (data.meses || 0); i++) {
+                const mesesToLoop = data.adeudoManual > 0 ? Math.max(0, (data.meses || 0) - 1) : (data.meses || 0);
+                for (let i = 0; i < mesesToLoop; i++) {
                     const { y, m } = addMeses(y0, m0, i);
                     const value = `${y}-${String(m + 1).padStart(2, '0')}`;
                     const recargo = (i === 0 && data.recargo > 0) ? data.recargo : 0;
