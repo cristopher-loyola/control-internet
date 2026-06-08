@@ -46,7 +46,7 @@
                     >
                         Añadir
                     </a>
-                    <button
+                    <!-- <button
                         type="button"
                         class="btn btn-success"
                         x-data
@@ -54,7 +54,7 @@
                         title="Importar desde Excel (CSV)"
                     >
                         Importar
-                    </button>
+                    </button> -->
                     <button
                         type="button"
                         class="btn btn-success"
