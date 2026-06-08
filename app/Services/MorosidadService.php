@@ -136,15 +136,22 @@ class MorosidadService
         }
         $pendiente = round(max(0.0, ($base + $recargo) - $pagadoParcial), 2);
 
-        // Si el usuario tiene adeudo manual (por importación de cartera), lo sumamos o lo usamos
+        // REGLA DE ESTANDARIZACIÓN (Caso base 300/350):
+        // Si hay un adeudo manual (ej. $50 de Excel), este se considera el "recargo" o deuda previa.
+        // El monto base (mensualidad) se mantiene en $300.
         if ($usuario->adeudo_monto > 0) {
-            $pendiente += (float) $usuario->adeudo_monto;
-            // Si el adeudo manual NO es del periodo actual (ej. es de Mayo y estamos en Junio), 
-            // nos aseguramos de que mesesAdeudo sea al menos 1 para que el sistema sepa que hay deuda.
-            if ($mesesAdeudo <= 0) {
-                $mesesAdeudo = 1;
-                $desdePeriodo = $periodo;
-            }
+            $montoManual = (float)$usuario->adeudo_monto;
+            
+            // El total con recargo será: mensualidad + adeudo manual
+            $pendiente = round(($mensualidad + $montoManual), 2);
+            
+            // Para que la interfaz pueda "restar" el recargo y volver al base ($300),
+            // informamos el adeudo manual como el recargo oficial del periodo.
+            $recargo = $montoManual;
+            
+            // Forzamos el estado de meses adeudados para que la interfaz muestre los avisos correctamente
+            $mesesAdeudo = 1; 
+            $desdePeriodo = $periodo;
         }
 
         $desdeMes = $usuario->adeudo_descripcion ?: Carbon::createFromFormat('Y-m', $desdePeriodo)->locale('es')->translatedFormat('F Y');

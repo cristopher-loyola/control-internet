@@ -14,6 +14,8 @@ use App\Services\PrepayDashboardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
+use Illuminate\Support\Facades\Schema;
+
 class AdminController extends Controller
 {
     private const USER_ROLES = [
@@ -1463,12 +1465,13 @@ class AdminController extends Controller
                 try {
                     $numero = $getVal($row, ['numero_de_cliente', 'numero_servicio', 'numero', 'num_cliente']);
                     $nombre = $getVal($row, ['nombre', 'nombre_cliente', 'cliente']);
-                    $telefono = $getVal($row, ['numero_telefonico', 'telefono', 'tel', 'celular']);
+                    $telefono = $getVal($row, ['numero_de_telefono', 'numero_telefonico', 'telefono', 'tel', 'celular']);
                     $megas = $getVal($row, ['megas', 'mbps', 'velocidad']);
                     $tarifa = $getVal($row, ['tarifa', 'costo', 'paquete', 'mensualidad']);
                     $estado = $getVal($row, ['estado', 'estatus']);
                     $descripcionAdeudo = $getVal($row, ['descripcion', 'observaciones', 'nota']);
                     $montoAdeudo = $getVal($row, ['cantidad', 'monto_adeudo', 'adeudo']);
+                    $totalAPagar = $getVal($row, ['total_a_pagar', 'total_pagar', 'total']);
 
                     if (! $numero) {
                         $numero = trim($row[0] ?? '');
@@ -1490,6 +1493,9 @@ class AdminController extends Controller
                     }
                     if (! $montoAdeudo) {
                         $montoAdeudo = trim($row[6] ?? '');
+                    }
+                    if (! $totalAPagar) {
+                        $totalAPagar = trim($row[7] ?? '');
                     }
                     if (! $estado) {
                         $estado = trim($row[10] ?? '');
@@ -1544,6 +1550,25 @@ class AdminController extends Controller
                         }
                     }
 
+                    // SOBREESCRITURA TOTAL: Si hay un "Total a pagar" en el Excel, lo usamos para calcular el adeudo manual real
+                    // Ejemplo: Tarifa $300, Total a pagar $350 -> Adeudo manual $50
+                    if ($totalAPagar !== null) {
+                        $tp = str_replace(['$', ' ', ','], ['', '', ''], $totalAPagar);
+                        if (is_numeric($tp)) {
+                            $tp = (float) $tp;
+                            $t = (float) ($updateData['tarifa'] ?? ($usuario ? $usuario->tarifa : 0));
+                            
+                            // El adeudo manual que guardamos es la diferencia entre el total y la tarifa del mes actual
+                            $nuevoAdeudoManual = max(0, $tp - $t);
+                            $updateData['adeudo_monto'] = $nuevoAdeudoManual;
+                            
+                            // Si el total a pagar es igual a la tarifa, significa que no debe nada de meses anteriores
+                            if ($tp <= $t) {
+                                $updateData['adeudo_descripcion'] = null;
+                            }
+                        }
+                    }
+
                     if ($estado) {
                         $est = strtoupper($estado);
                         if ($est === 'SI' || $est === 'PAGADO' || $est === 'ACTIVADO') {
@@ -1555,6 +1580,15 @@ class AdminController extends Controller
                     }
 
                     if ($usuario) {
+                        // Limpiar campos que podrían causar que el MorosidadService calcule de más
+                        // Nota: Se han verificado las columnas existentes en el modelo Usuario
+                        if (Schema::hasColumn('usuarios', 'proximo_pago')) {
+                            $updateData['proximo_pago'] = null;
+                        }
+                        if (Schema::hasColumn('usuarios', 'proximo_pago_monto')) {
+                            $updateData['proximo_pago_monto'] = null;
+                        }
+                        
                         $usuario->update($updateData);
                         $report['updated']++;
                     } else {

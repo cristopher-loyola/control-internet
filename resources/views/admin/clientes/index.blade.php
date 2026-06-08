@@ -427,20 +427,85 @@
         </div>
         </x-modal>
 
-        <x-modal name="admin-clientes-import-cartera" maxWidth="sm" focusable>
+        <x-modal name="admin-clientes-import-cartera" maxWidth="2xl" focusable>
         <form method="POST" action="{{ route('admin.clientes.import-cartera') }}" enctype="multipart/form-data" class="p-6">
             @csrf
             <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Importar Cartera</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Sube un archivo CSV con las columnas de Cartera de Clientes. Se actualizarán los datos de los clientes existentes.</p>
-            <div>
-                <input type="file" name="file" accept=".csv,text/csv" class="block w-full text-sm">
+            
+            <div class="bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-400 p-4 mb-4">
+                <div class="flex">
+                    <div class="flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                        </svg>
+                    </div>
+                    <div class="ml-3">
+                        <p class="text-sm text-blue-700 dark:text-blue-300">
+                            Sube un archivo CSV para actualizar masivamente los adeudos. El sistema calculará el adeudo manual restando la tarifa del total a pagar.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <h4 class="text-sm font-bold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">Estructura requerida del Excel:</h4>
+                <div class="overflow-x-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-[11px] font-sans">
+                        <thead class="bg-gray-100 dark:bg-gray-800">
+                            <tr>
+                                <th class="px-2 py-1 text-left border-r border-gray-200 dark:border-gray-700">A</th>
+                                <th class="px-2 py-1 text-left border-r border-gray-200 dark:border-gray-700">B</th>
+                                <th class="px-2 py-1 text-left border-r border-gray-200 dark:border-gray-700">C</th>
+                                <th class="px-2 py-1 text-left border-r border-gray-200 dark:border-gray-700">D</th>
+                                <th class="px-2 py-1 text-left border-r border-gray-200 dark:border-gray-700">E</th>
+                                <th class="px-2 py-1 text-left border-r border-gray-200 dark:border-gray-700">F</th>
+                                <th class="px-2 py-1 text-left border-r border-gray-200 dark:border-gray-700">G</th>
+                                <th class="px-2 py-1 text-left">H</th>
+                            </tr>
+                            <tr class="bg-white dark:bg-gray-900">
+                                <th class="px-2 py-2 text-left border-r border-gray-200 dark:border-gray-700 font-bold">numero de cliente</th>
+                                <th class="px-2 py-2 text-left border-r border-gray-200 dark:border-gray-700 font-bold">nombre</th>
+                                <th class="px-2 py-2 text-left border-r border-gray-200 dark:border-gray-700 font-bold whitespace-nowrap">numero de telefono</th>
+                                <th class="px-2 py-2 text-left border-r border-gray-200 dark:border-gray-700 font-bold">megas</th>
+                                <th class="px-2 py-2 text-left border-r border-gray-200 dark:border-gray-700 font-bold">tarifa</th>
+                                <th class="px-2 py-2 text-left border-r border-gray-200 dark:border-gray-700 font-bold">descripcion</th>
+                                <th class="px-2 py-2 text-left border-r border-gray-200 dark:border-gray-700 font-bold">cantidad</th>
+                                <th class="px-2 py-2 text-left font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20">total a pagar</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
+                            <tr>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">1047</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">Mario Gonzalez</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">4681234568
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">3</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">300.00</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500 italic text-[10px]">Adeuda Mayo...</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">167.00</td>
+                                <td class="px-2 py-1 font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20">467.00</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="space-y-3 text-sm text-gray-600 dark:text-gray-400 mb-4">
+                <p>• <strong>Columna A:</strong> ID del cliente para identificarlo.</p>
+                <p>• <strong>Columna E (Tarifa):</strong> Mensualidad base del servicio.</p>
+                <p>• <strong>Columna H (Total a pagar):</strong> Es la <strong>VERDAD ABSOLUTA</strong>. El sistema mostrará esta cantidad exacta cuando el recargo esté activo.</p>
+            </div>
+
+            <div class="mt-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Seleccionar archivo CSV:</label>
+                <input type="file" name="file" accept=".csv,text/csv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 dark:file:bg-emerald-900/30 dark:file:text-emerald-300">
                 @if ($errors->has('file'))
                     <div class="mt-2 text-sm text-red-600">{{ $errors->first('file') }}</div>
                 @endif
             </div>
-            <div class="mt-5 flex justify-end gap-2">
-                <button type="button" class="btn btn-secondary" x-on:click="$dispatch('close')">Cancelar</button>
-                <button type="submit" class="btn btn-success" style="background-color: #15803d; border-color: #15803d;">Importar Cartera</button>
+
+            <div class="mt-8 flex justify-end gap-3">
+                <button type="button" class="px-4 py-2 bg-gray-500 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-gray-600 transition" x-on:click="$dispatch('close')">Cancelar</button>
+                <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-emerald-700 shadow-md transition">Importar Cartera</button>
             </div>
         </form>
         </x-modal>
