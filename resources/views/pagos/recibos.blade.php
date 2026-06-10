@@ -495,7 +495,14 @@
                                 this.form.pago_anterior = p.pago_anterior || 0;
                                 this.form.metodo = p.metodo || '';
                                 this.form.cobro = p.cobro || '';
-                                this.recalcular();
+                                this.form.prepay = p.prepay || 'no';
+                                this.form.prepay_months = p.prepay_months || null;
+                                this.form.prepay = p.prepay || 'no';
+                                this.form.prepay_months = p.prepay_months || null;
+                                this.form.prepay = p.prepay || 'no';
+                                this.form.prepay_months = p.prepay_months || null;
+                                this.totales.total = Number(d.total) || 0;
+                                this.totales.letra = toWords(this.totales.total);
                                 if(asTicket){
                                     await new Promise(r=>setTimeout(r,50));
                                     this.printThermal();
@@ -603,6 +610,7 @@
                 this.dragging=null; this.dragRef=null; this.saveLayout();
             },
             recalcular(){
+                if(this.readOnlyMode && this.ref.id) return;
                 const mensualidad = Number(this.datos.mensualidad)||0;
                 const rec = this.form.recargo==='si'?50:0;
                 let total = 0;
@@ -743,7 +751,10 @@
                         this.form.pago_anterior = p.pago_anterior || 0;
                         this.form.metodo = p.metodo || '';
                         this.form.cobro = p.cobro || '';
-                        this.recalcular();
+                                this.form.prepay = p.prepay || 'no';
+                                this.form.prepay_months = p.prepay_months || null;
+                                this.totales.total = Number(d.total) || 0;
+                        this.totales.letra = toWords(this.totales.total);
                         await this.doPrintOnce();
                     }
                 }catch(_){}
@@ -806,6 +817,9 @@
                                 nombre: this.datos.nombre,
                                 mensualidad: this.datos.mensualidad,
                                 recargo: this.form.recargo,
+                                prepay: this.form.prepay,
+                                prepay_months: this.form.prepay==='si'? this.form.prepay_months : null,
+                                prepay_total: this.form.prepay==='si'? this.totales.total : null,
                                 pago_anterior: this.form.pago_anterior,
                                 metodo: this.form.metodo,
                                 cobro: this.form.cobro,
