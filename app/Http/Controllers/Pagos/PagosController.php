@@ -20,6 +20,50 @@ use Illuminate\Support\Facades\Validator;
 
 class PagosController extends Controller
 {
+    private function debeSerCortado($usuario, $adeudo, $mesActual, $diaDelMes, MorosidadService $morosidadService): bool
+    {
+        // First check original logic
+        $mesesAdeudo = $adeudo['meses_adeudo'] ?? 0;
+        $desdePeriodo = $adeudo['desde_periodo'] ?? $mesActual;
+
+        $originalPagado = true;
+        if ($mesesAdeudo == 0) {
+            $originalPagado = true;
+        } elseif ($mesesAdeudo == 1 && $desdePeriodo === $mesActual) {
+            $originalPagado = true;
+        } elseif ($mesesAdeudo >= 1 && $desdePeriodo < $mesActual && $diaDelMes < 8) {
+            $originalPagado = true;
+        } elseif ($mesesAdeudo >= 1 && $desdePeriodo < $mesActual && $diaDelMes >= 8) {
+            $originalPagado = false;
+        } else {
+            $originalPagado = true;
+        }
+
+        if (!$originalPagado) {
+            return true;
+        }
+
+        // Check for manual debt
+        if ($usuario->adeudo_monto <= 0) {
+            return false;
+        }
+
+        // Check adeudo_descripcion for previous month
+        $parsedPeriodo = $morosidadService->parsePeriodoFromDescripcion($usuario->adeudo_descripcion ?? '');
+        if ($parsedPeriodo && $parsedPeriodo < $mesActual) {
+            return true;
+        }
+
+        // Check proximo_pago
+        if (!empty($usuario->proximo_pago) && preg_match('/^\d{4}-\d{2}$/', $usuario->proximo_pago)) {
+            if ($usuario->proximo_pago < $mesActual) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function index()
     {
         return view('pagos.index');
@@ -1303,21 +1347,7 @@ thead th{ background:#2e7d32; color:#fff; }
         // Calcular adeudo y filtrar solo los NO verdes (por cortar)
         $usuariosPorCortar = $usuarios->filter(function ($usuario) use ($morosidadService, $diaDelMes, $mesActual) {
             $adeudo = $morosidadService->calcularAdeudoUsuario((string)$usuario->numero_servicio);
-            $mesesAdeudo = $adeudo['meses_adeudo'] ?? 0;
-            $desdePeriodo = $adeudo['desde_periodo'] ?? $mesActual;
-
-            // Determinar si está en verde (al día)
-            $pagadoMes = false;
-            if ($mesesAdeudo == 0) {
-                $pagadoMes = true;
-            } elseif ($mesesAdeudo == 1 && $desdePeriodo === $mesActual) {
-                $pagadoMes = true;
-            } elseif ($mesesAdeudo >= 1 && $desdePeriodo < $mesActual && $diaDelMes < 8) {
-                $pagadoMes = true;
-            }
-
-            // Solo incluir los que NO están en verde
-            return !$pagadoMes;
+            return $this->debeSerCortado($usuario, $adeudo, $mesActual, $diaDelMes, $morosidadService);
         });
 
         $cortadores = Cortador::orderBy('nombre')->get();
@@ -1369,21 +1399,7 @@ thead th{ background:#2e7d32; color:#fff; }
         // Calcular adeudo y filtrar solo los NO verdes (por cortar)
         $usuariosPorCortar = $usuarios->filter(function ($usuario) use ($morosidadService, $diaDelMes, $mesActual) {
             $adeudo = $morosidadService->calcularAdeudoUsuario((string)$usuario->numero_servicio);
-            $mesesAdeudo = $adeudo['meses_adeudo'] ?? 0;
-            $desdePeriodo = $adeudo['desde_periodo'] ?? $mesActual;
-
-            // Determinar si está en verde (al día)
-            $pagadoMes = false;
-            if ($mesesAdeudo == 0) {
-                $pagadoMes = true;
-            } elseif ($mesesAdeudo == 1 && $desdePeriodo === $mesActual) {
-                $pagadoMes = true;
-            } elseif ($mesesAdeudo >= 1 && $desdePeriodo < $mesActual && $diaDelMes < 8) {
-                $pagadoMes = true;
-            }
-
-            // Solo incluir los que NO están en verde
-            return !$pagadoMes;
+            return $this->debeSerCortado($usuario, $adeudo, $mesActual, $diaDelMes, $morosidadService);
         });
 
         $filename = 'usuarios-por-cortar-' . now()->format('Y-m-d') . '.csv';
