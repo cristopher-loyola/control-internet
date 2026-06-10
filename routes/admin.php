@@ -22,6 +22,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/pagos/lookup', [AdminController::class, 'pagosLookup'])->name('pagos.lookup');
         Route::post('/pagos/layout', [AdminController::class, 'pagosLayoutStore'])->name('pagos.layout.store');
         Route::get('/pagos/layout', [AdminController::class, 'pagosLayoutGet'])->name('pagos.layout.get');
+        Route::get('/pagos/deuda', [AdminController::class, 'pagosDeuda'])->name('pagos.deuda');
         Route::post('/pagos/facturas', [AdminController::class, 'pagosFacturaStore'])->name('pagos.facturas.store');
         Route::get('/pagos/facturas', [AdminController::class, 'pagosFacturasIndex'])->name('pagos.facturas.index');
         Route::get('/pagos/facturas/{id}', [AdminController::class, 'pagosFacturaShow'])->name('pagos.facturas.show');

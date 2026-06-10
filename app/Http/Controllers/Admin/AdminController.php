@@ -9,6 +9,7 @@ use App\Models\Usuario;
 use App\Services\MegasAssigner;
 use App\Models\HistorialUsuario;
 use App\Models\AppSetting;
+use App\Services\MorosidadService;
 
 class AdminController extends Controller
 {
@@ -39,6 +40,23 @@ class AdminController extends Controller
                 'reference_number' => $f->reference_number,
             ],
         ]);
+    }
+
+    public function pagosDeuda(Request $request, MorosidadService $service)
+    {
+        $numero = (string) $request->query('numero');
+        $month = $request->query('month');
+        if ($numero === '' || !ctype_digit($numero)) {
+            return response()->json(['ok' => false, 'message' => 'Número inválido'], 422);
+        }
+        if ($month !== null && !preg_match('/^\d{4}\-\d{2}$/', (string) $month)) {
+            $month = null;
+        }
+        $res = $service->calcularAdeudoUsuario($numero, $month);
+        if (!($res['ok'] ?? false)) {
+            return response()->json($res, 404);
+        }
+        return response()->json($res);
     }
 
     public function pagos()

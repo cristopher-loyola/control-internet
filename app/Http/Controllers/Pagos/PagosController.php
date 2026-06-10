@@ -9,6 +9,7 @@ use App\Models\Usuario;
 use App\Models\Factura;
 use Illuminate\Support\Facades\DB;
 use App\Models\AppSetting;
+use App\Services\MorosidadService;
 
 class PagosController extends Controller
 {
@@ -70,6 +71,23 @@ class PagosController extends Controller
             'ok' => true,
             'layout' => $setting ? $setting->value : null
         ]);
+    }
+
+    public function recibosDeuda(Request $request, MorosidadService $service)
+    {
+        $numero = (string) $request->query('numero');
+        $month = $request->query('month');
+        if ($numero === '' || !ctype_digit($numero)) {
+            return response()->json(['ok' => false, 'message' => 'Número inválido'], 422);
+        }
+        if ($month !== null && !preg_match('/^\d{4}\-\d{2}$/', (string) $month)) {
+            $month = null;
+        }
+        $res = $service->calcularAdeudoUsuario($numero, $month);
+        if (!($res['ok'] ?? false)) {
+            return response()->json($res, 404);
+        }
+        return response()->json($res);
     }
 
     public function recibosLookup(Request $request)

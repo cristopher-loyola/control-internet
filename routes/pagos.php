@@ -13,6 +13,7 @@ Route::middleware(['auth', 'role:pagos'])
         Route::get('/recibos', [PagosController::class, 'recibos'])->name('recibos');
         Route::get('/recibos/lookup', [PagosController::class, 'recibosLookup'])->name('recibos.lookup');
         Route::get('/recibos/layout', [PagosController::class, 'recibosLayoutGet'])->name('recibos.layout.get');
+        Route::get('/recibos/deuda', [PagosController::class, 'recibosDeuda'])->name('recibos.deuda');
         Route::post('/recibos/facturas', [PagosController::class, 'recibosFacturaStore'])->name('recibos.facturas.store');
         Route::get('/recibos/facturas', [PagosController::class, 'recibosFacturasIndex'])->name('recibos.facturas.index');
         Route::get('/recibos/facturas/{id}', [PagosController::class, 'recibosFacturaShow'])->name('recibos.facturas.show');

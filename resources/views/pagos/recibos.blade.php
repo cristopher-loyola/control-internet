@@ -219,6 +219,11 @@
                                 <div>Importe</div><div x-text="moneda(0)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
+                                <template x-if="adeudo && adeudo.meses>0">
+                                    <div>Adeudos</div>
+                                </template>
+                                <template x-if="adeudo && adeudo.meses>0">
+<div x-text="`Adeuda desde ${new Date(adeudo.desde_label).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })} y en total a pagar: ${moneda(totales.total)}`"></div>                                </template>
                                 <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
                                 <div x-show="form.prepay==='si'">Meses adelantados</div><div x-show="form.prepay==='si'" x-text="form.prepay_months || '-'"></div>
                                 <div>Su pago anterior</div><div x-text="moneda(form.pago_anterior || 0)"></div>
@@ -252,6 +257,11 @@
                                 <div>Importe</div><div x-text="moneda(0)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
+                                <template x-if="adeudo && adeudo.meses>0">
+                                    <div>Adeudos</div>
+                                </template>
+                                <template x-if="adeudo && adeudo.meses>0">
+<div x-text="`Adeuda desde ${new Date(adeudo.desde_label).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' })} y en total a pagar: ${moneda(totales.total)}`"></div>                                </template>
                                 <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
                                 <div x-show="form.prepay==='si'">Meses adelantados</div><div x-show="form.prepay==='si'" x-text="form.prepay_months || '-'"></div>
                                 <div>Su pago anterior</div><div x-text="moneda(form.pago_anterior || 0)"></div>
@@ -282,14 +292,14 @@
             .divider-line{display:none!important}
             .print-sheet::after{content:'';position:absolute;left:0;right:0;top:calc(50% - 0.3mm);height:0.6mm;background:#111;z-index:50}
         }
-        .print-sheet{position:relative;width:210mm;max-width:none;margin:0 auto;transform:none;height:297mm;background:#fff}       
+         .print-sheet{position:relative;width:210mm;max-width:none;margin:0 auto;transform:none;height:297mm;background:#fff}       
         .sheet-abs{position:absolute;inset:0;z-index:20;pointer-events:none}
         .receipt{position:relative;height:calc((297mm - 0.6mm)/2);border:1px solid #d1d5db;border-radius:8px;padding:6mm;background:#fff;overflow:hidden}
         .divider-line{height:0.6mm;background:#111;margin:0}
         .client-receipt{padding-top:8mm}
         .ref-number{position:absolute;top:2mm;left:6mm;font-weight:700;font-size:12px;color:#111;z-index:30}
         .id-band{background:#fde047;border:1px solid #eab308;border-radius:4px;padding:4px 8px;display:inline-flex;gap:10px;margin:10px 0;width:fit-content;max-width:60%}
-        .receipt-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 20px;font-size:0.95rem}
+        .receipt-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:13px}
         .receipt-head img{max-height:120px;object-fit:contain}
         .logo-center{display:inline-block;max-width:680px;width:90%}
         .abs-img,.abs-text{position:absolute;pointer-events:none}
@@ -368,6 +378,7 @@
             pagoAnteriorFecha:'',
             datos:{ nombre:'', mensualidad:0 },
             totales:{ total:0, letra:'', prepay_total:0 },
+            adeudo:null,
             prepayConfig:{ enabled:{}, matrix:{} },
             prepayError:'',
             get prepayLegend(){
@@ -593,6 +604,9 @@
             },
             recalcular(){
                 const mensualidad = Number(this.datos.mensualidad)||0;
+                const rec = this.form.recargo==='si'?50:0;
+                let total = 0;
+                
                 if(this.form.prepay === 'si'){
                     const months = Number(this.form.prepay_months||6);
                     const info = this.prepayConfig?.matrix?.[months];
@@ -606,13 +620,47 @@
                         const base = mensualidad * months;
                         this.totales.prepay_total = Math.round((base * (1 - percent/100)) * 100) / 100;
                     }
-                    this.totales.total = this.totales.prepay_total;
+                    total = this.totales.prepay_total;
                 }else{
-                    const rec = this.form.recargo==='si'?50:0;
-                    const total = mensualidad + rec;
-                    this.totales.total = total;
+                    if (this.adeudo && this.adeudo.meses > 0) {
+                        const base = mensualidad * this.adeudo.meses;
+                        const pagado = this.adeudo.pagado_parcial || 0;
+                        total = Math.round((Math.max(0, base - pagado) + rec) * 100) / 100;
+                    } else {
+                        total = mensualidad + rec;
+                    }
                 }
+                
+                this.totales.total = total;
                 this.totales.letra = toWords(this.totales.total);
+            },
+            async fetchAdeudo(){
+                this.adeudo = null;
+                const numero = String(this.form.numero||'').trim();
+                if(!numero) return;
+                try{
+                    const r = await fetch('{{ route('pagos.recibos.deuda') }}?numero='+encodeURIComponent(numero), { headers:{'Accept':'application/json'} });
+                    const j = await r.json();
+                    if(r.ok && j?.ok){
+                        const m = j.pendiente||0;
+                        const meses = j.meses_adeudo||0;
+                        if(isFinite(m) && m>0 && meses>0){
+                            this.adeudo = {
+                                desde_periodo: j.desde_periodo,
+                                desde_label: j.desde_mes_label || '',
+                                meses: meses,
+                                pendiente: Math.max(0, Number(m)||0),
+                                recargo: Number(j.recargo||0),
+                                pagado_parcial: Number(j.pagado_parcial||0)
+                            };
+                            // Sincronizar el recargo del formulario con el del servidor si hay adeudo
+                            this.form.recargo = this.adeudo.recargo > 0 ? 'si' : 'no';
+                        } else {
+                            this.adeudo = { desde_periodo:j.desde_periodo, desde_label:j.desde_mes_label||'', meses:meses, pendiente:0, recargo:Number(j.recargo||0), pagado_parcial:0 };
+                        }
+                        this.recalcular();
+                    }
+                }catch(_){}
             },
             refNumberPad(){
                 const n = this.ref.numero;
@@ -662,6 +710,7 @@
                     }
                 }
                 this.recalcular();
+                await this.fetchAdeudo();
             },
             openConfirm(){ this.saveConfirmOpen = true },
             async confirmSaveYes(){
@@ -795,6 +844,7 @@
                 const fecha = this.fecha();
                 const hora = this.hora();
                 const folio = this.refNumberPad();
+                const adeudosLine = (this.adeudo && this.adeudo.meses>0) ? `<div class="line"><div class="l">Adeudos</div><div>adeudos - adeuda desde ${this.adeudo.desde_label} y en total a pagar: ${this.moneda(this.totales.total)}</div></div><div class="sep"></div>` : '';
                 const html = `
 <!doctype html>
 <html>
@@ -829,6 +879,7 @@ html,body{ margin:0; padding:0 }
   <div class="line"><div class="l">Importe</div><div>${importe}</div></div>
   <div class="line"><div class="l">Recargo</div><div>${recargo}</div></div>
   <div class="sep"></div>
+  ${adeudosLine}
   <div class="line"><div class="l">Total (número)</div><div>${totalNum}</div></div>
   <div class="line"><div class="l">Total (letra)</div><div style="max-width:42mm;text-align:right">${totalLetra}</div></div>
   <div class="sep"></div>
@@ -858,6 +909,7 @@ html,body{ margin:0; padding:0 }
                     this.datos.mensualidad = numTarifa || pkg || 0;
                     this.recalcular();
                     await this.fetchPagoAnterior();
+                    await this.fetchAdeudo();
                 }catch(e){
                     this.error='Error de conexión';
                 }
