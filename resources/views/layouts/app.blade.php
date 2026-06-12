@@ -19,51 +19,53 @@
         <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     </head>
     <body class="font-sans antialiased">
-        <script>
-            // EJECUTAR PRIMERO: Quitar todos los bloqueos de clic derecho y teclas
-            console.log('🚀 Script de desbloqueo cargado ANTES que todo lo demás');
-            
-            // Función para quitar todos los listeners
-            function unlockAll() {
-                // Quitar listeners de document
-                document.removeEventListener('contextmenu', null, true);
-                document.removeEventListener('keydown', null, true);
+        @if(app()->environment('local'))
+            <!-- SCRIPT DE DESBLOQUEO SOLO EN LOCAL -->
+            <script>
+                console.log('🚀 Modo LOCAL: Script de desbloqueo activado');
                 
-                // Quitar listeners de window
-                window.removeEventListener('contextmenu', null, true);
-                window.removeEventListener('keydown', null, true);
+                // Función para quitar todos los listeners
+                function unlockAll() {
+                    // Quitar listeners de document
+                    document.removeEventListener('contextmenu', null, true);
+                    document.removeEventListener('keydown', null, true);
+                    
+                    // Quitar listeners de window
+                    window.removeEventListener('contextmenu', null, true);
+                    window.removeEventListener('keydown', null, true);
+                    
+                    // Quitar listeners de body
+                    document.body.removeEventListener('contextmenu', null, true);
+                    document.body.removeEventListener('keydown', null, true);
+                    
+                    // Quitar oncontextmenu de body y html
+                    document.body.oncontextmenu = null;
+                    document.documentElement.oncontextmenu = null;
+                    
+                    // Quitar oncontextmenu de todos los elementos
+                    const allElements = document.querySelectorAll('*');
+                    allElements.forEach(function(el) {
+                        el.oncontextmenu = null;
+                    });
+                }
                 
-                // Quitar listeners de body
-                document.body.removeEventListener('contextmenu', null, true);
-                document.body.removeEventListener('keydown', null, true);
+                // Ejecutar inmediatamente
+                unlockAll();
                 
-                // Quitar oncontextmenu de body y html
-                document.body.oncontextmenu = null;
-                document.documentElement.oncontextmenu = null;
+                // Ejecutar cada 100ms para asegurar que se mantiene desbloqueado
+                setInterval(unlockAll, 100);
                 
-                // Quitar oncontextmenu de todos los elementos
-                const allElements = document.querySelectorAll('*');
-                allElements.forEach(function(el) {
-                    el.oncontextmenu = null;
-                });
-            }
-            
-            // Ejecutar inmediatamente
-            unlockAll();
-            
-            // Ejecutar cada 100ms para asegurar que se mantiene desbloqueado
-            setInterval(unlockAll, 100);
-            
-            // Listener con captura para interceptar y permitir
-            document.addEventListener('contextmenu', function(e) {
-                e.stopImmediatePropagation();
-                console.log('✅ Clic derecho permitido!');
-            }, true);
-            
-            document.addEventListener('keydown', function(e) {
-                e.stopImmediatePropagation();
-            }, true);
-        </script>
+                // Listener con captura para interceptar y permitir
+                document.addEventListener('contextmenu', function(e) {
+                    e.stopImmediatePropagation();
+                    console.log('✅ Clic derecho permitido!');
+                }, true);
+                
+                document.addEventListener('keydown', function(e) {
+                    e.stopImmediatePropagation();
+                }, true);
+            </script>
+        @endif
         <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
             @include('layouts.navigation')
 
