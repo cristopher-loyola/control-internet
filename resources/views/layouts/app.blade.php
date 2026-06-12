@@ -19,6 +19,51 @@
         <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     </head>
     <body class="font-sans antialiased">
+        <script>
+            // EJECUTAR PRIMERO: Quitar todos los bloqueos de clic derecho y teclas
+            console.log('🚀 Script de desbloqueo cargado ANTES que todo lo demás');
+            
+            // Función para quitar todos los listeners
+            function unlockAll() {
+                // Quitar listeners de document
+                document.removeEventListener('contextmenu', null, true);
+                document.removeEventListener('keydown', null, true);
+                
+                // Quitar listeners de window
+                window.removeEventListener('contextmenu', null, true);
+                window.removeEventListener('keydown', null, true);
+                
+                // Quitar listeners de body
+                document.body.removeEventListener('contextmenu', null, true);
+                document.body.removeEventListener('keydown', null, true);
+                
+                // Quitar oncontextmenu de body y html
+                document.body.oncontextmenu = null;
+                document.documentElement.oncontextmenu = null;
+                
+                // Quitar oncontextmenu de todos los elementos
+                const allElements = document.querySelectorAll('*');
+                allElements.forEach(function(el) {
+                    el.oncontextmenu = null;
+                });
+            }
+            
+            // Ejecutar inmediatamente
+            unlockAll();
+            
+            // Ejecutar cada 100ms para asegurar que se mantiene desbloqueado
+            setInterval(unlockAll, 100);
+            
+            // Listener con captura para interceptar y permitir
+            document.addEventListener('contextmenu', function(e) {
+                e.stopImmediatePropagation();
+                console.log('✅ Clic derecho permitido!');
+            }, true);
+            
+            document.addEventListener('keydown', function(e) {
+                e.stopImmediatePropagation();
+            }, true);
+        </script>
         <div class="min-h-screen bg-gray-100 dark:bg-gray-900">
             @include('layouts.navigation')
 
@@ -51,5 +96,37 @@
             </main>
         </div>
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        
+        <script>
+            console.log('🌍 Entorno actual:', '{{ app()->environment() }}');
+        </script>
+        
+        @if(app()->environment('production'))
+        <script>
+            console.log('🔒 Modo PRODUCCIÓN: Protección activada');
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+            });
+            
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'F12') {
+                    e.preventDefault();
+                }
+                if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+                    e.preventDefault();
+                }
+                if (e.ctrlKey && e.shiftKey && e.key === 'J') {
+                    e.preventDefault();
+                }
+                if (e.ctrlKey && e.key === 'u') {
+                    e.preventDefault();
+                }
+            });
+        </script>
+        @else
+        <script>
+            console.log('✅ Modo LOCAL: Protección DESACTIVADA');
+        </script>
+        @endif
     </body>
 </html>
