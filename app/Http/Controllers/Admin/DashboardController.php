@@ -217,6 +217,16 @@ class DashboardController extends Controller
         // Ordenar por número de cliente ascendente
         $items = $items->sortBy(fn ($r) => (int) ($r['numero'] ?? 0))->values();
 
+        // Check if request accepts JSON
+        if ($request->wantsJson()) {
+            return response()->json([
+                'ok' => true,
+                'items' => $items,
+                'count' => $items->count(),
+                'month' => $month,
+            ]);
+        }
+
         // Paginación manual de la colección
         $perPage = 50;
         $page = Paginator::resolveCurrentPage() ?: 1;

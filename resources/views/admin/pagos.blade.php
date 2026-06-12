@@ -6,15 +6,18 @@
     </x-slot>
 
     <div class="py-6" x-data="pagosRecibo()" x-init="init && init()">
-        <div class="max-w-6xl mx-auto sm:px-4 lg:px-8">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900 dark:text-gray-100">
-                    <template x-if="readOnlyMode">
-                        <div class="mb-3 px-3 py-2 rounded bg-amber-500/20 text-amber-900 border border-amber-400 text-sm not-print">
-                            Vista en modo solo lectura: los campos están deshabilitados.
-                        </div>
-                    </template>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 not-print">
+        <div class="max-w-7xl mx-auto sm:px-4 lg:px-8">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <!-- Columna Izquierda: Formulario y Recibo -->
+                <div class="lg:col-span-3">
+                    <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                        <div class="p-6 text-gray-900 dark:text-gray-100">
+                            <template x-if="readOnlyMode">
+                                <div class="mb-3 px-3 py-2 rounded bg-amber-500/20 text-amber-900 border border-amber-400 text-sm not-print">
+                                    Vista en modo solo lectura: los campos están deshabilitados.
+                                </div>
+                            </template>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 not-print">
     <div class="md:col-span-2 bg-gray-50 dark:bg-gray-700 rounded-xl p-5 shadow-inner">
         <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 dark:text-gray-300 mb-4"> Buscar cliente</h3>
         <div class="grid grid-cols-2 gap-4">
@@ -204,6 +207,7 @@
                                 <button class="btn btn-secondary" x-show="editMode" @click="saveAsDefault()">Guardar cambios</button>
                                 <button class="btn btn-danger" @click="openConfirm()">Exportar a PDF</button>
                             </div>  NO ELIMINAR, SIRVE PARA EDITAR LA PLANTILLA      -->
+
   <div class="flex flex-col items-center justify-center gap-3 bg-gray-50 dark:bg-gray-700 rounded-xl p-5 shadow-inner">
     <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 dark:text-gray-300">Acciones</h3>
 
@@ -530,6 +534,137 @@
                         </div>
                     </div>
                 </div>
+                <!-- Columna Derecha: Sidebar de Morosos -->
+                <div class="lg:col-span-1 not-print mt-4 lg:mt-0">
+                    <!-- Morosos -->
+                    <div class="card shadow-sm border-0 rounded-3 overflow-hidden">
+                        <!-- Header -->
+                        <div class="card-header bg-gradient-to-r from-danger to-pink-600 text-white rounded-top-3 py-3 px-4">
+                            <h3 class="text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                </svg>
+                                Morosos
+                            </h3>
+                            <p class="text-red-100 text-xs mt-1 flex items-center gap-1">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                Lista de deudas (excluye mes actual)
+                            </p>
+                            <div class="mt-3 bg-white/20 backdrop-blur-sm rounded-lg px-3 py-2 flex items-center justify-between">
+                                <span class="text-xs text-red-50">Total de clientes</span>
+                                <span class="font-bold text-lg" x-text="morosos.length"></span>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body p-3 overflow-y-auto" style="max-height: calc(100vh - 420px);">
+                            <!-- Loading -->
+                            <template x-if="loadingMorosos">
+                                <div class="text-center py-5">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Cargando...</span>
+                                    </div>
+                                    <p class="mt-3 text-muted small">Cargando...</p>
+                                </div>
+                            </template>
+
+                            <template x-for="m in paginatedMorosos" :key="m.numero">
+                                <div class="group relative bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 hover:border-red-200 dark:hover:border-red-800 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 overflow-hidden">
+                                    <!-- Barra lateral de estado -->
+                                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-red-500 to-rose-600"></div>
+                                    
+                                    <button @click="form.numero = m.numero; buscar()" 
+                                        class="w-full text-left p-4 pl-5 pr-14"
+                                        :aria-label="`Seleccionar cliente ${m.nombre} con deuda de ${m.pendiente}`">
+                                        <!-- Número y monto -->
+                                        <div class="flex justify-between items-center mb-2">
+                                            <div class="flex items-center gap-2">
+                                                <span class="inline-flex items-center justify-center w-7 h-7 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 rounded-full text-xs font-bold" x-text="m.numero"></span>
+                                            </div>
+                                            <span class="inline-flex items-center gap-1 px-3 py-1.5 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-full text-xs font-bold shadow-md" x-text="moneda(m.pendiente)"></span>
+                                        </div>
+                                        <!-- Nombre -->
+                                        <p class="text-sm font-bold text-gray-800 dark:text-white truncate leading-tight" x-text="m.nombre"></p>
+                                        <!-- Periodo -->
+                                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 flex items-center gap-1.5">
+                                            <svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                            </svg>
+                                            Adeudo desde: <span class="font-semibold text-gray-700 dark:text-gray-300" x-text="m.desde_periodo"></span>
+                                        </p>
+                                    </button>
+                                    
+                                    <!-- Botón de transferencia -->
+                                    <button @click="confirmarTransferencia(m)" 
+                                        class="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:from-emerald-600 hover:to-green-700 shadow-lg hover:shadow-emerald-300 transition-all duration-300 opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                                        title="Marcar como transferencia recibida"
+                                        :aria-label="`Marcar transferencia recibida para ${m.nombre}`">
+                                        <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </template>
+
+                            <template x-if="!loadingMorosos && morosos.length === 0">
+                                <div class="py-12 text-center space-y-3" role="status" aria-live="polite">
+                                    <div class="inline-flex items-center justify-center w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full">
+                                        <svg class="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                    </div>
+                                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-300">¡Excelente noticia!</p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">No hay clientes con deudas históricas</p>
+                                </div>
+                            </template>
+                        </div>
+
+                        <!-- Paginación -->
+                        <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/50 dark:to-gray-800">
+                            <div class="flex flex-col gap-3">
+                                <!-- Información de paginación -->
+                                <div class="text-xs text-gray-600 dark:text-gray-400 text-center font-medium">
+                                    Mostrando <span class="text-gray-900 dark:text-white" x-text="startIndex"></span> - <span class="text-gray-900 dark:text-white" x-text="endIndex"></span> de <span class="text-gray-900 dark:text-white font-bold" x-text="morosos.length"></span> clientes
+                                </div>
+                                
+                                <!-- Controles de paginación -->
+                                <div class="flex items-center justify-between">
+                                    <button @click="previousPage()" :disabled="currentPage === 1" class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-gray-700 hover:shadow-sm transition-all duration-200">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                                        </svg>
+                                        Anterior
+                                    </button>
+                                    
+                                    <div class="flex items-center gap-1.5">
+                                        <template x-for="page in totalPages" :key="page">
+                                            <button @click="goToPage(page)" 
+                                                :class="page === currentPage ? 'bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-lg' : 'bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 hover:shadow-sm'"
+                                                class="w-8 h-8 text-xs font-bold rounded-xl flex items-center justify-center transition-all duration-200">
+                                                <span x-text="page"></span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                    
+                                    <button @click="nextPage()" :disabled="currentPage === totalPages" class="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-xl border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white dark:hover:bg-gray-700 hover:shadow-sm transition-all duration-200">
+                                        Siguiente
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                
+                                <!-- Botón de actualizar -->
+                                <button @click="fetchMorosos()" class="w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-wide text-white bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 shadow-md hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.001 0 01-15.357-2m15.357 2H15"></path></svg>
+                                    Actualizar lista
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -683,6 +818,10 @@
             prepayHastaLabel: '',
             prepayConfig:{ enabled:{}, matrix:{} },
             prepayError:'',
+            morosos: [],
+            loadingMorosos: false,
+            currentPage: 1,
+            itemsPerPage: 50,
             discountModalOpen: false,
             discountAmount: 0,
             appliedDiscount: 0, // Nueva variable para almacenar el descuento aplicado
@@ -694,6 +833,19 @@
                 const info = this.prepayConfig.matrix?.[m];
                 if(!info) return '';
                 return `Descuento ${info.percent}%`;
+            },
+            get totalPages(){
+                return Math.ceil(this.morosos.length / this.itemsPerPage);
+            },
+            get startIndex(){
+                return (this.currentPage - 1) * this.itemsPerPage + 1;
+            },
+            get endIndex(){
+                return Math.min(this.currentPage * this.itemsPerPage, this.morosos.length);
+            },
+            get paginatedMorosos(){
+                const start = (this.currentPage - 1) * this.itemsPerPage;
+                return this.morosos.slice(start, start + this.itemsPerPage);
             },
             ref:{ numero:null, id:null, created_at:null },
             saveConfirmOpen:false,
@@ -931,8 +1083,45 @@
                 this.layoutReady = true;
             },
             saveLayout(){ localStorage.setItem('reciboLayout', JSON.stringify(this.layout)); },
+            async fetchMorosos(){
+                this.loadingMorosos = true;
+                try {
+                    const today = new Date();
+                    today.setMonth(today.getMonth() - 1);
+                    const month = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+                    
+                    const response = await fetch('{{ route('admin.dashboard.morosos') }}?month=' + month, {
+                        headers: {'Accept': 'application/json'}
+                    });
+                    const json = await response.json();
+                    if(json.ok){
+                        this.morosos = json.items || [];
+                        this.currentPage = 1; // Reset to first page on new data
+                    }
+                } catch (error) {
+                    console.error('Error loading morosos:', error);
+                } finally {
+                    this.loadingMorosos = false;
+                }
+            },
+            previousPage(){
+                if(this.currentPage > 1){
+                    this.currentPage--;
+                }
+            },
+            nextPage(){
+                if(this.currentPage < this.totalPages){
+                    this.currentPage++;
+                }
+            },
+            goToPage(page){
+                if(page >= 1 && page <= this.totalPages){
+                    this.currentPage = page;
+                }
+            },
             async init(){
                 await this.loadServerLayout();
+                this.fetchMorosos();
                 try{
                     const params = new URLSearchParams(window.location.search);
                     const folio = Number(params.get('folio') || '');
