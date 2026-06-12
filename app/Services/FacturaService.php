@@ -591,6 +591,7 @@ class FacturaService
         
         $payload = is_array($factura->payload) ? $factura->payload : (is_string($factura->payload) ? @json_decode($factura->payload, true) : []);
         $esAdeudoManual = !empty($payload['es_adeudo_manual']);
+        $esPrepay = !empty($payload['prepay']) && ($payload['prepay'] === 'si' || $payload['prepay'] === true);
 
         // Primero, actualizar el adeudo manual si corresponde
         // Lo limpiamos si es un pago marcado como manual O si el pago es suficiente para cubrir la deuda de Excel
@@ -599,19 +600,32 @@ class FacturaService
         if ($limpiarAdeudoManual && $adeudoMonto > 0) {
             $usuario->adeudo_monto = 0;
             $usuario->adeudo_descripcion = null;
-            $usuario->save();
+        }
+
+        // Si es un pago por adelantado, calculamos el último período cubierto y actualizamos proximo_pago
+        if ($esPrepay && !empty($factura->periodo) && !empty($payload['prepay_months'])) {
+            try {
+                $months = (int)$payload['prepay_months'];
+                $ultimoCubierto = Carbon::createFromFormat('Y-m', $factura->periodo)
+                    ->startOfMonth()
+                    ->addMonths($months)
+                    ->format('Y-m');
+                $usuario->proximo_pago = $ultimoCubierto;
+            } catch (\Throwable $e) {
+                // Si hay error al parsear fecha, no actualizamos proximo_pago
+            }
         }
 
         // Ahora calcular el adeudo real para decidir el estatus
-        // Usamos el periodo de la factura para calcular el adeudo del mes actual
-        // Si la factura es de un mes anterior, el sistema calculará el adeudo del mes actual
-        $periodoFactura = $factura->periodo ?? now()->format('Y-m');
         $adeudoReal = $this->morosidadService->calcularAdeudoUsuario($usuario->numero_servicio, null);
         $tienePendiente = (float) ($adeudoReal['pendiente'] ?? 0) > 0.01;
 
         $updateData = [
             'estatus_servicio_id' => $tienePendiente ? 4 : 1, // 4: Pendiente, 1: Pagado
             'estado_id' => 1,
+            'adeudo_monto' => $usuario->adeudo_monto,
+            'adeudo_descripcion' => $usuario->adeudo_descripcion,
+            'proximo_pago' => $usuario->proximo_pago,
         ];
 
         $usuario->update($updateData);

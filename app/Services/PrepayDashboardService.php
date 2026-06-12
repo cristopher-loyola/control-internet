@@ -71,7 +71,8 @@ class PrepayDashboardService
             return null;
         }
 
-        return $desde->copy()->addMonths($meses)->endOfDay();
+        // Si el pago es por $meses meses de adelanto, la fecha de vencimiento es el 1ero del mes siguiente al último cubierto
+        return $desde->copy()->startOfMonth()->addMonths($meses + 1)->startOfMonth()->endOfDay();
     }
 
     public static function estadoPorVencimiento(?Carbon $venceAt, ?Carbon $now = null, int $soonDays = 7): array
