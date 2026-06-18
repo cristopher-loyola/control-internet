@@ -5,9 +5,9 @@
  * Uso: php comparar_csv.php "C:\ruta\prueba.csv"
  *
  * Lógica de cálculo del sistema (igual a MorosidadService):
- *  - Si proximo_pago > mes actual Y hay adeudo_descripcion → total sistema = $0
- *  - Si adeudo_monto > 0                                  → total sistema = tarifa + adeudo_monto
- *  - Normal                                               → total sistema = tarifa
+ *  - Si proximo_pago > mes actual (sin importar descripción) → total sistema = $0
+ *  - Si adeudo_monto > 0                                     → total sistema = tarifa + adeudo_monto
+ *  - Normal                                                   → total sistema = tarifa
  */
 
 require __DIR__ . '/vendor/autoload.php';
@@ -88,8 +88,8 @@ while (($data = fgetcsv($handle, 0, $sep)) !== false) {
     $dbAdeudo = (float)($u->adeudo_monto ?? 0);
     $proxPago = $u->proximo_pago ?? '';
 
-    if ($dbAdeudo <= 0 && !empty($u->adeudo_descripcion) && strcmp($proxPago, $mesPeriodo) > 0) {
-        // Cubierto este mes con nota del Excel → total = $0
+    if ($dbAdeudo <= 0 && strcmp($proxPago, $mesPeriodo) > 0) {
+        // Cubierto este mes (proximo_pago en el futuro) → total = $0
         $dbTotal = 0.0;
     } elseif ($dbAdeudo > 0) {
         // Tiene adeudo manual → tarifa + adeudo

@@ -45,10 +45,11 @@ class MorosidadService
             $esPrimerPeriodo = $today->lessThanOrEqualTo(Carbon::parse($vencimientoPrimerPago)->endOfDay());
         }
 
-        // Usar primer_pago como mensualidad si es el primer periodo
-        $mensualidad = $esPrimerPeriodo
-            ? $primerPago
-            : (float) preg_replace('/[^\d.]/', '', (string) ($usuario->tarifa ?? 0));
+        // Usar primer_pago como mensualidad si es el primer periodo.
+        // proximo_pago_monto actúa como tarifa reducida temporal (descuento del Excel).
+        $tarifaBase = (float) preg_replace('/[^\d.]/', '', (string) ($usuario->tarifa ?? 0));
+        $tarifaMes  = ($usuario->proximo_pago_monto > 0) ? (float) $usuario->proximo_pago_monto : $tarifaBase;
+        $mensualidad = $esPrimerPeriodo ? $primerPago : $tarifaMes;
 
         // Fecha de vencimiento: día 7 del mes de cobro
         $dueDate = $curStart->copy()->day(7)->endOfDay();
@@ -154,11 +155,11 @@ class MorosidadService
             $desdePeriodo = $periodo;
         }
 
-        // Detectar si el cliente está cubierto este mes sin deuda (pagó por transferencia/adelanto)
+        // Detectar si el cliente está cubierto este mes sin deuda (pagó por transferencia/adelanto).
+        // Solo se requiere proximo_pago en el futuro; la descripción puede ser vacía.
         $cubiertoEsteMes = (
             $mesesAdeudo <= 0
             && (float) $pendiente <= 0
-            && !empty($usuario->adeudo_descripcion)
             && !empty($usuario->proximo_pago)
             && strcmp($usuario->proximo_pago, $periodo) > 0
         );

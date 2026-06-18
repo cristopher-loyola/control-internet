@@ -1563,11 +1563,15 @@ class AdminController extends Controller
 
                             if ($tp == 0 && $t > 0) {
                                 // Cliente cubierto este mes: pagó por transferencia, baja temporal, etc.
-                                // Conservar la descripción del CSV para mostrarla en la tarjeta informativa.
                                 // proximo_pago al siguiente mes indica que el mes actual ya está cubierto.
                                 $updateData['proximo_pago'] = now()->addMonth()->format('Y-m');
-                            } elseif ($tp > 0 && $tp <= $t) {
-                                // Pago normal igual a la tarifa, sin adeudo extra ni nota especial.
+                            } elseif ($tp > 0 && $tp < $t) {
+                                // Tarifa reducida este mes (descuento especial o convenio).
+                                // Guardar el monto real para que el sistema lo use en lugar de la tarifa base.
+                                $updateData['proximo_pago_monto'] = $tp;
+                                $updateData['adeudo_descripcion'] = null;
+                            } elseif ($tp == $t) {
+                                // Pago exacto a la tarifa, sin adeudo ni nota especial.
                                 $updateData['adeudo_descripcion'] = null;
                             }
                             // Si $tp > $t el cliente tiene deuda; la descripción ya viene del bloque anterior.
@@ -1593,7 +1597,10 @@ class AdminController extends Controller
                             }
                         }
                         if (Schema::hasColumn('usuarios', 'proximo_pago_monto')) {
-                            $updateData['proximo_pago_monto'] = null;
+                            // Solo limpiar si no fue asignado por el bloque totalAPagar
+                            if (!array_key_exists('proximo_pago_monto', $updateData)) {
+                                $updateData['proximo_pago_monto'] = null;
+                            }
                         }
                         
                         $usuario->update($updateData);

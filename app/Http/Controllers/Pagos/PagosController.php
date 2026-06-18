@@ -1260,10 +1260,13 @@ thead th{ background:#2e7d32; color:#fff; }
 
                             if ($tp == 0 && $t > 0) {
                                 // Cliente cubierto este mes: pagó por transferencia, baja temporal, etc.
-                                // Conservar la descripción del CSV para mostrarla en la tarjeta informativa.
                                 $updateData['proximo_pago'] = now()->addMonth()->format('Y-m');
-                            } elseif ($tp > 0 && $tp <= $t) {
-                                // Pago normal, sin adeudo extra ni nota especial.
+                            } elseif ($tp > 0 && $tp < $t) {
+                                // Tarifa reducida este mes (descuento especial o convenio).
+                                $updateData['proximo_pago_monto'] = $tp;
+                                $updateData['adeudo_descripcion'] = null;
+                            } elseif ($tp == $t) {
+                                // Pago exacto a la tarifa, sin adeudo ni nota especial.
                                 $updateData['adeudo_descripcion'] = null;
                             }
                         }
@@ -1284,7 +1287,10 @@ thead th{ background:#2e7d32; color:#fff; }
                         if (!array_key_exists('proximo_pago', $updateData)) {
                             $updateData['proximo_pago'] = null;
                         }
-                        $updateData['proximo_pago_monto'] = null;
+                        // Solo limpiar proximo_pago_monto si el bloque totalAPagar no lo asignó ya
+                        if (!array_key_exists('proximo_pago_monto', $updateData)) {
+                            $updateData['proximo_pago_monto'] = null;
+                        }
                         $usuario->update($updateData);
                         $report['updated']++;
                     } else {

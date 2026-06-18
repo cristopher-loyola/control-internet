@@ -296,7 +296,7 @@
 </div>
 
 <!-- Información de Pagos al Corriente -->
-<div x-show="pagadoMesActual || alCorriente" class="mt-4 mb-4 p-4 bg-green-50 border border-green-200 rounded-lg not-print">
+<div x-show="pagadoMesActual || alCorriente || (adeudo !== null && adeudo.meses <= 0)" class="mt-4 mb-4 p-4 bg-green-50 border border-green-200 rounded-lg not-print">
     <div class="flex items-center gap-2 mb-2">
         <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
@@ -306,8 +306,9 @@
     <div class="text-sm text-green-700">
         <p>
             <strong>Cliente con pagos en regla:</strong>
-            <span x-show="pagadoMesActual && !alCorriente">Sus pagos están al corriente</span>
-            <span x-show="alCorriente" x-text="descripcionManual"></span>
+            <span x-show="!alCorriente">Sus pagos están al corriente</span>
+            <span x-show="alCorriente && descripcionManual" x-text="descripcionManual"></span>
+            <span x-show="alCorriente && !descripcionManual">Cubierto este mes</span>
         </p>
         <p x-show="alCorriente" class="mt-1 font-semibold text-green-900">Total a pagar este mes: $0.00</p>
     </div>
@@ -1454,7 +1455,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                         const m = j.pendiente||0;
                         const meses = j.meses_adeudo||0;
                         this.descripcionManual = j.descripcion_manual || '';
-                        this.alCorriente = !!(j.cubierto_este_mes) && !!this.descripcionManual;
+                        this.alCorriente = !!(j.cubierto_este_mes);
                         if(isFinite(m) && m>0 && meses>0){
                             this.adeudo = {
                                 desde_periodo: j.desde_periodo,
