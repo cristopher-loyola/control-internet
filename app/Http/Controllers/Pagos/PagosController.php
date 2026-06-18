@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Pagos;
 
 use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
+use App\Models\Cobrador;
 use App\Models\Cortador;
 use App\Models\Factura;
 use App\Models\HistorialUsuario;
@@ -71,7 +72,9 @@ class PagosController extends Controller
 
     public function recibos()
     {
-        return view('pagos.recibos');
+        return view('pagos.recibos', [
+            'cobradores' => Cobrador::where('activo', true)->orderBy('orden')->orderBy('nombre')->get(),
+        ]);
     }
 
     public function corte()

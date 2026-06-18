@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
+use App\Models\Cobrador;
 use App\Models\HistorialUsuario;
 use App\Models\NumeroApartado;
 use App\Models\Usuario;
@@ -86,7 +87,9 @@ class AdminController extends Controller
 
     public function pagos()
     {
-        return view('admin.pagos');
+        return view('admin.pagos', [
+            'cobradores' => Cobrador::where('activo', true)->orderBy('orden')->orderBy('nombre')->get(),
+        ]);
     }
 
     public function pagosLayoutStore(Request $request)

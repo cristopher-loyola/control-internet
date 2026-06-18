@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\Cobrador;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -21,9 +22,11 @@ class ProfileController extends Controller
             ? 'profile.edit-sidebar' 
             : 'profile.edit';
         
-        return view($view, [
-            'user' => $user,
-        ]);
+        $data = ['user' => $user];
+        if ($user->role === 'admin') {
+            $data['cobradores'] = Cobrador::orderBy('orden')->orderBy('nombre')->get();
+        }
+        return view($view, $data);
     }
 
     /**

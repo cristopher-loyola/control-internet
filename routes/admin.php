@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminController;
+use App\Http\Controllers\Admin\CobradoresController;
 use App\Http\Controllers\Admin\CortesController;
 use App\Http\Controllers\Admin\DashboardController;
 use Illuminate\Support\Facades\Route;
@@ -86,4 +87,13 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/{id}/edit', [AdminController::class, 'edit'])->name('edit');
         Route::put('/{id}', [AdminController::class, 'update'])->name('update');
         Route::delete('/{id}', [AdminController::class, 'destroy'])->name('destroy');
+
+        // Gestión de cobradores
+        Route::prefix('cobradores')->name('cobradores.')->group(function () {
+            Route::get('/',                          [CobradoresController::class, 'index'])->name('index');
+            Route::post('/',                         [CobradoresController::class, 'store'])->name('store');
+            Route::delete('/{cobrador}',             [CobradoresController::class, 'destroy'])->name('destroy');
+            Route::patch('/{cobrador}/toggle',       [CobradoresController::class, 'toggle'])->name('toggle');
+            Route::post('/reorder',                  [CobradoresController::class, 'reorder'])->name('reorder');
+        });
     });
