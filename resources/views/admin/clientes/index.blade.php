@@ -495,6 +495,36 @@
                 <p>• <strong>Columna H (Total a pagar):</strong> Es la <strong>VERDAD ABSOLUTA</strong>. El sistema mostrará esta cantidad exacta cuando el recargo esté activo.</p>
             </div>
 
+            <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-4 mb-4">
+                <h5 class="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider mb-2">Reglas para evitar discrepancias</h5>
+                <div class="space-y-2 text-xs text-amber-900 dark:text-amber-200">
+                    <div class="grid grid-cols-3 gap-2 font-semibold border-b border-amber-200 dark:border-amber-700 pb-1 text-[11px]">
+                        <span>Caso</span><span>Total a Pagar</span><span>Descripcion (col F)</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-[11px]">
+                        <span>Pago normal</span>
+                        <span>= Tarifa</span>
+                        <span class="text-gray-400">no necesaria</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-[11px]">
+                        <span>Tiene adeudo</span>
+                        <span>&gt; Tarifa</span>
+                        <span class="text-gray-400">recomendada</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-[11px] font-medium">
+                        <span>Pagó por transferencia / adelanto</span>
+                        <span class="text-emerald-700 dark:text-emerald-400 font-bold">$0</span>
+                        <span class="text-red-700 dark:text-red-400 font-bold">obligatoria ★</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2 text-[11px] font-medium">
+                        <span>Baja temporal /Cancelación</span>
+                        <span class="text-emerald-700 dark:text-emerald-400 font-bold">&lt; Tarifa</span>
+                        <span class="text-red-700 dark:text-red-400 font-bold">obligatoria ★</span>
+                    </div>
+                </div>
+                <p class="text-[11px] text-amber-700 dark:text-amber-300 mt-2">★ Sin descripción en estos casos el banner verde no muestra texto informativo al cobrador.</p>
+            </div>
+
             <div class="mt-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Seleccionar archivo CSV:</label>
                 <input type="file" name="file" accept=".csv,text/csv" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 dark:file:bg-emerald-900/30 dark:file:text-emerald-300">
