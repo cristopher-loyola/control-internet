@@ -45,11 +45,10 @@ class MorosidadService
             $esPrimerPeriodo = $today->lessThanOrEqualTo(Carbon::parse($vencimientoPrimerPago)->endOfDay());
         }
 
-        // Usar primer_pago como mensualidad si es el primer periodo.
-        // proximo_pago_monto actúa como tarifa reducida temporal (descuento del Excel).
-        $tarifaBase = (float) preg_replace('/[^\d.]/', '', (string) ($usuario->tarifa ?? 0));
-        $tarifaMes  = ($usuario->proximo_pago_monto > 0) ? (float) $usuario->proximo_pago_monto : $tarifaBase;
-        $mensualidad = $esPrimerPeriodo ? $primerPago : $tarifaMes;
+        // Usar primer_pago como mensualidad si es el primer periodo
+        $mensualidad = $esPrimerPeriodo
+            ? $primerPago
+            : (float) preg_replace('/[^\d.]/', '', (string) ($usuario->tarifa ?? 0));
 
         // Fecha de vencimiento: día 7 del mes de cobro
         $dueDate = $curStart->copy()->day(7)->endOfDay();

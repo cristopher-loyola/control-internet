@@ -63,10 +63,11 @@ function parseMonto(mixed $v): float {
 $mesPeriodo = date('Y-m'); // e.g. 2026-06
 
 // ── Procesar ──────────────────────────────────────────────────────────────────
-$concuerdan   = 0;
-$discrepancias = [];
-$noEncontrados = [];
-$omitidos      = 0;
+$concuerdan        = 0;
+$discrepancias     = [];
+$discrepanciasTar  = [];   // tarifa base CSV vs DB
+$noEncontrados     = [];
+$omitidos          = 0;
 
 while (($data = fgetcsv($handle, 0, $sep)) !== false) {
     $numero   = isset($data[$colNum]) ? trim($data[$colNum]) : '';
@@ -83,14 +84,28 @@ while (($data = fgetcsv($handle, 0, $sep)) !== false) {
 
     if (!$u) { $noEncontrados[] = ['numero'=>$numero,'nombre'=>$nombre,'csv'=>$csvTotal]; continue; }
 
-    // Replicar lógica de MorosidadService
+    // Comparar tarifa base (CSV tarifa vs DB tarifa real, ignorando proximo_pago_monto)
+    $dbTarifaReal = (float)($u->tarifa ?? 0);
+    if ($colTar !== false && abs($dbTarifaReal - $csvTar) > 0.01) {
+        $discrepanciasTar[] = [
+            'numero'     => $numero,
+            'nombre'     => $nombre,
+            'csv_tarifa' => $csvTar,
+            'db_tarifa'  => $dbTarifaReal,
+            'dif'        => $dbTarifaReal - $csvTar,
+        ];
+    }
+
+    // Replicar lógica de MorosidadService para total a pagar
     $dbTarifa = (float)($u->proximo_pago_monto ?? $u->tarifa ?? 0);
     $dbAdeudo = (float)($u->adeudo_monto ?? 0);
     $proxPago = $u->proximo_pago ?? '';
 
+    $proxPagoMonto = (float)($u->proximo_pago_monto ?? 0);
     if ($dbAdeudo <= 0 && strcmp($proxPago, $mesPeriodo) > 0) {
-        // Cubierto este mes (proximo_pago en el futuro) → total = $0
-        $dbTotal = 0.0;
+        // Cubierto este mes (proximo_pago en el futuro).
+        // Si hay proximo_pago_monto > 0 es tarifa reducida (baja temporal, convenio).
+        $dbTotal = ($proxPagoMonto > 0) ? $proxPagoMonto : 0.0;
     } elseif ($dbAdeudo > 0) {
         // Tiene adeudo manual → tarifa + adeudo
         $dbTotal = $dbTarifa + $dbAdeudo;
@@ -122,10 +137,11 @@ $total = $concuerdan + count($discrepancias) + count($noEncontrados);
 echo "\n=== COMPARACIÓN CSV vs SISTEMA ===\n";
 echo "Período de referencia: $mesPeriodo\n\n";
 echo "Clientes activos procesados: $total\n";
-echo "  ✓ Concuerdan:        $concuerdan\n";
-echo "  ✗ Discrepancias:     " . count($discrepancias) . "\n";
-echo "  ? No en DB:          " . count($noEncontrados) . "\n";
-echo "  — Omitidos/vacíos:   $omitidos\n";
+echo "  ✓ Concuerdan (total a pagar): $concuerdan\n";
+echo "  ✗ Discrepancias total pagar:  " . count($discrepancias) . "\n";
+echo "  ✗ Discrepancias tarifa base:  " . count($discrepanciasTar) . "\n";
+echo "  ? No en DB:                   " . count($noEncontrados) . "\n";
+echo "  — Omitidos/vacíos:            $omitidos\n";
 
 if (count($discrepancias) > 0) {
     echo "\n=== DISCREPANCIAS ===\n";
@@ -141,6 +157,18 @@ if (count($discrepancias) > 0) {
     $sumaDif = array_sum(array_column($discrepancias, 'dif'));
     echo str_repeat('-', 112) . "\n";
     printf("Diferencia total acumulada: %+.2f\n", $sumaDif);
+}
+
+if (count($discrepanciasTar) > 0) {
+    echo "\n=== DISCREPANCIAS TARIFA BASE ===\n";
+    printf("%-8s %-30s %10s %10s %+10s\n", 'No.','Nombre','CSV_TAR','DB_TAR','Dif');
+    echo str_repeat('-', 72) . "\n";
+    foreach ($discrepanciasTar as $d) {
+        printf("%-8s %-30s %10.2f %10.2f %+10.2f\n",
+            $d['numero'], mb_substr($d['nombre'],0,30),
+            $d['csv_tarifa'], $d['db_tarifa'], $d['dif']);
+    }
+    echo str_repeat('-', 72) . "\n";
 }
 
 if (count($noEncontrados) > 0) {

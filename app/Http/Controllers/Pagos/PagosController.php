@@ -423,7 +423,7 @@ class PagosController extends Controller
                 'domicilio' => $u->domicilio,
                 'telefono' => $u->telefono,
                 'paquete' => $u->paquete,
-                'tarifa' => $u->proximo_pago_monto ?? $u->tarifa,
+                'tarifa' => $u->tarifa,
                 'tarifa_normal' => $u->tarifa,
                 'proximo_pago' => $u->proximo_pago,
                 'proximo_pago_monto' => $u->proximo_pago_monto,
@@ -1239,14 +1239,14 @@ thead th{ background:#2e7d32; color:#fff; }
                     if ($descripcionAdeudo !== null) {
                         $updateData['adeudo_descripcion'] = $descripcionAdeudo ?: null;
                     }
-                    if ($montoAdeudo !== null) {
+                    if ($montoAdeudo !== null && $montoAdeudo !== '') {
                         $ma = str_replace(['$', ' ', ','], ['', '', ''], $montoAdeudo);
                         if (is_numeric($ma)) {
                             $updateData['adeudo_monto'] = (float) $ma;
                         } else {
                             $updateData['adeudo_monto'] = 0;
-                            $updateData['adeudo_descripcion'] = null;
                         }
+                        // No borrar adeudo_descripcion aquí; el bloque totalAPagar lo maneja.
                     }
 
                     // SOBREESCRITURA TOTAL: columna "total a pagar" es la verdad absoluta.
@@ -1259,14 +1259,18 @@ thead th{ background:#2e7d32; color:#fff; }
                             $updateData['adeudo_monto'] = max(0, $tp - $t);
 
                             if ($tp == 0 && $t > 0) {
-                                // Cliente cubierto este mes: pagó por transferencia, baja temporal, etc.
+                                // Cubierto este mes: pagó por transferencia, baja temporal $0, etc.
                                 $updateData['proximo_pago'] = now()->addMonth()->format('Y-m');
                             } elseif ($tp > 0 && $tp < $t) {
-                                // Tarifa reducida este mes (descuento especial o convenio).
+                                // Tarifa reducida este mes (baja temporal, convenio, descuento).
+                                $updateData['proximo_pago'] = now()->addMonth()->format('Y-m');
                                 $updateData['proximo_pago_monto'] = $tp;
-                                $updateData['adeudo_descripcion'] = null;
+                                // Restaurar descripción del CSV (puede haberse borrado en pasos anteriores).
+                                if (!empty($descripcionAdeudo)) {
+                                    $updateData['adeudo_descripcion'] = $descripcionAdeudo;
+                                }
                             } elseif ($tp == $t) {
-                                // Pago exacto a la tarifa, sin adeudo ni nota especial.
+                                // Pago exacto a la tarifa normal, sin nota especial.
                                 $updateData['adeudo_descripcion'] = null;
                             }
                         }
