@@ -634,7 +634,7 @@
                         </div>
 
                         <!-- Paginación -->
-                        <div class="p-4 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/50 dark:to-gray-800">
+                        <div class="p-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30">
                             <div class="flex flex-col gap-3">
                                 <!-- Información de paginación -->
                                 <div class="text-xs text-gray-600 dark:text-gray-400 text-center font-medium">
@@ -653,10 +653,10 @@
                                     <div class="flex items-center gap-1">
                                         <template x-for="page in totalPages" :key="page">
                                             <button @click="goToPage(page)"
-                                                class="w-7 h-7 text-xs font-bold rounded-lg flex items-center justify-center transition-all duration-150 border"
+                                                class="w-7 h-7 text-xs font-bold rounded-lg flex items-center justify-center transition-all duration-150"
                                                 :style="page === currentPage
-                                                    ? 'background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;border-color:transparent;box-shadow:0 2px 8px rgba(22,163,74,.4)'
-                                                    : 'background:#fff;color:#374151;border-color:#e5e7eb'">
+                                                    ? 'background:linear-gradient(135deg,#16a34a,#15803d);color:#fff'
+                                                    : 'background:#fff;color:#374151;border:1px solid #e5e7eb'">
                                                 <span x-text="page"></span>
                                             </button>
                                         </template>
