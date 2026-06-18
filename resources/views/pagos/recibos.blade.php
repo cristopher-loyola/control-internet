@@ -180,17 +180,48 @@
                 <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
                     Quién cobró
                 </label>
-                <select
-                    class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                    x-model="form.cobro"
-                    :disabled="readOnlyMode">
-                    <option value="">Selecciona...</option>
-                    <option value="Luz">Luz</option>
-                    <option value="Jaime">Jaime</option>
-                    <option value="Nancy">Nancy</option>
-                    <option value="Alan">Alan</option>
-                    <option value="Cristopher">Cristopher</option>
-                </select>
+                <div class="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                    {{-- Luz --}}
+                    <button type="button"
+                        class="inline-flex flex-col items-center justify-center gap-1 rounded-lg border px-1 py-2 text-xs font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        :class="form.cobro === 'Luz' ? 'bg-indigo-600 text-white border-indigo-600 shadow' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:border-indigo-400'"
+                        :disabled="readOnlyMode" @click="form.cobro = 'Luz'; inputChanged(true)">
+                        <span class="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold leading-none" style="background:oklch(0.93 0.03 343);color:oklch(0.45 0.15 343)" :style="form.cobro==='Luz' ? 'background:rgba(255,255,255,.2);color:#fff' : ''">L</span>
+                        <span>Luz</span>
+                    </button>
+                    {{-- Jaime --}}
+                    <button type="button"
+                        class="inline-flex flex-col items-center justify-center gap-1 rounded-lg border px-1 py-2 text-xs font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        :class="form.cobro === 'Jaime' ? 'bg-indigo-600 text-white border-indigo-600 shadow' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:border-indigo-400'"
+                        :disabled="readOnlyMode" @click="form.cobro = 'Jaime'; inputChanged(true)">
+                        <span class="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold leading-none" style="background:#dbeafe;color:#1d4ed8" :style="form.cobro==='Jaime' ? 'background:rgba(255,255,255,.2);color:#fff' : ''">J</span>
+                        <span>Jaime</span>
+                    </button>
+                    {{-- Nancy --}}
+                    <button type="button"
+                        class="inline-flex flex-col items-center justify-center gap-1 rounded-lg border px-1 py-2 text-xs font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        :class="form.cobro === 'Nancy' ? 'bg-indigo-600 text-white border-indigo-600 shadow' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:border-indigo-400'"
+                        :disabled="readOnlyMode" @click="form.cobro = 'Nancy'; inputChanged(true)">
+                        <span class="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold leading-none" style="background:#ede9fe;color:#6d28d9" :style="form.cobro==='Nancy' ? 'background:rgba(255,255,255,.2);color:#fff' : ''">N</span>
+                        <span>Nancy</span>
+                    </button>
+                    {{-- Alan --}}
+                    <button type="button"
+                        class="inline-flex flex-col items-center justify-center gap-1 rounded-lg border px-1 py-2 text-xs font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        :class="form.cobro === 'Alan' ? 'bg-indigo-600 text-white border-indigo-600 shadow' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:border-indigo-400'"
+                        :disabled="readOnlyMode" @click="form.cobro = 'Alan'; inputChanged(true)">
+                        <span class="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold leading-none" style="background:#dcfce7;color:#15803d" :style="form.cobro==='Alan' ? 'background:rgba(255,255,255,.2);color:#fff' : ''">A</span>
+                        <span>Alan</span>
+                    </button>
+                    {{-- Cristopher --}}
+                    <button type="button"
+                        class="inline-flex flex-col items-center justify-center gap-1 rounded-lg border px-1 py-2 text-xs font-semibold transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        :class="form.cobro === 'Cristopher' ? 'bg-indigo-600 text-white border-indigo-600 shadow' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:border-indigo-400'"
+                        :disabled="readOnlyMode" @click="form.cobro = 'Cristopher'; inputChanged(true)">
+                        <span class="w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold leading-none" style="background:#ffedd5;color:#c2410c" :style="form.cobro==='Cristopher' ? 'background:rgba(255,255,255,.2);color:#fff' : ''">C</span>
+                        <span>Cristopher</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
