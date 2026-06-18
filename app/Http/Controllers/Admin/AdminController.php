@@ -1557,15 +1557,20 @@ class AdminController extends Controller
                         if (is_numeric($tp)) {
                             $tp = (float) $tp;
                             $t = (float) ($updateData['tarifa'] ?? ($usuario ? $usuario->tarifa : 0));
-                            
-                            // El adeudo manual que guardamos es la diferencia entre el total y la tarifa del mes actual
+
                             $nuevoAdeudoManual = max(0, $tp - $t);
                             $updateData['adeudo_monto'] = $nuevoAdeudoManual;
-                            
-                            // Si el total a pagar es igual a la tarifa, significa que no debe nada de meses anteriores
-                            if ($tp <= $t) {
+
+                            if ($tp == 0 && $t > 0) {
+                                // Cliente cubierto este mes: pagó por transferencia, baja temporal, etc.
+                                // Conservar la descripción del CSV para mostrarla en la tarjeta informativa.
+                                // proximo_pago al siguiente mes indica que el mes actual ya está cubierto.
+                                $updateData['proximo_pago'] = now()->addMonth()->format('Y-m');
+                            } elseif ($tp > 0 && $tp <= $t) {
+                                // Pago normal igual a la tarifa, sin adeudo extra ni nota especial.
                                 $updateData['adeudo_descripcion'] = null;
                             }
+                            // Si $tp > $t el cliente tiene deuda; la descripción ya viene del bloque anterior.
                         }
                     }
 
@@ -1580,10 +1585,12 @@ class AdminController extends Controller
                     }
 
                     if ($usuario) {
-                        // Limpiar campos que podrían causar que el MorosidadService calcule de más
-                        // Nota: Se han verificado las columnas existentes en el modelo Usuario
                         if (Schema::hasColumn('usuarios', 'proximo_pago')) {
-                            $updateData['proximo_pago'] = null;
+                            // Solo limpiar proximo_pago si no fue asignado por el bloque totalAPagar
+                            // (clientes con total=0 necesitan proximo_pago para indicar mes cubierto)
+                            if (!array_key_exists('proximo_pago', $updateData)) {
+                                $updateData['proximo_pago'] = null;
+                            }
                         }
                         if (Schema::hasColumn('usuarios', 'proximo_pago_monto')) {
                             $updateData['proximo_pago_monto'] = null;

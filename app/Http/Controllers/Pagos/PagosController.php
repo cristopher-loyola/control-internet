@@ -1174,6 +1174,7 @@ thead th{ background:#2e7d32; color:#fff; }
                     $estado = $getVal($row, ['estado', 'estatus']);
                     $descripcionAdeudo = $getVal($row, ['descripcion', 'observaciones', 'nota']);
                     $montoAdeudo = $getVal($row, ['cantidad', 'monto_adeudo', 'adeudo']);
+                    $totalAPagar = $getVal($row, ['total_a_pagar', 'total_pagar', 'total']);
 
                     if (! $numero) {
                         $numero = trim($row[0] ?? '');
@@ -1195,6 +1196,9 @@ thead th{ background:#2e7d32; color:#fff; }
                     }
                     if (! $montoAdeudo) {
                         $montoAdeudo = trim($row[6] ?? '');
+                    }
+                    if (! $totalAPagar) {
+                        $totalAPagar = trim($row[7] ?? '');
                     }
                     if (! $estado) {
                         $estado = trim($row[10] ?? '');
@@ -1239,13 +1243,29 @@ thead th{ background:#2e7d32; color:#fff; }
                         $ma = str_replace(['$', ' ', ','], ['', '', ''], $montoAdeudo);
                         if (is_numeric($ma)) {
                             $updateData['adeudo_monto'] = (float) $ma;
-                            if ((float) $ma == 0) {
-                                $updateData['adeudo_descripcion'] = null;
-                            }
                         } else {
-                            // Celda vacía = sin adeudo → limpiar
                             $updateData['adeudo_monto'] = 0;
                             $updateData['adeudo_descripcion'] = null;
+                        }
+                    }
+
+                    // SOBREESCRITURA TOTAL: columna "total a pagar" es la verdad absoluta.
+                    if ($totalAPagar !== null) {
+                        $tp = str_replace(['$', ' ', ','], ['', '', ''], $totalAPagar);
+                        if (is_numeric($tp)) {
+                            $tp = (float) $tp;
+                            $t = (float) ($updateData['tarifa'] ?? ($usuario ? $usuario->tarifa : 0));
+
+                            $updateData['adeudo_monto'] = max(0, $tp - $t);
+
+                            if ($tp == 0 && $t > 0) {
+                                // Cliente cubierto este mes: pagó por transferencia, baja temporal, etc.
+                                // Conservar la descripción del CSV para mostrarla en la tarjeta informativa.
+                                $updateData['proximo_pago'] = now()->addMonth()->format('Y-m');
+                            } elseif ($tp > 0 && $tp <= $t) {
+                                // Pago normal, sin adeudo extra ni nota especial.
+                                $updateData['adeudo_descripcion'] = null;
+                            }
                         }
                     }
 
@@ -1260,6 +1280,11 @@ thead th{ background:#2e7d32; color:#fff; }
                     }
 
                     if ($usuario) {
+                        // Solo limpiar proximo_pago si el bloque totalAPagar no lo asignó ya
+                        if (!array_key_exists('proximo_pago', $updateData)) {
+                            $updateData['proximo_pago'] = null;
+                        }
+                        $updateData['proximo_pago_monto'] = null;
                         $usuario->update($updateData);
                         $report['updated']++;
                     } else {

@@ -154,6 +154,15 @@ class MorosidadService
             $desdePeriodo = $periodo;
         }
 
+        // Detectar si el cliente está cubierto este mes sin deuda (pagó por transferencia/adelanto)
+        $cubiertoEsteMes = (
+            $mesesAdeudo <= 0
+            && (float) $pendiente <= 0
+            && !empty($usuario->adeudo_descripcion)
+            && !empty($usuario->proximo_pago)
+            && strcmp($usuario->proximo_pago, $periodo) > 0
+        );
+
         $desdeMes = $usuario->adeudo_descripcion ?: Carbon::createFromFormat('Y-m', $desdePeriodo)->locale('es')->translatedFormat('F Y');
         $hastaMes = $curStart->locale('es')->translatedFormat('F Y');
 
@@ -191,7 +200,8 @@ class MorosidadService
             'pendiente' => $pendiente,
             'vencimiento' => $dueDate->toDateString(),
             'adeudo_manual' => (float) $usuario->adeudo_monto,
-            'descripcion_manual' => $usuario->adeudo_descripcion
+            'descripcion_manual' => $usuario->adeudo_descripcion,
+            'cubierto_este_mes' => $cubiertoEsteMes,
         ];
     }
 

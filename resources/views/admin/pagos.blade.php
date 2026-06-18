@@ -296,7 +296,7 @@
 </div>
 
 <!-- Información de Pagos al Corriente -->
-<div x-show="pagadoMesActual" class="mt-4 mb-4 p-4 bg-green-50 border border-green-200 rounded-lg not-print">
+<div x-show="pagadoMesActual || alCorriente" class="mt-4 mb-4 p-4 bg-green-50 border border-green-200 rounded-lg not-print">
     <div class="flex items-center gap-2 mb-2">
         <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
@@ -305,9 +305,11 @@
     </div>
     <div class="text-sm text-green-700">
         <p>
-            <strong>Cliente con pagos en regla:</strong> 
-            <span>Sus pagos están al corriente</span>
+            <strong>Cliente con pagos en regla:</strong>
+            <span x-show="pagadoMesActual && !alCorriente">Sus pagos están al corriente</span>
+            <span x-show="alCorriente" x-text="descripcionManual"></span>
         </p>
+        <p x-show="alCorriente" class="mt-1 font-semibold text-green-900">Total a pagar este mes: $0.00</p>
     </div>
 </div>
 
@@ -812,6 +814,8 @@
             adeudoListaMeses: [],
             saldoDespues: null,
             pagadoMesActual: false,
+            alCorriente: false,
+            descripcionManual: '',
             pagarMesSiguiente: false,
             periodoOverride: null,
             prepayActivo: false,
@@ -1387,7 +1391,9 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                     const adeudoPendiente = Number(this.adeudoCobro || (this.adeudo && this.adeudo.pendiente ? Number(this.adeudo.pendiente) : 0) || 0);
                     const adeudoBase = this.adeudo ? Math.max(0, adeudoPendiente - recargoSrv) : adeudoPendiente;
                     total = Math.round((adeudoBase + this.totales.prepay_total + rec) * 100) / 100;
-                }else{
+                } else if (this.alCorriente) {
+                    total = 0;
+                } else {
                     if (this.adeudo && this.adeudo.meses > 0) {
                         const pendienteSrv = Number(this.adeudo.pendiente || 0);
                         const pendienteBase = Math.max(0, pendienteSrv - recargoSrv);
@@ -1396,7 +1402,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                         total = Math.round((mensualidad + rec) * 100) / 100;
                     }
                 }
-                
+
                 this.totales.total = total;
                 this.totales.letra = toWords(this.totales.total);
             },
@@ -1437,6 +1443,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
             },
             async fetchAdeudo(){
                 this.adeudo = null;
+                this.alCorriente = false;
+                this.descripcionManual = '';
                 const numero = String(this.form.numero||'').trim();
                 if(!numero) return;
                 try{
@@ -1445,6 +1453,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                     if(r.ok && j?.ok){
                         const m = j.pendiente||0;
                         const meses = j.meses_adeudo||0;
+                        this.descripcionManual = j.descripcion_manual || '';
+                        this.alCorriente = !!(j.cubierto_este_mes) && !!this.descripcionManual;
                         if(isFinite(m) && m>0 && meses>0){
                             this.adeudo = {
                                 desde_periodo: j.desde_periodo,
@@ -1455,13 +1465,13 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 pagado_parcial: Number(j.pagado_parcial||0),
                                 lista_meses: j.lista_meses || []
                             };
-                            // Sincronizar el recargo del formulario con el del servidor si hay adeudo y no ha pagado este mes
                             if (!this.pagadoMesActual && !this.recargoManual) {
                                 this.form.recargo = this.adeudo.recargo > 0 ? 'si' : 'no';
                             }
                         } else {
                             this.adeudo = { desde_periodo:j.desde_periodo, desde_label:j.desde_mes_label||'', meses:meses, pendiente:0, recargo:Number(j.recargo||0), pagado_parcial:0, lista_meses: j.lista_meses || [] };
                         }
+                        if (this.alCorriente && !this.recargoManual) this.form.recargo = 'no';
                         if (this.ref && this.ref.id) {
                             this.saldoDespues = Number(this.adeudo?.pendiente || 0);
                         } else {
@@ -1989,6 +1999,8 @@ Le recordamos que los pagos deben realizarse del día 1 al 7 de cada mes. Poster
                 this.adeudoListaMeses = [];
                 this.saldoDespues = null;
                 this.pagadoMesActual = false;
+                this.alCorriente = false;
+                this.descripcionManual = '';
                 this.pagarMesSiguiente = false;
                 this.periodoOverride = null;
                 this.pagoAnteriorFecha = '';
