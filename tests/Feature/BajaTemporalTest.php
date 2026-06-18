@@ -27,6 +27,11 @@ class BajaTemporalTest extends TestCase
             'created_at' => $now,
             'updated_at' => $now,
         ]);
+        DB::table('estatus_servicios')->insert([
+            'nombre' => 'Pendiente',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
         $servicioId = DB::table('servicios')->insertGetId([
             'nombre' => 'Internet',
             'created_at' => $now,

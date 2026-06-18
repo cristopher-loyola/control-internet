@@ -46,7 +46,11 @@ class FacturaService
             $payload = $resultado['payload'];
 
             // 4. Aplicar edición manual si existe
-            $manualOverride = $this->procesarEdicionManual($datos, $total, $payload);
+            try {
+                $manualOverride = $this->procesarEdicionManual($datos, $total, $payload);
+            } catch (\RuntimeException $e) {
+                return ['ok' => false, 'message' => $e->getMessage(), 'code' => 422];
+            }
 
             // 5. Validar duplicados
             if ($duplicado = $this->buscarDuplicado($datos, $payload, $total)) {
@@ -274,7 +278,7 @@ class FacturaService
             ? Usuario::find($usuarioId)
             : Usuario::where('numero_servicio', (string) $numero)->first();
 
-        if ($u && $u->tarifa !== null) {
+        if ($u && $u->tarifa !== null && (float) $u->tarifa > 0) {
             return (float) $u->tarifa;
         }
 
@@ -620,8 +624,11 @@ class FacturaService
         $adeudoReal = $this->morosidadService->calcularAdeudoUsuario($usuario->numero_servicio, null);
         $tienePendiente = (float) ($adeudoReal['pendiente'] ?? 0) > 0.01;
 
+        $estatusPagadoId = EstatusServicio::whereRaw('LOWER(nombre) = ?', ['pagado'])->value('id') ?? 1;
+        $estatusPendienteId = EstatusServicio::whereRaw('LOWER(nombre) = ?', ['pendiente'])->value('id') ?? 4;
+
         $updateData = [
-            'estatus_servicio_id' => $tienePendiente ? 4 : 1, // 4: Pendiente, 1: Pagado
+            'estatus_servicio_id' => $tienePendiente ? $estatusPendienteId : $estatusPagadoId,
             'estado_id' => 1,
             'adeudo_monto' => $usuario->adeudo_monto,
             'adeudo_descripcion' => $usuario->adeudo_descripcion,
