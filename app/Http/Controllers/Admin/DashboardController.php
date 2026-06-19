@@ -930,6 +930,7 @@ class DashboardController extends Controller
             ->all();
         $pagadosSet = array_fill_keys(array_map('strval', $pagados), true);
         $curStart = Carbon::createFromFormat('Y-m', $periodo)->startOfMonth();
+        $prevStart = $curStart->copy()->subMonth(); // tope para excluir mes actual del cálculo
         $dueDate = $curStart->copy()->day(7)->endOfDay();
         $today = now();
 
@@ -996,24 +997,25 @@ class DashboardController extends Controller
                 } catch (\Throwable $_) {}
             }
 
+            // Calcular deuda SOLO de meses anteriores (excluir mes actual)
             $mesesAdeudo = 0;
-            $desdePeriodo = $periodo;
+            $desdePeriodo = $prevStart->format('Y-m');
             if ($ultimoCubierto) {
                 try {
                     $lp = Carbon::createFromFormat('Y-m', (string) $ultimoCubierto)->startOfMonth();
-                    if ($lp->lessThan($curStart)) {
-                        $mesesAdeudo = (int) $lp->diffInMonths($curStart);
+                    if ($lp->lessThan($prevStart)) {
+                        $mesesAdeudo = (int) $lp->diffInMonths($prevStart);
                         $desdePeriodo = $lp->copy()->addMonth()->format('Y-m');
                     } else {
-                        continue;
+                        continue; // pagó hasta mes actual o más → sin deuda anterior
                     }
                 } catch (\Throwable $e) {
                     $mesesAdeudo = 1;
-                    $desdePeriodo = $periodo;
+                    $desdePeriodo = $prevStart->format('Y-m');
                 }
             } else {
                 $mesesAdeudo = 1;
-                $desdePeriodo = $periodo;
+                $desdePeriodo = $prevStart->format('Y-m');
             }
 
             $recargoUnaVez = ($today->day >= 8 && $mesesAdeudo >= 1) ? 50.0 : 0.0;

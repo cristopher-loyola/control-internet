@@ -278,7 +278,7 @@
     <div class="text-sm text-red-700">
         <p class="mb-1">
             <strong>Cliente con adeudos:</strong> 
-            <span x-text="adeudo.desde_label && (adeudo.desde_label.toLowerCase().includes('adeuda') || adeudo.desde_label.toLowerCase().includes('abril')) ? adeudo.desde_label : `Adeuda desde ${adeudo.desde_label}`"></span>
+            <span x-text="adeudo && adeudo.desde_label && (adeudo.desde_label.toLowerCase().includes('adeuda') || adeudo.desde_label.toLowerCase().includes('abril')) ? adeudo.desde_label : (adeudo ? `Adeuda desde ${adeudo.desde_label}` : '')"></span>
         </p>
         <p class="mb-1">
             <strong>Total a pagar incluyendo adeudos:</strong> 
@@ -682,6 +682,106 @@
                 </div>
             </div>
         </div>
+    <!-- Modal transferencia desde morosos -->
+    <div x-show="transModal" x-cloak
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+         @keydown.escape.window="transModal = false">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm mx-4" @click.stop>
+            <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-emerald-100 text-emerald-700">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <span class="text-sm font-semibold text-gray-800 dark:text-gray-100 uppercase tracking-wider">Transferencia</span>
+                        <p class="text-xs text-gray-400" x-text="transCliente.nombre"></p>
+                    </div>
+                </div>
+                <button @click="transModal = false" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="px-5 py-4 space-y-3">
+                <div class="flex justify-between text-sm">
+                    <span class="text-gray-500">ID</span>
+                    <span class="font-semibold text-gray-800 dark:text-gray-100" x-text="'#' + transCliente.numero"></span>
+                </div>
+
+                <div class="border-t border-gray-100 dark:border-gray-700 pt-3">
+                    <div class="flex items-center justify-between mb-2">
+                        <label class="text-xs font-semibold uppercase tracking-wider text-gray-500">Meses a saldar</label>
+                        <button type="button" @click="toggleTransTodos()"
+                            class="text-xs text-emerald-600 hover:text-emerald-800 font-medium"
+                            x-text="transSeleccionados.length === transMesesList.length ? 'Desmarcar todos' : 'Marcar todos'"></button>
+                    </div>
+                    <button type="button" @click="transAgregarMesAnterior()"
+                        class="w-full mb-1 flex items-center justify-center gap-1 py-1 rounded border border-dashed border-gray-300 text-xs text-gray-500 hover:border-emerald-400 hover:text-emerald-600 transition-colors">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Agregar mes anterior
+                    </button>
+                    <div class="space-y-1 max-h-48 overflow-y-auto pr-1">
+                        <template x-for="mes in transMesesList" :key="mes.value">
+                            <label class="flex items-center gap-2 p-1.5 rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 text-sm">
+                                <input type="checkbox" :value="mes.value" x-model="transSeleccionados"
+                                    class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-400">
+                                <span x-text="mes.label"></span>
+                                <span x-show="mes.esAdeudo" class="text-[10px] bg-red-100 text-red-700 px-1 rounded">adeudo</span>
+                                <span class="ml-auto text-gray-500 text-xs" x-text="'$' + mes.total.toFixed(2)"></span>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+
+                <div class="flex justify-between text-sm bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-3 py-2">
+                    <span class="font-semibold text-gray-700 dark:text-gray-300">Total</span>
+                    <span class="font-bold text-emerald-700" x-text="'$' + transTotalSeleccionado().toFixed(2)"></span>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Quién registra</label>
+                    <select x-model="transCobrador"
+                        class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm text-sm focus:border-emerald-400 focus:ring focus:ring-emerald-200">
+                        <option value="">Selecciona...</option>
+                        @foreach($cobradores as $c)
+                            @if($c->activo)
+                                <option value="{{ $c->nombre }}">{{ $c->nombre }}</option>
+                            @endif
+                        @endforeach
+                    </select>
+                </div>
+
+                <div x-show="transResultado" x-cloak
+                    :class="transResultado?.ok ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'"
+                    class="border rounded-lg px-3 py-2 text-sm font-medium" x-text="transResultado?.msg"></div>
+            </div>
+
+            <div class="px-5 pb-5 flex flex-col gap-2">
+                <button @click="transRegistrar()"
+                    :disabled="transGuardando || transSeleccionados.length === 0 || !transCobrador"
+                    class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 transition-all shadow disabled:opacity-50 disabled:cursor-not-allowed">
+                    <template x-if="transGuardando">
+                        <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 5.373 0 12 12h4z"></path>
+                        </svg>
+                    </template>
+                    <span x-text="transGuardando ? 'Registrando...' : 'Registrar transferencia'"></span>
+                </button>
+                <button @click="transResultado?.ok ? (fetchMorosos(), transModal = false) : transModal = false"
+                    class="w-full px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                    x-text="transResultado?.ok ? 'Cerrar y actualizar' : 'Cancelar'">
+                </button>
+            </div>
+        </div>
+    </div>
+
     </div>
 
     <style>
@@ -838,6 +938,13 @@
             morosos: [],
             loadingMorosos: false,
             currentPage: 1,
+            transModal: false,
+            transCliente: {},
+            transMesesList: [],
+            transSeleccionados: [],
+            transCobrador: '',
+            transGuardando: false,
+            transResultado: null,
             itemsPerPage: 50,
             cobradores: @json($cobradores),
             cobradoresBg: [
@@ -1111,6 +1218,120 @@
                 this.layoutReady = true;
             },
             saveLayout(){ localStorage.setItem('reciboLayout', JSON.stringify(this.layout)); },
+            confirmarTransferencia(m) {
+                const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+                const hoy = new Date();
+                const mesActualY = hoy.getFullYear();
+                const mesActualM = hoy.getMonth();
+
+                function parsePer(ym) {
+                    if (!ym || ym === 'manual') return { y: mesActualY, m: mesActualM };
+                    const [y, mo] = ym.split('-').map(Number);
+                    return { y, m: mo - 1 };
+                }
+                function labelMes(y, m0) { return MESES[m0] + ' ' + y; }
+                function addMeses(y, m0, n) { const d = new Date(y, m0 + n, 1); return { y: d.getFullYear(), m: d.getMonth() }; }
+
+                this.transCliente = {
+                    ...m,
+                    storeUrl: '{{ route('admin.pagos.facturas.store') }}'
+                };
+                this.transResultado = null;
+                this.transGuardando = false;
+                this.transCobrador = '';
+
+                const { y: y0, m: m0 } = parsePer(m.desde_periodo_raw);
+                const meses = m.adeudo_manual > 0 ? Math.max(0, (m.meses_adeudo || 0) - 1) : (m.meses_adeudo || 0);
+                const adeudados = [];
+
+                for (let i = 0; i < meses; i++) {
+                    const { y, m: mo } = addMeses(y0, m0, i);
+                    const value = y + '-' + String(mo + 1).padStart(2, '0');
+                    const recargo = (i === 0 && m.recargo > 0) ? m.recargo : 0;
+                    adeudados.push({ value, label: labelMes(y, mo), total: m.mensualidad + recargo,
+                        esActual: (y === mesActualY && mo === mesActualM), esAdeudo: true });
+                }
+                if (m.adeudo_manual > 0) {
+                    adeudados.unshift({ value: 'manual', label: m.descripcion_manual || 'Adeudo anterior',
+                        total: m.adeudo_manual, esActual: false, esAdeudo: true });
+                }
+                if (adeudados.length === 0) {
+                    const value = mesActualY + '-' + String(mesActualM + 1).padStart(2, '0');
+                    adeudados.push({ value, label: labelMes(mesActualY, mesActualM), total: m.mensualidad,
+                        esActual: true, esAdeudo: false });
+                }
+                const extras = [];
+                for (let i = 5; i >= 1; i--) {
+                    const { y, m: mo } = addMeses(y0, m0, -i);
+                    extras.push({ value: y + '-' + String(mo + 1).padStart(2, '0'),
+                        label: labelMes(y, mo), total: m.mensualidad, esActual: false, esAdeudo: false });
+                }
+                this.transMesesList = [...extras, ...adeudados];
+                this.transSeleccionados = adeudados.filter(x => !x.esActual).map(x => x.value);
+                this.transModal = true;
+            },
+            transTotalSeleccionado() {
+                return this.transMesesList.filter(x => this.transSeleccionados.includes(x.value))
+                    .reduce((s, x) => s + x.total, 0);
+            },
+            toggleTransTodos() {
+                this.transSeleccionados = this.transSeleccionados.length === this.transMesesList.length
+                    ? [] : this.transMesesList.map(x => x.value);
+            },
+            transAgregarMesAnterior() {
+                const primero = this.transMesesList[0];
+                if (!primero) return;
+                const [y, mo] = primero.value.split('-').map(Number);
+                const d = new Date(y, mo - 2, 1);
+                const value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+                if (this.transMesesList.find(x => x.value === value)) return;
+                const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+                this.transMesesList = [{ value, label: MESES[d.getMonth()] + ' ' + d.getFullYear(),
+                    total: this.transCliente.mensualidad, esActual: false, esAdeudo: false }, ...this.transMesesList];
+            },
+            async transRegistrar() {
+                if (!this.transSeleccionados.length || !this.transCobrador) return;
+                this.transGuardando = true;
+                this.transResultado = null;
+                const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
+                const url = this.transCliente.storeUrl;
+                const ahora = new Date();
+                const fecha = ahora.toLocaleDateString('es-MX', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+                const hora = ahora.toLocaleTimeString('es-MX');
+                let ok = 0, err = 0;
+                for (const periodo of this.transSeleccionados) {
+                    const mes = this.transMesesList.find(x => x.value === periodo);
+                    try {
+                        const r = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token },
+                            body: JSON.stringify({
+                                numero_servicio: this.transCliente.numero,
+                                total: mes?.total ?? this.transCliente.mensualidad,
+                                payload: {
+                                    nombre: this.transCliente.nombre,
+                                    mensualidad: this.transCliente.mensualidad,
+                                    recargo: (mes?.total ?? 0) > this.transCliente.mensualidad ? 'si' : 'no',
+                                    metodo: 'Deposito a cuenta',
+                                    cobro: this.transCobrador,
+                                    otro: 'no', prepay: 'no', pago_anterior: 0, mes_siguiente: false,
+                                    periodo_override: periodo === 'manual' ? null : periodo,
+                                    es_adeudo_manual: periodo === 'manual',
+                                    label: mes?.label || '', fecha, hora,
+                                }
+                            })
+                        });
+                        const j = await r.json();
+                        if (r.ok && j?.ok) ok++; else err++;
+                    } catch(_) { err++; }
+                }
+                this.transGuardando = false;
+                if (err === 0) {
+                    this.transResultado = { ok: true, msg: '✓ ' + ok + ' pago(s) registrado(s) correctamente' };
+                } else {
+                    this.transResultado = { ok: false, msg: ok + ' registrado(s), ' + err + ' con error' };
+                }
+            },
             async fetchMorosos(){
                 this.loadingMorosos = true;
                 try {
