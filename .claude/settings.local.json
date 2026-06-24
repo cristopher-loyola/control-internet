@@ -26,7 +26,13 @@
       "Bash(git check-ignore *)",
       "PowerShell(cd c:\\\\laragon\\\\www\\\\control-internet; $log = Get-Content storage\\\\logs\\\\laravel.log -Raw; $log -split '\\\\[' | Where-Object { $_ -match 'ERROR|Exception' } | Select-Object -Last 3 | ForEach-Object { $_.Substring\\(0, [Math]::Min\\(500, $_.Length\\)\\) })",
       "PowerShell(cd c:\\\\laragon\\\\www\\\\control-internet; php artisan tinker --execute=\"\\\\App\\\\Models\\\\User::all\\(['id','name','role']\\)->each\\(fn\\(\\\\$u\\)=>print\\(\\\\$u->id.' '.\\\\$u->name.' '.\\\\$u->role.PHP_EOL\\)\\);\" 2>&1)",
-      "PowerShell(cd c:\\\\laragon\\\\www\\\\control-internet; php -r \"require 'vendor/autoload.php'; \\\\$app=require 'bootstrap/app.php'; \\\\$app->make\\('Illuminate\\\\Contracts\\\\Console\\\\Kernel'\\)->bootstrap\\(\\); foreach\\(App\\\\Models\\\\User::all\\(\\) as \\\\$u\\) echo \\\\$u->id.' '.\\\\$u->name.' '.\\\\$u->role.PHP_EOL;\" 2>&1)"
+      "PowerShell(cd c:\\\\laragon\\\\www\\\\control-internet; php -r \"require 'vendor/autoload.php'; \\\\$app=require 'bootstrap/app.php'; \\\\$app->make\\('Illuminate\\\\Contracts\\\\Console\\\\Kernel'\\)->bootstrap\\(\\); foreach\\(App\\\\Models\\\\User::all\\(\\) as \\\\$u\\) echo \\\\$u->id.' '.\\\\$u->name.' '.\\\\$u->role.PHP_EOL;\" 2>&1)",
+      "Bash(php artisan *)",
+      "Bash(composer require *)",
+      "Bash(php -r \"echo PHP_VERSION;\")",
+      "Bash(curl -s -X GET \"http://localhost/Control Internet/control-internet/public/api/v1/cliente/perfil\" -H \"Authorization: Bearer qDHUEsom9TZZzF4fk4sLCx0q0W4ZS9x9HjtVo5dwGP3qP6hg8cUjDkXzKGbhhWEu\" -H \"Accept: application/json\")",
+      "Bash(curl -s -X GET \"http://localhost/control-internet/public/api/v1/cliente/perfil\" -H \"Authorization: Bearer qDHUEsom9TZZzF4fk4sLCx0q0W4ZS9x9HjtVo5dwGP3qP6hg8cUjDkXzKGbhhWEu\" -H \"Accept: application/json\")",
+      "Bash(curl -s -X GET \"http://control-internet.test/api/v1/cliente/perfil\" -H \"Authorization: Bearer qDHUEsom9TZZzF4fk4sLCx0q0W4ZS9x9HjtVo5dwGP3qP6hg8cUjDkXzKGbhhWEu\" -H \"Accept: application/json\")"
     ]
   }
 }
