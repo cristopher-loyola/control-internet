@@ -52,6 +52,7 @@ Route::middleware(['auth', 'role:pagos'])
         Route::get('/clientes/{id}', [PagosController::class, 'clientesShow'])->name('clientes.show');
         Route::get('/clientes/{numero}/historial', [PagosController::class, 'clientesHistorial'])->name('clientes.historial');
         Route::delete('/clientes/{id}', [PagosController::class, 'clientesDestroy'])->name('clientes.destroy');
+        Route::post('/clientes/{id}/cargo-extra', [PagosController::class, 'clientesCargoExtra'])->name('clientes.cargo-extra');
         Route::get('/recibos/lookup', [PagosController::class, 'recibosLookup'])->name('recibos.lookup');
         Route::get('/recibos/layout', [PagosController::class, 'recibosLayoutGet'])->name('recibos.layout.get');
         Route::get('/recibos/deuda', [PagosController::class, 'recibosDeuda'])->name('recibos.deuda');

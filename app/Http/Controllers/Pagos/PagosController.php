@@ -295,6 +295,21 @@ class PagosController extends Controller
         return view('pagos.clientes.index', compact('clientes'));
     }
 
+    public function clientesCargoExtra(Request $request, int $id)
+    {
+        $request->validate([
+            'monto'       => ['required', 'numeric', 'min:0'],
+            'descripcion' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $usuario = \App\Models\Usuario::findOrFail($id);
+        $usuario->adeudo_monto       = round((float) $request->input('monto'), 2);
+        $usuario->adeudo_descripcion = $request->input('monto') > 0 ? ($request->input('descripcion') ?: null) : null;
+        $usuario->save();
+
+        return response()->json(['ok' => true, 'monto' => $usuario->adeudo_monto, 'descripcion' => $usuario->adeudo_descripcion]);
+    }
+
     public function clientesDestroy(Request $request, int $id)
     {
         $usuario = Usuario::findOrFail($id);

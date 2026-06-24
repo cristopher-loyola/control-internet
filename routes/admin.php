@@ -81,6 +81,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::post('/clientes/import-cartera', [AdminController::class, 'clientesImportCartera'])->name('clientes.import-cartera');
         Route::delete('/clientes/{id}', [AdminController::class, 'clientesDestroy'])->name('clientes.destroy');
         Route::post('/clientes/{id}/proximo-pago', [AdminController::class, 'clientesProximoPago'])->name('clientes.proximo-pago');
+        Route::post('/clientes/{id}/cargo-extra', [AdminController::class, 'clientesCargoExtra'])->name('clientes.cargo-extra');
         Route::get('/create', [AdminController::class, 'create'])->name('create');
         Route::post('/', [AdminController::class, 'store'])->name('store');
         Route::get('/{id}', [AdminController::class, 'show'])->name('show');

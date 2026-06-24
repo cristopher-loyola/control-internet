@@ -254,6 +254,24 @@
                                             </button>
                                             <button
                                                 type="button"
+                                                title="Cargo extra próximo pago"
+                                                class="btn btn-sm"
+                                                style="background-color: #f97316; border-color: #ea580c; color: #fff;"
+                                                x-on:click.stop="abrirCargoExtra({
+                                                    id: {{ $c->id }},
+                                                    nombre: '{{ addslashes($c->nombre_cliente) }}',
+                                                    numero: '{{ $c->numero_servicio }}',
+                                                    adeudoMonto: {{ (float)($c->adeudo_monto ?? 0) }},
+                                                    adeudoDescripcion: '{{ addslashes($c->adeudo_descripcion ?? '') }}',
+                                                    url: '{{ route('admin.clientes.cargo-extra', $c->id) }}'
+                                                })"
+                                            >
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                                </svg>
+                                            </button>
+                                            <button
+                                                type="button"
                                                 class="btn btn-danger btn-sm"
                                                 aria-label="Eliminar cliente"
                                                 x-on:click.stop="deleteId = {{ $c->id }}; $dispatch('open-modal', 'admin-clientes-delete-confirm')"
@@ -965,6 +983,61 @@
             </div>
         </x-modal>
 
+        <!-- Modal: Cargo extra -->
+        <div x-show="ceModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+             @keydown.escape.window="ceModal = false">
+            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm mx-4" @click.stop>
+                <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-orange-100 text-orange-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </span>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-800 dark:text-gray-100">Cargo extra</p>
+                            <p class="text-xs text-gray-400" x-text="'#' + ceCliente.numero + ' · ' + ceCliente.nombre"></p>
+                        </div>
+                    </div>
+                    <button @click="ceModal = false" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="px-5 py-4 space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Monto extra ($)</label>
+                        <input type="number" min="0" step="0.01" x-model="ceMonto"
+                            placeholder="0.00"
+                            class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm shadow-sm focus:border-orange-400 focus:ring focus:ring-orange-200">
+                        <p class="text-xs text-gray-400 mt-1">Pon 0 para eliminar el cargo</p>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Descripción</label>
+                        <input type="text" x-model="ceDescripcion" maxlength="255"
+                            placeholder="Ej: Reconexión, material, etc."
+                            class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm shadow-sm focus:border-orange-400 focus:ring focus:ring-orange-200">
+                    </div>
+                    <div x-show="ceResultado" x-cloak
+                        :class="ceResultado?.ok ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'"
+                        class="border rounded-lg px-3 py-2 text-sm font-medium" x-text="ceResultado?.msg"></div>
+                </div>
+                <div class="px-5 pb-5 flex flex-col gap-2">
+                    <button @click="guardarCargoExtra()"
+                        :disabled="ceGuardando"
+                        class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-white text-sm font-semibold transition-all shadow disabled:opacity-50"
+                        style="background:#f97316">
+                        <span x-text="ceGuardando ? 'Guardando...' : 'Guardar cargo'"></span>
+                    </button>
+                    <button @click="ceModal = false"
+                        class="w-full px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Modal: Siguiente pago — dentro del x-data para acceder al estado Alpine -->
         <div x-show="ppModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
              @keydown.escape.window="ppModal = false">
@@ -1073,6 +1146,43 @@
                 busquedaActual: '',
                 isNuevoCliente: true,
                 deleteId: null,
+                // --- Cargo extra ---
+                ceModal: false,
+                ceCliente: {},
+                ceMonto: '',
+                ceDescripcion: '',
+                ceGuardando: false,
+                ceResultado: null,
+                abrirCargoExtra(data) {
+                    this.ceCliente = data;
+                    this.ceMonto = data.adeudoMonto > 0 ? data.adeudoMonto : '';
+                    this.ceDescripcion = data.adeudoDescripcion || '';
+                    this.ceResultado = null;
+                    this.ceGuardando = false;
+                    this.ceModal = true;
+                },
+                async guardarCargoExtra() {
+                    if (this.ceGuardando) return;
+                    this.ceGuardando = true;
+                    this.ceResultado = null;
+                    const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
+                    try {
+                        const r = await fetch(this.ceCliente.url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token },
+                            body: JSON.stringify({ monto: parseFloat(this.ceMonto) || 0, descripcion: this.ceDescripcion })
+                        });
+                        const j = await r.json();
+                        if (r.ok && j.ok) {
+                            this.ceResultado = { ok: true, msg: j.monto > 0 ? `✓ Cargo extra $${j.monto} guardado` : '✓ Cargo eliminado' };
+                        } else {
+                            this.ceResultado = { ok: false, msg: 'Error al guardar' };
+                        }
+                    } catch (_) {
+                        this.ceResultado = { ok: false, msg: 'Error de conexión' };
+                    }
+                    this.ceGuardando = false;
+                },
                 // --- Próximo pago ---
                 ppModal: false,
                 ppCliente: {},
