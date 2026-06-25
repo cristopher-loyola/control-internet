@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\ApiAuthController;
 use App\Http\Controllers\Api\ApiClienteController;
+use App\Http\Controllers\Api\ApiPagosController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -21,4 +22,11 @@ Route::middleware(['api.auth', 'throttle:60,1'])->group(function () {
 
     Route::get('/cliente/perfil', [ApiClienteController::class, 'perfil']);
     Route::get('/cliente/deuda',  [ApiClienteController::class, 'deuda']);
+
+    Route::post('/pagos/crear-intent', [ApiPagosController::class, 'crearIntent']);
 });
+
+// Webhook público de Stripe (sin auth, sin throttle estricto)
+Route::post('/pagos/webhook', [ApiPagosController::class, 'webhook'])
+    ->middleware('throttle:120,1')
+    ->withoutMiddleware(['api.auth']);
