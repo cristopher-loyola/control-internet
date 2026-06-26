@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\PagoStripe;
+use App\Models\Usuario;
+use App\Services\FacturaService;
 use App\Services\MorosidadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,7 +16,10 @@ use Stripe\Webhook;
 
 class ApiPagosController extends Controller
 {
-    public function __construct(private MorosidadService $morosidad) {}
+    public function __construct(
+        private MorosidadService $morosidad,
+        private FacturaService $facturaService,
+    ) {}
 
     public function crearIntent(Request $request): JsonResponse
     {
@@ -77,8 +82,21 @@ class ApiPagosController extends Controller
         if ($event->type === 'payment_intent.succeeded') {
             $pi = $event->data->object;
 
-            PagoStripe::where('payment_intent_id', $pi->id)
-                ->update(['estado' => 'completado', 'pagado_at' => now()]);
+            $pagoStripe = PagoStripe::where('payment_intent_id', $pi->id)->first();
+
+            if ($pagoStripe && $pagoStripe->estado !== 'completado') {
+                $pagoStripe->update(['estado' => 'completado', 'pagado_at' => now()]);
+
+                $usuario = Usuario::find($pagoStripe->usuario_id);
+                if ($usuario) {
+                    $this->facturaService->crearDesdeStripe(
+                        $usuario,
+                        $pagoStripe->periodo,
+                        (float) $pagoStripe->monto,
+                        $pi->id,
+                    );
+                }
+            }
         }
 
         return response()->json(['ok' => true]);

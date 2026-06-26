@@ -679,6 +679,59 @@ class FacturaService
     }
 
     /**
+     * Crear factura desde pago Stripe (webhook). Sin Request — datos directos.
+     */
+    public function crearDesdeStripe(Usuario $usuario, string $periodo, float $total, string $paymentIntentId): array
+    {
+        return DB::transaction(function () use ($usuario, $periodo, $total, $paymentIntentId) {
+            // Verificar duplicado por periodo
+            $dup = Factura::where('numero_servicio', $usuario->numero_servicio)
+                ->where('periodo', $periodo)
+                ->first();
+
+            if ($dup) {
+                return ['ok' => true, 'referencia' => $dup->reference_number, 'reused' => true];
+            }
+
+            $folio = $this->generarFolio();
+
+            $payload = [
+                'metodo'             => 'Stripe',
+                'stripe_pi'          => $paymentIntentId,
+                'mensualidad'        => $total,
+                'recargo'            => 'no',
+                'prepay'             => 'no',
+            ];
+
+            $factura = new Factura;
+            $factura->reference_number = $folio;
+            $factura->usuario_id       = $usuario->id;
+            $factura->numero_servicio  = $usuario->numero_servicio;
+            $factura->periodo          = $periodo;
+            $factura->total            = $total;
+            $factura->payload          = $payload;
+            $factura->created_by       = null;
+            $factura->save();
+
+            $this->marcarComoPagado($factura);
+
+            DB::table('payment_attempts')->insert([
+                'usuario_id'      => $usuario->id,
+                'numero_servicio' => $usuario->numero_servicio,
+                'periodo'         => $periodo,
+                'status'          => 'success',
+                'reason'          => 'Stripe webhook',
+                'payload'         => json_encode($payload),
+                'attempted_at'    => now(),
+                'created_at'      => now(),
+                'updated_at'      => now(),
+            ]);
+
+            return ['ok' => true, 'referencia' => $factura->reference_number];
+        });
+    }
+
+    /**
      * Log de auditoría genérico
      */
     private function logAuditoria(string $action, string $table, int $entityId, array $prev, array $new): void
