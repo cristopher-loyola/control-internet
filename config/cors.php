@@ -4,9 +4,10 @@ return [
     'paths'                    => ['api/*'],
     'allowed_methods'          => ['*'],
     'allowed_origins'          => [
-        'http://localhost:5173',   // React dev
-        'http://localhost:4173',   // React preview
+        'http://localhost:5173',
+        'http://localhost:4173',
         'https://controlinternetpagos.uk',
+        'https://pagos.controlinternetpagos.uk',
     ],
     'allowed_origins_patterns' => [],
     'allowed_headers'          => ['*'],
