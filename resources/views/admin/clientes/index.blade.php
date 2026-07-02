@@ -492,15 +492,61 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
+                            {{-- Caso 1: Pago normal --}}
+                            <tr class="bg-gray-50 dark:bg-gray-800/50">
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">1045</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">
+                                    Ana Lopez
+                                    <span class="ml-1 text-[9px] bg-gray-200 text-gray-600 rounded px-1 py-0.5 font-semibold">NORMAL</span>
+                                </td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">3310000001</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">5</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">300.00</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-400 italic text-[10px]">—</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">0.00</td>
+                                <td class="px-2 py-1 font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20">300.00</td>
+                            </tr>
+                            {{-- Caso 2: Tiene adeudo --}}
                             <tr>
                                 <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">1047</td>
-                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">Mario Gonzalez</td>
-                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">4681234568
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">
+                                    Mario Gonzalez
+                                    <span class="ml-1 text-[9px] bg-red-100 text-red-700 rounded px-1 py-0.5 font-semibold">ADEUDO</span>
+                                </td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">4681234568</td>
                                 <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">3</td>
                                 <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">300.00</td>
-                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500 italic text-[10px]">Adeuda Mayo...</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500 italic text-[10px]">Adeuda Mayo</td>
                                 <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">167.00</td>
                                 <td class="px-2 py-1 font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20">467.00</td>
+                            </tr>
+                            {{-- Caso 3: Pagó por transferencia / adelanto --}}
+                            <tr class="bg-blue-50/30 dark:bg-blue-900/10">
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">1048</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">
+                                    Carlos Ruiz
+                                    <span class="ml-1 text-[9px] bg-blue-100 text-blue-700 rounded px-1 py-0.5 font-semibold">TRANSF.</span>
+                                </td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">3310000002</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">10</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">400.00</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-red-600 italic text-[10px] font-semibold">Pagó transf. Junio ★</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">0.00</td>
+                                <td class="px-2 py-1 font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20">0.00</td>
+                            </tr>
+                            {{-- Caso 4: Baja temporal / Cancelación --}}
+                            <tr class="bg-orange-50/30 dark:bg-orange-900/10">
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">1050</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">
+                                    Rosa Mendez
+                                    <span class="ml-1 text-[9px] bg-orange-100 text-orange-700 rounded px-1 py-0.5 font-semibold">BAJA</span>
+                                </td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">3310000003</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">5</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">300.00</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-red-600 italic text-[10px] font-semibold">Baja temporal Mayo ★</td>
+                                <td class="px-2 py-1 border-r border-gray-200 dark:border-gray-700 text-gray-500">0.00</td>
+                                <td class="px-2 py-1 font-bold text-orange-600 bg-orange-50 dark:bg-orange-900/20">150.00</td>
                             </tr>
                         </tbody>
                     </table>

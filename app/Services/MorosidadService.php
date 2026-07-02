@@ -60,6 +60,16 @@ class MorosidadService
         $ultimoPeriodoPrepay = $this->ultimoPeriodoCubiertoPorPrepay($numero, $mensualidad);
         $ultimoPeriodoCubierto = $this->maxPeriodo($ultimoPeriodoPagoSuficiente, $ultimoPeriodoPrepay);
 
+        // Extender cobertura con proximo_pago aunque ya haya facturas (ej. adelanto/transferencia registrado en Excel).
+        // proximo_pago = "2026-08" significa que julio ya está cubierto → último cubierto = "2026-07".
+        if (!empty($usuario->proximo_pago) && preg_match('/^\d{4}-\d{2}$/', (string) $usuario->proximo_pago)) {
+            try {
+                $ppLastCovered = Carbon::createFromFormat('Y-m', $usuario->proximo_pago)
+                    ->startOfMonth()->subMonth()->format('Y-m');
+                $ultimoPeriodoCubierto = $this->maxPeriodo($ultimoPeriodoCubierto, $ppLastCovered);
+            } catch (\Throwable $e) {}
+        }
+
         $mesesAdeudo = 0;
         $desdePeriodo = $periodo;
         if ($ultimoPeriodoCubierto) {
@@ -136,21 +146,26 @@ class MorosidadService
         }
         $pendiente = round(max(0.0, ($base + $recargo) - $pagadoParcial), 2);
 
-        // REGLA DE ESTANDARIZACIÓN (Caso base 300/350):
-        // Si hay un adeudo manual (ej. $50 de Excel), este se considera el "recargo" o deuda previa.
-        // El monto base (mensualidad) se mantiene en $300.
         if ($usuario->adeudo_monto > 0) {
-            $montoManual = (float)$usuario->adeudo_monto;
-            
-            // El total con recargo será: mensualidad + adeudo manual
-            $pendiente = round(($mensualidad + $montoManual), 2);
-            
-            // Para que la interfaz pueda "restar" el recargo y volver al base ($300),
-            // informamos el adeudo manual como el recargo oficial del periodo.
-            $recargo = $montoManual;
-            
-            // Forzamos el estado de meses adeudados para que la interfaz muestre los avisos correctamente
-            $mesesAdeudo = 1; 
+            $montoManual = (float) $usuario->adeudo_monto;
+
+            // proximo_pago > periodo actual → el cliente ya pagó este mes (adelanto/baja temporal).
+            // En ese caso, adeudo_monto ES el monto exacto a cobrar (no se suma a la mensualidad).
+            // Si proximo_pago no cubre el período, adeudo_monto es deuda adicional sobre la mensualidad.
+            $proxPagoCovers = !empty($usuario->proximo_pago)
+                && preg_match('/^\d{4}-\d{2}$/', (string) $usuario->proximo_pago)
+                && strcmp((string) $usuario->proximo_pago, $periodo) > 0;
+
+            if ($proxPagoCovers) {
+                // Baja temporal: el Excel indicó exactamente este monto
+                $pendiente = round($montoManual, 2);
+                $recargo = 0.0;
+            } else {
+                // Adeudo extra: sumar sobre la mensualidad
+                $pendiente = round(($mensualidad + $montoManual), 2);
+                $recargo = $montoManual;
+            }
+            $mesesAdeudo = 1;
             $desdePeriodo = $periodo;
         }
 

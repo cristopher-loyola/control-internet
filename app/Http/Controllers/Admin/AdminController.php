@@ -1582,6 +1582,8 @@ class AdminController extends Controller
                                 // Tarifa reducida este mes (baja temporal, convenio, descuento).
                                 $updateData['proximo_pago'] = now()->addMonth()->format('Y-m');
                                 $updateData['proximo_pago_monto'] = $tp;
+                                // Guardar el monto reducido como adeudo manual para que el cobrador lo vea.
+                                $updateData['adeudo_monto'] = $tp;
                                 // Restaurar descripción del CSV (puede haberse borrado en pasos anteriores).
                                 if (!empty($descripcionAdeudo)) {
                                     $updateData['adeudo_descripcion'] = $descripcionAdeudo;
