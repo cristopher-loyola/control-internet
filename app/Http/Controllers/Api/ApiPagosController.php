@@ -44,9 +44,10 @@ class ApiPagosController extends Controller
         Stripe::setApiKey(config('services.stripe.secret'));
 
         $intent = PaymentIntent::create([
-            'amount'   => (int) round($pendiente * 100), // centavos
-            'currency' => 'mxn',
-            'metadata' => [
+            'amount'                => (int) round($pendiente * 100),
+            'currency'              => 'mxn',
+            'payment_method_types'  => ['card', 'oxxo'],
+            'metadata'              => [
                 'usuario_id'      => $usuario->id,
                 'numero_servicio' => $usuario->numero_servicio,
                 'periodo'         => $periodo,
