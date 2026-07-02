@@ -80,9 +80,9 @@ class ApiPagosController extends Controller
             return response()->json(['ok' => false], 400);
         }
 
-        if ($event->type === 'payment_intent.succeeded') {
-            $pi = $event->data->object;
+        $pi = $event->data->object;
 
+        if ($event->type === 'payment_intent.succeeded') {
             $pagoStripe = PagoStripe::where('payment_intent_id', $pi->id)->first();
 
             if ($pagoStripe && $pagoStripe->estado !== 'completado') {
@@ -98,6 +98,13 @@ class ApiPagosController extends Controller
                     );
                 }
             }
+        }
+
+        if ($event->type === 'payment_intent.payment_failed') {
+            $motivo = $pi->last_payment_error?->message ?? 'Pago rechazado';
+            PagoStripe::where('payment_intent_id', $pi->id)
+                ->where('estado', 'pendiente')
+                ->update(['estado' => 'fallido', 'motivo_fallo' => mb_substr($motivo, 0, 255)]);
         }
 
         return response()->json(['ok' => true]);

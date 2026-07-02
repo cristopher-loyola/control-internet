@@ -20,8 +20,9 @@ Route::middleware('throttle:10,1')->group(function () {
 Route::middleware(['api.auth', 'throttle:60,1'])->group(function () {
     Route::post('/auth/logout', [ApiAuthController::class, 'logout']);
 
-    Route::get('/cliente/perfil', [ApiClienteController::class, 'perfil']);
-    Route::get('/cliente/deuda',  [ApiClienteController::class, 'deuda']);
+    Route::get('/cliente/perfil',         [ApiClienteController::class, 'perfil']);
+    Route::get('/cliente/deuda',          [ApiClienteController::class, 'deuda']);
+    Route::get('/cliente/transacciones',  [ApiClienteController::class, 'transacciones']);
 
     Route::post('/pagos/crear-intent', [ApiPagosController::class, 'crearIntent']);
 });

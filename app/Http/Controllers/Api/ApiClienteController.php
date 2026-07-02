@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\PagoStripe;
 use App\Services\MorosidadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -46,7 +47,7 @@ class ApiClienteController extends Controller
         }
 
         return response()->json([
-            'ok'    => true,
+            'ok'   => true,
             'deuda' => [
                 'pendiente'            => $a['pendiente'],
                 'mensualidad'          => $a['mensualidad'],
@@ -63,6 +64,28 @@ class ApiClienteController extends Controller
                 'cubierto_este_mes'    => $a['cubierto_este_mes'],
                 'al_corriente'         => $a['pendiente'] <= 0,
             ],
+        ]);
+    }
+
+    public function transacciones(Request $request): JsonResponse
+    {
+        $usuario = $request->attributes->get('api_usuario');
+
+        $rows = PagoStripe::where('usuario_id', $usuario->id)
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get(['payment_intent_id', 'monto', 'estado', 'periodo', 'pagado_at', 'created_at', 'motivo_fallo']);
+
+        return response()->json([
+            'ok'            => true,
+            'transacciones' => $rows->map(fn($r) => [
+                'id'           => $r->payment_intent_id,
+                'monto'        => (float) $r->monto,
+                'estado'       => $r->estado,
+                'periodo'      => $r->periodo,
+                'motivo_fallo' => $r->motivo_fallo,
+                'fecha'        => ($r->pagado_at ?? $r->created_at)?->toIso8601String(),
+            ]),
         ]);
     }
 }
