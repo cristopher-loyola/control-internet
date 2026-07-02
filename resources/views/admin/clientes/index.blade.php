@@ -1084,91 +1084,107 @@
             </div>
         </div>
 
-        <!-- Modal: Siguiente pago — dentro del x-data para acceder al estado Alpine -->
-        <div x-show="ppModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+        <!-- Modal: Próximo pago -->
+        <div x-show="ppModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
              @keydown.escape.window="ppModal = false">
-            <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm mx-4" @click.stop>
-                <div class="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-200 dark:border-gray-700">
-                    <div class="flex items-center gap-2">
-                        <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-sky-100 text-sky-600">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden" @click.stop>
+
+                <!-- Header con gradiente -->
+                <div class="bg-gradient-to-r from-sky-500 to-blue-600 px-5 pt-5 pb-6">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <p class="text-sky-100 text-xs font-medium uppercase tracking-widest mb-0.5">Próximo pago</p>
+                            <h3 class="text-white font-bold text-lg leading-tight" x-text="ppCliente.nombre"></h3>
+                            <p class="text-sky-200 text-xs mt-0.5">
+                                #<span x-text="ppCliente.numero"></span>
+                                &nbsp;·&nbsp;Tarifa: $<span x-text="Number(ppCliente.tarifa).toFixed(2)"></span>
+                            </p>
+                        </div>
+                        <button @click="ppModal = false" class="text-sky-200 hover:text-white transition-colors mt-0.5">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="px-5 py-5 space-y-4">
+
+                    <!-- Estado: cargando -->
+                    <div x-show="ppDeudaLoading" class="flex flex-col items-center justify-center py-6 gap-3">
+                        <svg class="animate-spin w-8 h-8 text-sky-400" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                        <span class="text-sm text-gray-400">Consultando deuda...</span>
+                    </div>
+
+                    <!-- Estado: al corriente -->
+                    <div x-show="!ppDeudaLoading && ppDeuda && ppDeuda.pendiente <= 0"
+                         class="flex flex-col items-center justify-center py-6 gap-2 text-center">
+                        <span class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/40 text-green-500 mb-1">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                             </svg>
                         </span>
-                        <span class="text-sm font-semibold text-gray-800 dark:text-gray-100 uppercase tracking-wider">Siguiente pago</span>
+                        <p class="font-semibold text-gray-800 dark:text-gray-100">Al corriente</p>
+                        <p class="text-xs text-gray-400">Sin pagos pendientes este mes</p>
                     </div>
-                    <button @click="ppModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-                </div>
-                <div class="px-5 py-4 space-y-4">
-                    <!-- Info cliente -->
-                    <div class="flex justify-between text-sm border-b border-gray-100 dark:border-gray-700 pb-3">
+
+                    <!-- Estado: con deuda → campo editable -->
+                    <div x-show="!ppDeudaLoading && ppDeuda && ppDeuda.pendiente > 0" class="space-y-3">
+                        <!-- Monto calculado (chip) -->
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-gray-500 dark:text-gray-400">Monto calculado</span>
+                            <span class="inline-flex items-center gap-1 text-xs font-semibold bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full">
+                                $<span x-text="Number(ppDeuda?.pendiente || 0).toFixed(2)"></span>
+                            </span>
+                        </div>
+
+                        <!-- Input grande y prominente -->
                         <div>
-                            <div class="font-semibold text-gray-800 dark:text-gray-100" x-text="ppCliente.nombre"></div>
-                            <div class="text-xs text-gray-400">ID <span x-text="ppCliente.numero"></span> · Tarifa normal: $<span x-text="Number(ppCliente.tarifa).toFixed(2)"></span></div>
-                        </div>
-                    </div>
-
-                    <!-- Mes del próximo pago -->
-                    <div>
-                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
-                            Mes del próximo pago
-                        </label>
-                        <input type="month" x-model="ppPeriodo"
-                            class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-200 focus:ring-opacity-50 text-sm">
-                        <p class="text-xs text-gray-400 mt-1">Vacío = calculado automáticamente</p>
-                    </div>
-
-                    <!-- Monto del próximo pago -->
-                    <div>
-                        <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">
-                            Monto del próximo pago
-                        </label>
-                        <div class="relative">
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-sm">$</span>
-                            <input type="number" step="0.01" min="0" x-model="ppMonto"
-                                class="form-input pl-7 w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-sky-400 focus:ring focus:ring-sky-200 focus:ring-opacity-50 text-sm"
-                                placeholder="0.00">
-                        </div>
-                        <p class="text-xs text-gray-400 mt-1">Vacío = usa la tarifa normal del cliente</p>
-                    </div>
-
-                    <!-- Resumen -->
-                    <div x-show="ppPeriodo || ppMonto" class="text-xs bg-sky-50 dark:bg-sky-900/20 border border-sky-200 dark:border-sky-700 rounded-lg px-3 py-2 text-sky-700 dark:text-sky-300 space-y-0.5">
-                        <div x-show="ppPeriodo">
-                            📅 Próximo mes: <strong x-text="(()=>{ if(!ppPeriodo) return ''; const [y,m]=ppPeriodo.split('-'); const n=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']; return n[parseInt(m)]+' '+y; })()"></strong>
-                        </div>
-                        <div x-show="ppMonto">
-                            💰 Monto configurado: <strong x-text="'$' + Number(ppMonto || 0).toFixed(2)"></strong>
+                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                                Ajustar monto a cobrar
+                            </label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xl">$</span>
+                                <input type="number" step="0.01" min="0" x-model="ppMontoOverride"
+                                    class="form-input pl-10 pr-4 w-full rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm focus:border-sky-400 focus:ring-0 text-2xl font-bold text-gray-800 dark:text-gray-100 py-3 bg-gray-50 dark:bg-gray-800"
+                                    placeholder="0.00">
+                            </div>
+                            <div class="flex items-center justify-between mt-1.5">
+                                <p class="text-xs text-gray-400">El cliente verá este monto en su recibo</p>
+                                <button type="button" @click="ppMontoOverride = ppDeuda?.pendiente"
+                                    class="text-xs text-sky-500 hover:text-sky-700 font-medium">
+                                    Restablecer
+                                </button>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Resultado -->
                     <div x-show="ppResultado" x-cloak
-                        :class="ppResultado?.ok ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'"
-                        class="border rounded-lg px-3 py-2 text-sm font-medium" x-text="ppResultado?.msg"></div>
+                        :class="ppResultado?.ok ? 'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:text-red-400'"
+                        class="border rounded-xl px-4 py-2.5 text-sm font-medium flex items-center gap-2">
+                        <span x-show="ppResultado?.ok">✓</span>
+                        <span x-show="!ppResultado?.ok">✕</span>
+                        <span x-text="ppResultado?.msg"></span>
+                    </div>
                 </div>
-                <div class="px-5 pb-5 flex flex-col gap-2">
-                    <button @click="guardarProximoPago()" :disabled="ppGuardando"
-                        class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700 active:scale-95 transition-all duration-150 shadow disabled:opacity-50">
-                        <template x-if="ppGuardando">
-                            <svg class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-                            </svg>
-                        </template>
-                        <span x-text="ppGuardando ? 'Guardando...' : 'Guardar próximo pago'"></span>
-                    </button>
-                    <button @click="limpiarProximoPago()" type="button"
-                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                        Restablecer a valores normales
-                    </button>
+
+                <!-- Footer -->
+                <div class="px-5 pb-5 flex gap-2">
                     <button @click="ppModal = false"
-                        class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-medium">
                         Cancelar
+                    </button>
+                    <button @click="guardarProximoPago()" :disabled="ppGuardando || ppDeudaLoading"
+                        class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700 active:scale-95 transition-all shadow disabled:opacity-50">
+                        <svg x-show="ppGuardando" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                        </svg>
+                        <span x-text="ppGuardando ? 'Guardando...' : 'Guardar'"></span>
                     </button>
                 </div>
             </div>
@@ -1234,28 +1250,56 @@
                 ppCliente: {},
                 ppPeriodo: '',
                 ppMonto: '',
+                ppDeuda: null,
+                ppDeudaLoading: false,
+                ppMontoOverride: '',
                 ppGuardando: false,
                 ppResultado: null,
                 abrirProximoPago(data) {
-                    this.ppCliente = data;
-                    this.ppPeriodo = data.actualPeriodo || '';
-                    this.ppMonto   = data.actualMonto !== '' ? data.actualMonto : data.tarifa;
-                    this.ppResultado = null;
-                    this.ppGuardando = false;
-                    this.ppModal = true;
+                    this.ppCliente      = data;
+                    this.ppPeriodo      = data.actualPeriodo || '';
+                    this.ppMonto        = data.actualMonto !== '' ? data.actualMonto : data.tarifa;
+                    this.ppDeuda        = null;
+                    this.ppMontoOverride = '';
+                    this.ppResultado    = null;
+                    this.ppGuardando    = false;
+                    this.ppModal        = true;
+                    // Cargar deuda actual
+                    this.ppDeudaLoading = true;
+                    fetch(`{{ route('admin.pagos.deuda') }}?numero=${data.numero}`, {
+                        headers: { 'Accept': 'application/json' }
+                    })
+                    .then(r => r.json())
+                    .then(j => {
+                        if (j.ok) {
+                            this.ppDeuda = j;
+                            if (j.pendiente > 0) this.ppMontoOverride = j.pendiente;
+                        }
+                    })
+                    .catch(() => {})
+                    .finally(() => { this.ppDeudaLoading = false; });
                 },
                 async guardarProximoPago() {
                     if (this.ppGuardando) return;
                     this.ppGuardando = true;
                     this.ppResultado = null;
                     const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
+                    const adeudoMonto = this.ppMontoOverride !== '' ? Number(this.ppMontoOverride) : 0;
+                    // Si se fijó un monto de pago y no hay período manual, auto-avanzar al siguiente mes
+                    let periodo = this.ppPeriodo || null;
+                    if (adeudoMonto > 0 && !periodo) {
+                        const hoy = new Date();
+                        const sig = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 1);
+                        periodo = sig.getFullYear() + '-' + String(sig.getMonth() + 1).padStart(2, '0');
+                    }
                     try {
                         const r = await fetch(this.ppCliente.url, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token },
                             body: JSON.stringify({
-                                proximo_pago: this.ppPeriodo || null,
+                                proximo_pago:       periodo,
                                 proximo_pago_monto: this.ppMonto !== '' ? Number(this.ppMonto) : null,
+                                adeudo_monto:       adeudoMonto,
                             })
                         });
                         const j = await r.json();
@@ -1271,8 +1315,9 @@
                     this.ppGuardando = false;
                 },
                 limpiarProximoPago() {
-                    this.ppPeriodo = '';
-                    this.ppMonto   = this.ppCliente.tarifa;
+                    this.ppPeriodo       = '';
+                    this.ppMonto         = this.ppCliente.tarifa;
+                    this.ppMontoOverride = this.ppDeuda?.pendiente || '';
                 },
                 // ---
                 createMegasReadonly: false,
