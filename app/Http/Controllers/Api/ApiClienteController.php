@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Factura;
 use App\Models\PagoStripe;
 use App\Services\MorosidadService;
 use Illuminate\Http\JsonResponse;
@@ -64,6 +65,36 @@ class ApiClienteController extends Controller
                 'cubierto_este_mes'    => $a['cubierto_este_mes'],
                 'al_corriente'         => $a['pendiente'] <= 0,
             ],
+        ]);
+    }
+
+    public function facturas(Request $request): JsonResponse
+    {
+        $usuario = $request->attributes->get('api_usuario');
+
+        $rows = Factura::where('numero_servicio', $usuario->numero_servicio)
+            ->orderByDesc('created_at')
+            ->limit(24)
+            ->get(['reference_number', 'total', 'periodo', 'payload', 'created_at']);
+
+        return response()->json([
+            'ok'      => true,
+            'facturas' => $rows->map(function ($f) {
+                $payload = is_array($f->payload) ? $f->payload : [];
+                $metodo  = $payload['metodo'] ?? 'Efectivo';
+                $esPrepay = !empty($payload['prepay']) && ($payload['prepay'] === 'si' || $payload['prepay'] === true);
+                $esRecargo = !empty($payload['recargo']) && ($payload['recargo'] === 'si' || $payload['recargo'] === true);
+
+                return [
+                    'folio'     => $f->reference_number,
+                    'total'     => (float) $f->total,
+                    'periodo'   => $f->periodo,
+                    'metodo'    => $metodo,
+                    'es_prepay' => $esPrepay,
+                    'recargo'   => $esRecargo,
+                    'fecha'     => $f->created_at?->toIso8601String(),
+                ];
+            }),
         ]);
     }
 

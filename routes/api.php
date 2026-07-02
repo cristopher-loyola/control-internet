@@ -23,6 +23,7 @@ Route::middleware(['api.auth', 'throttle:60,1'])->group(function () {
     Route::get('/cliente/perfil',         [ApiClienteController::class, 'perfil']);
     Route::get('/cliente/deuda',          [ApiClienteController::class, 'deuda']);
     Route::get('/cliente/transacciones',  [ApiClienteController::class, 'transacciones']);
+    Route::get('/cliente/facturas',       [ApiClienteController::class, 'facturas']);
 
     Route::post('/pagos/crear-intent', [ApiPagosController::class, 'crearIntent']);
 });
