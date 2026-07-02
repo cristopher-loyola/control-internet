@@ -95,12 +95,14 @@ class BackupAndEmail extends Command
         $fileName = basename($backupPath);
         $fileSize = $this->formatBytes($disk->size($backupPath));
 
+        $to = config('mail.backup_email') ?? config('mail.from.address');
+
         Mail::send('emails.backup', [
             'fecha' => now()->format('d/m/Y H:i:s'),
             'archivo' => $fileName,
             'tamano' => $fileSize,
-        ], function ($message) use ($fullPath, $fileName) {
-            $message->to(env('BACKUP_EMAIL', env('MAIL_FROM_ADDRESS')))
+        ], function ($message) use ($fullPath, $fileName, $to) {
+            $message->to($to)
                     ->subject('Backup Control Internet - ' . now()->format('d/m/Y'))
                     ->attach($fullPath, [
                         'as' => $fileName,
@@ -171,7 +173,7 @@ class BackupAndEmail extends Command
         }
 
         // Agregar CREATE SCHEMA
-        $dbName = env('DB_DATABASE', 'control_internet');
+        $dbName = config('database.connections.mysql.database', 'control_internet');
         $declaration = "CREATE SCHEMA IF NOT EXISTS `{$dbName}` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;\n";
         $declaration .= "USE `{$dbName}`;\n\n";
         $newContent = $declaration . $sqlContent;

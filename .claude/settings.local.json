@@ -34,7 +34,9 @@
       "Bash(curl -s -X GET \"http://localhost/control-internet/public/api/v1/cliente/perfil\" -H \"Authorization: Bearer qDHUEsom9TZZzF4fk4sLCx0q0W4ZS9x9HjtVo5dwGP3qP6hg8cUjDkXzKGbhhWEu\" -H \"Accept: application/json\")",
       "Bash(curl -s -X GET \"http://control-internet.test/api/v1/cliente/perfil\" -H \"Authorization: Bearer qDHUEsom9TZZzF4fk4sLCx0q0W4ZS9x9HjtVo5dwGP3qP6hg8cUjDkXzKGbhhWEu\" -H \"Accept: application/json\")",
       "Bash(php -l c:/laragon/www/control-internet/app/Http/Controllers/Admin/AdminController.php)",
-      "Bash(git restore *)"
+      "Bash(git restore *)",
+      "Read(//c/laragon/www/**)",
+      "Bash(dir c:/laragon/www/)"
     ]
   }
 }
