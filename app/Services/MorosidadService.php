@@ -161,9 +161,8 @@ class MorosidadService
                 $pendiente = round($montoManual, 2);
                 $recargo = 0.0;
             } else {
-                // Adeudo extra: sumar sobre la mensualidad
-                $pendiente = round(($mensualidad + $montoManual), 2);
-                $recargo = $montoManual;
+                // Adeudo extra: sumar sobre la mensualidad (el recargo automático, si aplica, ya viene incluido)
+                $pendiente = round(($mensualidad + $montoManual + $recargo), 2);
             }
             $mesesAdeudo = 1;
             $desdePeriodo = $periodo;
