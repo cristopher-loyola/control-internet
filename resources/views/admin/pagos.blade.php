@@ -1881,29 +1881,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                     return;
                 }
 
-                // REGLA DE ESTANDARIZACIÓN: Solo permitir restas (descuentos)
-                const mensualidad = Number(this.datos.mensualidad)||0;
-                const rec = this.recargoMonto();
-                let totalCalculado = 0;
-
-                if (this.adeudo && this.adeudo.pendiente > 0) {
-                    const recargoSrv = Number(this.adeudo.recargo || 0);
-                    const pendienteSrv = Number(this.adeudo.pendiente || 0);
-                    const pendienteBase = Math.max(0, pendienteSrv - recargoSrv);
-                    totalCalculado = Math.round((pendienteBase + rec) * 100) / 100;
-                } else {
-                    totalCalculado = Math.round((mensualidad + rec) * 100) / 100;
-                }
-
-                if (v > totalCalculado) {
-                    this.manualEditError = 'Solo se permite disminuir el total (aplicar descuentos), no aumentarlo.';
-                    this.manualTotal = totalCalculado;
-                    this.totales.total = totalCalculado;
-                } else {
-                    this.manualEditError = '';
-                    this.totales.total = Math.max(0, Math.round(v * 100) / 100);
-                }
-                
+                this.manualEditError = '';
+                this.totales.total = Math.max(0, Math.round(v * 100) / 100);
                 this.totales.letra = toWords(this.totales.total);
             },
             clearManualEdit(){
