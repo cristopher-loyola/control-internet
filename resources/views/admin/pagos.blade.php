@@ -482,12 +482,7 @@
                                 <div>Importe</div><div x-text="moneda(bajaTemporalImporte())"></div>
                                 <div x-show="appliedDiscount > 0">Descuento</div><div x-show="appliedDiscount > 0" x-text="moneda(appliedDiscount)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
-                                <div>Costo de reconexión</div><div x-text="moneda(recargoMonto())"></div>
-                                <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
-                                <div x-show="adeudoCobro > 0">Adeudo pendiente</div><div x-show="adeudoCobro > 0" x-text="moneda(adeudoCobro)"></div>
                                 <div x-show="adeudo && Number(adeudo.meses||0) > 0">Período adeudo</div><div x-show="adeudo && Number(adeudo.meses||0) > 0" x-text="adeudoPeriodoLabel() || '—'"></div>
-                                <div x-show="form.prepay==='si'">Total adelanto</div><div x-show="form.prepay==='si'" x-text="moneda(totales.prepay_total || 0)"></div>
-                                <div x-show="form.prepay==='si'">Meses adelantados</div><div x-show="form.prepay==='si'" x-text="`${form.prepay_months} (hasta ${mesFinalCobertura(form.prepay_months)})` || '-'"></div>
                                 <div>Su pago anterior</div><div x-text="moneda(form.pago_anterior || 0)"></div>
                                 <div>Fecha de pago anterior</div><div x-text="pagoAnteriorFecha || '—'"></div>
                                 <div>Total a pagar en número</div><div x-text="moneda(totales.total)"></div>
@@ -522,12 +517,7 @@
                                 <div>Importe</div><div x-text="moneda(bajaTemporalImporte())"></div>
                                 <div x-show="appliedDiscount > 0">Descuento</div><div x-show="appliedDiscount > 0" x-text="moneda(appliedDiscount)"></div>
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
-                                <div>Costo de reconexión</div><div x-text="moneda(recargoMonto())"></div>
-                                <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
-                                <div x-show="adeudoCobro > 0">Adeudo pendiente</div><div x-show="adeudoCobro > 0" x-text="moneda(adeudoCobro)"></div>
                                 <div x-show="adeudo && Number(adeudo.meses||0) > 0">Período adeudo</div><div x-show="adeudo && Number(adeudo.meses||0) > 0" x-text="adeudoPeriodoLabel() || '—'"></div>
-                                <div x-show="form.prepay==='si'">Total adelanto</div><div x-show="form.prepay==='si'" x-text="moneda(totales.prepay_total || 0)"></div>
-                                <div x-show="form.prepay==='si'">Meses adelantados</div><div x-show="form.prepay==='si'" x-text="`${form.prepay_months} (hasta ${mesFinalCobertura(form.prepay_months)})` || '-'"></div>
                                 <div>Su pago anterior</div><div x-text="moneda(form.pago_anterior || 0)"></div>
                                 <div>Fecha de pago anterior</div><div x-text="pagoAnteriorFecha || '—'"></div>
                                 <div>Total a pagar en número</div><div x-text="moneda(totales.total)"></div>
@@ -1037,15 +1027,19 @@
             },
             otroLabel(){
                 if (this.readOnlyMode && this.savedOtroLabel) return this.savedOtroLabel;
-                
+
                 let partes = [];
-                
+
                 if (this.form.otro === 'cancelacion') partes.push('Cancelación de servicio');
                 if (this.form.otro === 'baja_temporal') {
                     const m = Number(this.form.baja_temporal_months || 1);
                     partes.push(`Baja temporal (${m} ${m === 1 ? 'mes' : 'meses'})`);
                 }
-                
+                if (this.form.prepay === 'si') {
+                    const m = Number(this.form.prepay_months || 0);
+                    partes.push(`Pago adelantado (${m} ${m === 1 ? 'mes' : 'meses'})`);
+                }
+
                 // Agregar meses adeudados si existen
                 if (this.adeudoListaMeses && this.adeudoListaMeses.length > 0) {
                     const groups = {};
@@ -2114,7 +2108,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 const mes = this.mesEnCursoCompleto();
                 const otros = this.otroLabel();
                 const importe = this.moneda(this.bajaTemporalImporte());
-                const recargo = this.form.recargo === 'si' ? 'SI' : 'NO';
+                const recargoLine = this.form.recargo === 'si' ? `<div class="line"><div class="l">Recargo</div><div>SI</div></div>` : '';
                 const totalNum = this.moneda(this.totales.total);
                 const totalLetra = this.totales.letra || '';
                 const metodo = this.form.metodo || '—';
@@ -2122,10 +2116,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 const fecha = this.fecha();
                 const hora = this.hora();
                 const folio = this.refNumberPad();
-                const prepayLabel = this.form.prepay === 'si' ? 'SÍ' : 'NO';
-                const adeudoLine = (Number(this.adeudoCobro || 0) > 0) ? `<div class="line"><div class="l">Adeudo pendiente</div><div>${this.moneda(Number(this.adeudoCobro))}</div></div>` : '';
                 const adeudoPeriodoLine = (this.adeudo && Number(this.adeudo.meses||0) > 0) ? `<div class="line"><div class="l">Período adeudo</div><div style="max-width:42mm">${this.adeudoPeriodoLabel() || '—'}</div></div>` : '';
-                const saldoLine = (this.saldoDespues !== null) ? `<div class="line"><div class="l">Saldo pendiente</div><div>${this.moneda(Number(this.saldoDespues || 0))}</div></div>` : '';
                 const prepayLine = this.form.prepay === 'si' ? `<div class="line"><div class="l">Pago adelantado</div><div>${this.moneda(this.totales.prepay_total || 0)}</div></div><div class="line"><div class="l">Meses adelantados</div><div>${this.form.prepay_months} (hasta ${this.mesFinalCobertura(this.form.prepay_months)})</div></div><div class="sep"></div>` : '';
                 const discountLine = this.appliedDiscount > 0 ? `<div class="line"><div class="l">Descuento</div><div>${this.moneda(this.appliedDiscount)}</div></div>` : '';
                 const html = `
@@ -2157,18 +2148,16 @@ html,body{ margin:0; padding:0 }
   <div class="logo"><img src="${logo}" onerror="this.style.display='none'"></div>
   ${folio ? `<div class="folio">Folio: ${folio}</div>` : ''}
   <div class="title center">Recibo de pago</div>
+  <div class="line"><div class="l">Estatus</div><div>PAGADO</div></div>
   <div class="line"><div class="l">ID</div><div>${id}</div></div>
   <div class="line"><div class="l">Nombre</div><div>${nombre}</div></div>
   <div class="line"><div class="l">Mes</div><div>${mes}</div></div>
   <div class="line"><div class="l">Otros</div><div>${otros}</div></div>
   <div class="line"><div class="l">Importe</div><div>${importe}</div></div>
-  <div class="line"><div class="l">Descuento</div><div>${this.appliedDiscount > 0 ? this.moneda(this.appliedDiscount) : '—'}</div></div>
-  <div class="line"><div class="l">Recargo</div><div>${recargo}</div></div>
-  <div class="line"><div class="l">Pago por adelantado</div><div>${prepayLabel}</div></div>
+  ${discountLine}
+  ${recargoLine}
   <div class="sep"></div>
-  ${adeudoLine}
   ${adeudoPeriodoLine}
-  ${saldoLine}
   ${prepayLine}
   <div class="line"><div class="l">Total (número)</div><div>${totalNum}</div></div>
   <div class="line"><div class="l">Total (letra)</div><div>${totalLetra}</div></div>
