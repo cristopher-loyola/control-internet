@@ -36,7 +36,8 @@
       "Bash(php -l c:/laragon/www/control-internet/app/Http/Controllers/Admin/AdminController.php)",
       "Bash(git restore *)",
       "Read(//c/laragon/www/**)",
-      "Bash(dir c:/laragon/www/)"
+      "Bash(dir c:/laragon/www/)",
+      "Bash(php artisan tinker '--execute= *)"
     ]
   }
 }

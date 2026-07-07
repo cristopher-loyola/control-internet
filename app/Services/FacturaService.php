@@ -592,7 +592,7 @@ class FacturaService
         $adeudoMonto = (float) ($usuario->adeudo_monto ?? 0);
         $mensualidad = (float) preg_replace('/[^\d.]/', '', (string) ($usuario->tarifa ?? 0));
         $totalPagado = (float) ($factura->total ?? 0);
-        
+
         $payload = is_array($factura->payload) ? $factura->payload : (is_string($factura->payload) ? @json_decode($factura->payload, true) : []);
         $esAdeudoManual = !empty($payload['es_adeudo_manual']);
         $esPrepay = !empty($payload['prepay']) && ($payload['prepay'] === 'si' || $payload['prepay'] === true);

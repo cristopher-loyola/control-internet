@@ -250,6 +250,15 @@
                         </x-nav-link>
                         <span class="h-5 w-px bg-white/20 mx-1"></span>
                     @endif
+                    @if ($role === 'admin')
+                        <x-nav-link :href="route('admin.transferencias.index')" :active="request()->routeIs('admin.transferencias.*')" class="group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ request()->routeIs('admin.transferencias.*') ? 'bg-white/10' : '' }}">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                            </svg>
+                            <span class="text-sm font-medium">Transferencias</span>
+                        </x-nav-link>
+                        <span class="h-5 w-px bg-white/20 mx-1"></span>
+                    @endif
                     @if ($corteRoute)
                         <x-nav-link :href="$corteRoute" :active="$corteActive" class="group flex items-center gap-2 px-4 py-2 rounded-lg transition-all duration-200 hover:bg-white/10 {{ $corteActive ? 'bg-white/10' : '' }}">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

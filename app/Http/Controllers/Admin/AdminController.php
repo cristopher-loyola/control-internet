@@ -508,6 +508,102 @@ class AdminController extends Controller
         return back()->with('status', 'Método de pago actualizado a "' . $nuevoMetodo . '" correctamente.');
     }
 
+    public function transferenciasIndex()
+    {
+        return view('admin.transferencias');
+    }
+
+    public function transferenciasBuscar(Request $request, MorosidadService $morosidadService)
+    {
+        $q = trim($request->query('q', ''));
+        if (strlen($q) < 2) {
+            return response()->json(['ok' => true, 'data' => []]);
+        }
+
+        $clientes = Usuario::where(function ($query) use ($q) {
+            if (ctype_digit($q)) {
+                $query->where('numero_servicio', $q);
+            } else {
+                $query->where('nombre_cliente', 'LIKE', "%{$q}%");
+            }
+        })
+        ->whereNotIn('estatus_servicio_id', [3])
+        ->orderBy('nombre_cliente')
+        ->limit(10)
+        ->get(['numero_servicio', 'nombre_cliente', 'tarifa', 'adeudo_monto', 'adeudo_descripcion']);
+
+        $data = $clientes->map(function ($c) use ($morosidadService) {
+            $deuda = $morosidadService->calcularAdeudoUsuario($c->numero_servicio, null);
+            return [
+                'numero_servicio'   => $c->numero_servicio,
+                'nombre_cliente'    => $c->nombre_cliente,
+                'tarifa'            => $c->tarifa,
+                'adeudo_monto'      => $c->adeudo_monto,
+                'adeudo_descripcion'=> $c->adeudo_descripcion,
+                'pendiente'         => $deuda['pendiente'] ?? 0,
+            ];
+        });
+
+        return response()->json(['ok' => true, 'data' => $data]);
+    }
+
+    public function transferenciasRegistrar(Request $request, FacturaService $facturaService)
+    {
+        $pagos = $request->input('pagos', []);
+        $resultados = [];
+
+        foreach ($pagos as $pago) {
+            $numero  = trim($pago['numero_servicio'] ?? '');
+            $monto   = (float) ($pago['monto'] ?? 0);
+            $periodo = trim($pago['periodo'] ?? '');
+            $nota    = trim($pago['nota'] ?? '');
+
+            if (!$numero || $monto <= 0) {
+                continue;
+            }
+
+            $payload = [
+                'label'       => $nota ?: 'Deposito a cuenta',
+                'metodo_pago' => 'Deposito a cuenta',
+                'metodo'      => 'Deposito a cuenta',
+            ];
+            if ($periodo && preg_match('/^\d{4}-\d{2}$/', $periodo)) {
+                $payload['periodo_override'] = $periodo;
+            }
+
+            try {
+                $fakeRequest = \Illuminate\Http\Request::create('/admin/pagos/facturas', 'POST', [
+                    'numero_servicio' => $numero,
+                    'total'           => $monto,
+                    'payload'         => $payload,
+                ]);
+
+                $resultado = $facturaService->crearFactura($fakeRequest);
+
+                // Asignar created_by al usuario autenticado para que aparezca en el dashboard
+                if (!empty($resultado['ok']) && !empty($resultado['id'])) {
+                    \App\Models\Factura::where('id', $resultado['id'])
+                        ->update(['created_by' => auth()->id()]);
+                }
+
+                $resultados[] = [
+                    'numero_servicio' => $numero,
+                    'ok'      => !empty($resultado['ok']),
+                    'folio'   => $resultado['referencia'] ?? null,
+                    'mensaje' => $resultado['message'] ?? (!empty($resultado['ok']) ? 'Registrado' : 'Error'),
+                ];
+            } catch (\Throwable $e) {
+                $resultados[] = [
+                    'numero_servicio' => $numero,
+                    'ok'      => false,
+                    'mensaje' => $e->getMessage(),
+                ];
+            }
+        }
+
+        return response()->json(['ok' => true, 'resultados' => $resultados]);
+    }
+
     public function pagosLookup(Request $request)
     {
         $numero = (string) $request->query('numero');
