@@ -51,6 +51,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/dashboard/pagos-adelantados/search', [DashboardController::class, 'prepayClientsSearch'])->name('dashboard.prepay.search');
         Route::get('/transferencias', [AdminController::class, 'transferenciasIndex'])->name('transferencias.index');
         Route::get('/transferencias/buscar', [AdminController::class, 'transferenciasBuscar'])->name('transferencias.buscar');
+        Route::get('/transferencias/historial', [AdminController::class, 'transferenciasHistorial'])->name('transferencias.historial');
         Route::post('/transferencias', [AdminController::class, 'transferenciasRegistrar'])->name('transferencias.registrar');
         Route::get('/pagos', [AdminController::class, 'pagos'])->name('pagos.index');
         Route::get('/pagos/lookup', [AdminController::class, 'pagosLookup'])->name('pagos.lookup');

@@ -149,20 +149,16 @@ class MorosidadService
         if ($usuario->adeudo_monto > 0) {
             $montoManual = (float) $usuario->adeudo_monto;
 
-            // proximo_pago > periodo actual → el cliente ya pagó este mes (adelanto/baja temporal).
-            // En ese caso, adeudo_monto ES el monto exacto a cobrar (no se suma a la mensualidad).
-            // Si proximo_pago no cubre el período, adeudo_monto es deuda adicional sobre la mensualidad.
             $proxPagoCovers = !empty($usuario->proximo_pago)
                 && preg_match('/^\d{4}-\d{2}$/', (string) $usuario->proximo_pago)
                 && strcmp((string) $usuario->proximo_pago, $periodo) > 0;
 
             if ($proxPagoCovers) {
-                // Baja temporal: el Excel indicó exactamente este monto
-                $pendiente = round($montoManual, 2);
+                $pendiente = round(max(0.0, $montoManual - $pagadoParcial), 2);
                 $recargo = 0.0;
             } else {
-                // Adeudo extra: sumar sobre la mensualidad (el recargo automático, si aplica, ya viene incluido)
-                $pendiente = round(($mensualidad + $montoManual + $recargo), 2);
+                // Restar pagos parciales ya realizados para reflejar saldo real
+                $pendiente = round(max(0.0, $mensualidad + $montoManual + $recargo - $pagadoParcial), 2);
             }
             $mesesAdeudo = 1;
             $desdePeriodo = $periodo;

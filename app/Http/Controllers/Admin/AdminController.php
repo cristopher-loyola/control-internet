@@ -435,6 +435,7 @@ class AdminController extends Controller
         }
         $f = \App\Models\Factura::withTrashed()->findOrFail($id);
         if ($f->deleted_at) {
+            if ($request->expectsJson()) return response()->json(['ok' => false, 'message' => 'La factura ya estaba cancelada.']);
             return back()->with('status', 'La factura ya estaba cancelada.');
         }
         // Liberamos el fingerprint para permitir un nuevo pago tras la cancelación
@@ -457,6 +458,7 @@ class AdminController extends Controller
             'updated_at' => now(),
         ]);
 
+        if ($request->expectsJson()) return response()->json(['ok' => true, 'message' => 'Recibo cancelado correctamente.']);
         return back()->with('status', 'Recibo cancelado correctamente.');
     }
 
@@ -511,6 +513,45 @@ class AdminController extends Controller
     public function transferenciasIndex()
     {
         return view('admin.transferencias');
+    }
+
+    public function transferenciasHistorial(Request $request)
+    {
+        $page    = max(1, (int) $request->query('page', 1));
+        $perPage = 20;
+
+        $query = \App\Models\Factura::whereNull('deleted_at')
+            ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(payload, '$.metodo_pago')) = 'Deposito a cuenta'")
+            ->orderByDesc('id');
+
+        $total  = $query->count();
+        $rows   = $query->offset(($page - 1) * $perPage)->limit($perPage)
+            ->get(['id', 'reference_number', 'numero_servicio', 'periodo', 'total', 'payload', 'created_at']);
+
+        $data = $rows->map(function ($f) {
+            $p = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+            $u = \App\Models\Usuario::where('numero_servicio', $f->numero_servicio)
+                ->value('nombre_cliente');
+            return [
+                'id'               => $f->id,
+                'folio'            => $f->reference_number,
+                'numero_servicio'  => $f->numero_servicio,
+                'nombre_cliente'   => $u ?? '—',
+                'periodo'          => $f->periodo,
+                'total'            => (float) $f->total,
+                'nota'             => $p['label'] ?? '',
+                'created_at'       => $f->created_at?->format('d/m/Y H:i'),
+            ];
+        });
+
+        return response()->json([
+            'ok'        => true,
+            'data'      => $data,
+            'total'     => $total,
+            'page'      => $page,
+            'per_page'  => $perPage,
+            'last_page' => (int) ceil($total / $perPage),
+        ]);
     }
 
     public function transferenciasBuscar(Request $request, MorosidadService $morosidadService)
