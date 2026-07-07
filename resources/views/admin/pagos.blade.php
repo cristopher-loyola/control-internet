@@ -230,12 +230,12 @@
         <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Total (editable)</label>
         <input type="number" step="0.01" min="0"
             class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-            x-model.number="manualTotal" :disabled="readOnlyMode" @input="applyManualTotal()">
+            x-model.number="manualTotal" :disabled="readOnlyMode" @input="applyManualTotal()" @click="$event.target.select()">
 
         <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1 mt-3">Motivo</label>
         <input type="text" maxlength="250" placeholder="Especifica el motivo..."
             class="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm focus:border-indigo-400 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-            x-model.trim="manualReason" :disabled="readOnlyMode" @input="manualEditError = ''">
+            x-model.trim="manualReason" :disabled="readOnlyMode" @input="manualEditError = ''" @click="$event.target.select()">
         <p class="text-xs text-red-600 mt-1" x-show="manualEditError" x-text="manualEditError"></p>
     </div>
 
@@ -1040,8 +1040,8 @@
                     partes.push(`Pago adelantado (${m} ${m === 1 ? 'mes' : 'meses'})`);
                 }
 
-                // Agregar meses adeudados si existen
-                if (this.adeudoListaMeses && this.adeudoListaMeses.length > 0) {
+                // Agregar meses adeudados solo si no hay edición manual (el motivo manual los reemplaza)
+                if (!this.manualEditEnabled && this.adeudoListaMeses && this.adeudoListaMeses.length > 0) {
                     const groups = {};
                     this.adeudoListaMeses.forEach(m => {
                         const p = String(m).split(' ');
@@ -1861,6 +1861,39 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 this.manualEditEnabled = !this.manualEditEnabled;
                 if (this.manualEditEnabled) {
                     this.manualTotal = Number(this.totales.total) || 0;
+                    // Pre-llenar motivo con texto de adeudos si el campo está vacío
+                    if (!this.manualReason) {
+                        const partes = [];
+                        if (this.form.otro === 'cancelacion') partes.push('Cancelación de servicio');
+                        if (this.form.otro === 'baja_temporal') {
+                            const m = Number(this.form.baja_temporal_months || 1);
+                            partes.push(`Baja temporal (${m} ${m === 1 ? 'mes' : 'meses'})`);
+                        }
+                        if (this.form.prepay === 'si') {
+                            const m = Number(this.form.prepay_months || 0);
+                            partes.push(`Pago adelantado (${m} ${m === 1 ? 'mes' : 'meses'})`);
+                        }
+                        if (this.adeudoListaMeses && this.adeudoListaMeses.length > 0) {
+                            const groups = {};
+                            this.adeudoListaMeses.forEach(m => {
+                                const p = String(m).split(' ');
+                                if (p.length >= 2 && !isNaN(p[p.length - 1])) {
+                                    const y = p.pop(); const name = p.join(' ');
+                                    if (!groups[y]) groups[y] = [];
+                                    groups[y].push(name);
+                                } else {
+                                    if (!groups['extra']) groups['extra'] = [];
+                                    groups['extra'].push(m);
+                                }
+                            });
+                            const fmt = [];
+                            Object.keys(groups).forEach(y => {
+                                fmt.push(y === 'extra' ? groups[y].join(', ') : groups[y].join(', ') + ' ' + y);
+                            });
+                            partes.push(`Adeudos: ${fmt.join(', ')}`);
+                        }
+                        if (partes.length > 0) this.manualReason = partes.join(' - ');
+                    }
                 } else {
                     this.manualReasonSaved = String(this.manualReason || '').trim();
                     this.manualReason = '';
