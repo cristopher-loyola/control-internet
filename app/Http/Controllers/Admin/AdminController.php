@@ -425,7 +425,7 @@ class AdminController extends Controller
         ]);
     }
 
-    public function pagosFacturaCancel(Request $request, int $id)
+    public function pagosFacturaCancel(Request $request, int $id, MorosidadService $morosidadService)
     {
         $request->validate([
             'motivo' => ['required', 'string', 'max:255'],
@@ -438,8 +438,6 @@ class AdminController extends Controller
             if ($request->expectsJson()) return response()->json(['ok' => false, 'message' => 'La factura ya estaba cancelada.']);
             return back()->with('status', 'La factura ya estaba cancelada.');
         }
-        // Liberamos el fingerprint para permitir un nuevo pago tras la cancelación
-        // Nos aseguramos de que el nuevo fingerprint no exceda los 64 caracteres
         if ($f->fingerprint) {
             $f->fingerprint = substr($f->fingerprint, 0, 40).'_can_'.now()->timestamp;
             $f->save();
@@ -457,6 +455,27 @@ class AdminController extends Controller
             'created_at' => now(),
             'updated_at' => now(),
         ]);
+
+        // Restaurar adeudo_monto si fue limpiado al registrar este recibo
+        $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+        $updateUsuario = [];
+        if (!empty($payload['adeudo_monto_previo']) && (float)$payload['adeudo_monto_previo'] > 0) {
+            $updateUsuario['adeudo_monto']        = (float)$payload['adeudo_monto_previo'];
+            $updateUsuario['adeudo_descripcion']  = $payload['adeudo_descripcion_previa'] ?? null;
+        }
+
+        // Recalcular estatus del usuario tras cancelación
+        if ($f->numero_servicio) {
+            if ($updateUsuario) {
+                Usuario::where('numero_servicio', $f->numero_servicio)->update($updateUsuario);
+            }
+            $adeudo = $morosidadService->calcularAdeudoUsuario($f->numero_servicio, null);
+            $tienePendiente = ($adeudo['pendiente'] ?? 0) > 0.01;
+            $estatusPagadoId = \App\Models\EstatusServicio::whereRaw('LOWER(nombre) = ?', ['pagado'])->value('id') ?? 1;
+            $estatusPendienteId = \App\Models\EstatusServicio::whereRaw('LOWER(nombre) = ?', ['pendiente de pago'])->value('id') ?? 4;
+            Usuario::where('numero_servicio', $f->numero_servicio)
+                ->update(['estatus_servicio_id' => $tienePendiente ? $estatusPendienteId : $estatusPagadoId]);
+        }
 
         if ($request->expectsJson()) return response()->json(['ok' => true, 'message' => 'Recibo cancelado correctamente.']);
         return back()->with('status', 'Recibo cancelado correctamente.');
@@ -568,7 +587,7 @@ class AdminController extends Controller
                 $query->where('nombre_cliente', 'LIKE', "%{$q}%");
             }
         })
-        ->whereNotIn('estatus_servicio_id', [3])
+        ->where(fn($q) => $q->whereNotIn('estatus_servicio_id', [3])->orWhereNull('estatus_servicio_id'))
         ->orderBy('nombre_cliente')
         ->limit(10)
         ->get(['numero_servicio', 'nombre_cliente', 'tarifa', 'adeudo_monto', 'adeudo_descripcion']);

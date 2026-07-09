@@ -39,17 +39,27 @@
                         <button
                             type="button"
                             @click="agregar(c)"
-                            class="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 text-left border-b border-gray-50 last:border-0">
-                            <div>
-                                <p class="text-sm font-medium text-gray-800" x-text="c.nombre_cliente"></p>
+                            class="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left border-b border-gray-50 last:border-0 transition-colors group">
+                            {{-- Avatar --}}
+                            <div class="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0"
+                                 :style="'background:' + colorLetra(c.nombre_cliente)">
+                                <span x-text="c.nombre_cliente.charAt(0).toUpperCase()"></span>
+                            </div>
+                            {{-- Info --}}
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold text-gray-800 truncate group-hover:text-indigo-700 transition-colors" x-text="c.nombre_cliente"></p>
                                 <p class="text-xs text-gray-400" x-text="'#' + c.numero_servicio + ' · $' + formatMonto(c.tarifa) + '/mes'"></p>
                             </div>
-                            <div class="text-right ml-4 shrink-0">
+                            {{-- Estado --}}
+                            <div class="shrink-0">
                                 <span x-show="c.pendiente > 0"
-                                      class="inline-block text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5"
-                                      x-text="'Adeuda $' + formatMonto(c.pendiente)"></span>
+                                      class="inline-flex items-center gap-1 text-xs bg-red-50 text-red-600 border border-red-200 rounded-full px-2.5 py-1 font-medium">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-red-500 inline-block"></span>
+                                    <span x-text="'Adeuda $' + formatMonto(c.pendiente)"></span>
+                                </span>
                                 <span x-show="!c.pendiente || c.pendiente <= 0"
-                                      class="inline-block text-xs bg-gray-50 text-gray-400 border border-gray-200 rounded-full px-2 py-0.5">
+                                      class="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-full px-2.5 py-1 font-medium">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
                                     Al corriente
                                 </span>
                             </div>
@@ -290,11 +300,12 @@
                     <h3 class="text-sm font-semibold text-gray-800">Historial de transferencias</h3>
                     <p class="text-xs text-gray-400 mt-0.5" x-text="total + ' registros en total'"></p>
                 </div>
-                <button @click="cargar()" class="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
+                <button @click="cargar()"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-all duration-150 active:scale-95">
                     <svg class="w-3.5 h-3.5" :class="cargando && 'animate-spin'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                     </svg>
-                    Actualizar
+                    <span x-text="cargando ? 'Cargando…' : 'Actualizar'"></span>
                 </button>
             </div>
 

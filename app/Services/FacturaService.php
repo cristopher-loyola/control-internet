@@ -597,13 +597,30 @@ class FacturaService
         $esAdeudoManual = !empty($payload['es_adeudo_manual']);
         $esPrepay = !empty($payload['prepay']) && ($payload['prepay'] === 'si' || $payload['prepay'] === true);
 
-        // Primero, actualizar el adeudo manual si corresponde
-        // Lo limpiamos si es un pago marcado como manual O si el pago es suficiente para cubrir la deuda de Excel
-        $limpiarAdeudoManual = $esAdeudoManual || ($adeudoMonto > 0 && $totalPagado >= ($mensualidad - 0.01));
-        
-        if ($limpiarAdeudoManual && $adeudoMonto > 0) {
-            $usuario->adeudo_monto = 0;
-            $usuario->adeudo_descripcion = null;
+        // Limpiar adeudo_monto solo cuando el pago cubre TODO el saldo manual (pagos parciales solo restan)
+        $limpiarAdeudoManual = $adeudoMonto > 0 && $totalPagado >= $adeudoMonto - 0.01;
+
+        if ($adeudoMonto > 0 && $totalPagado > 0) {
+            // Guardar siempre el previo para poder restaurar si se cancela
+            $payload['adeudo_monto_previo']      = $adeudoMonto;
+            $payload['adeudo_descripcion_previa'] = $usuario->adeudo_descripcion;
+            $factura->payload = $payload;
+            $factura->saveQuietly();
+
+            if ($limpiarAdeudoManual) {
+                // Pago cubre la mensualidad completa → limpiar todo el adeudo manual
+                $usuario->adeudo_monto = 0;
+                $usuario->adeudo_descripcion = null;
+            } else {
+                // Pago parcial → restar lo pagado del adeudo manual
+                $restante = round($adeudoMonto - $totalPagado, 2);
+                if ($restante <= 0) {
+                    $usuario->adeudo_monto = 0;
+                    $usuario->adeudo_descripcion = null;
+                } else {
+                    $usuario->adeudo_monto = $restante;
+                }
+            }
         }
 
         // Si es un pago por adelantado, calculamos el último período cubierto y actualizamos proximo_pago
@@ -618,6 +635,14 @@ class FacturaService
             } catch (\Throwable $e) {
                 // Si hay error al parsear fecha, no actualizamos proximo_pago
             }
+        }
+
+        // Flush adeudo changes now so calcularAdeudoUsuario reads updated adeudo_monto (not stale DB value)
+        if ($adeudoMonto > 0 && $totalPagado > 0) {
+            Usuario::where('numero_servicio', $usuario->numero_servicio)->update([
+                'adeudo_monto'       => $usuario->adeudo_monto,
+                'adeudo_descripcion' => $usuario->adeudo_descripcion,
+            ]);
         }
 
         // Ahora calcular el adeudo real para decidir el estatus

@@ -157,11 +157,38 @@ class MorosidadService
                 $pendiente = round(max(0.0, $montoManual - $pagadoParcial), 2);
                 $recargo = 0.0;
             } else {
-                // Restar pagos parciales ya realizados para reflejar saldo real
-                $pendiente = round(max(0.0, $mensualidad + $montoManual + $recargo - $pagadoParcial), 2);
+                // adeudo_monto ya refleja el saldo DESPUÉS de restar pagos parciales (marcarComoPagado lo reduce).
+                // No restar pagadoParcial aquí — causaría doble sustracción.
+                $pendiente = round(max(0.0, $montoManual + $recargo), 2);
             }
             $mesesAdeudo = 1;
             $desdePeriodo = $periodo;
+        }
+
+        // Recargo por pago tardío del periodo actual NO cubierto:
+        // Si el cliente pagó la mensualidad del mes pero no el recargo (día >= 8),
+        // el mes se marca "cubierto" (mesesAdeudo=0) y el recargo se pierde. Recuperarlo.
+        if ($usuario->adeudo_monto <= 0 && $mesesAdeudo <= 0) {
+            $recargoActual = ($today->day >= 8) ? 50.0 : 0.0;
+            $moraRowActual = CargoMora::where('periodo', $periodo)->where('numero_servicio', $numero)->first();
+            if ($moraRowActual) {
+                $recargoActual = max($recargoActual, (float) $moraRowActual->monto);
+            }
+            if ($recargoActual > 0) {
+                $pagadoPeriodoActual = (float) Factura::whereNull('deleted_at')
+                    ->where('numero_servicio', $numero)
+                    ->where('periodo', $periodo)
+                    ->sum('total');
+                $dueActual = $mensualidad + $recargoActual;
+                // Solo cuando hubo pago del mes pero no alcanzó a cubrir mensualidad + recargo
+                if ($pagadoPeriodoActual > 0 && $pagadoPeriodoActual < $dueActual - 0.01) {
+                    $faltante = round($dueActual - $pagadoPeriodoActual, 2);
+                    $pendiente = round($pendiente + $faltante, 2);
+                    $recargo = $recargoActual;
+                    $mesesAdeudo = 1;
+                    $desdePeriodo = $periodo;
+                }
+            }
         }
 
         // Detectar si el cliente está cubierto este mes sin deuda (pagó por transferencia/adelanto).

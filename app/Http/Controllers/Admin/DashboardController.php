@@ -922,13 +922,23 @@ class DashboardController extends Controller
     private function computeMorosos(string $periodo): array
     {
         $usuarios = Usuario::query()->get(['numero_servicio', 'nombre_cliente', 'tarifa', 'adeudo_descripcion', 'adeudo_monto']);
-        $pagados = Factura::whereNull('deleted_at')
-            ->where('periodo', $periodo)
-            ->pluck('numero_servicio')
-            ->filter()
-            ->unique()
+        // Sumas por (usuario, periodo) — detecta pagos parciales vs suficientes
+        $facturaSumsByPeriod = Factura::whereNull('deleted_at')
+            ->whereNotNull('periodo')
+            ->whereNotNull('numero_servicio')
+            ->select('numero_servicio', 'periodo', DB::raw('SUM(total) as total_sum'))
+            ->groupBy('numero_servicio', 'periodo')
+            ->get()
+            ->groupBy('numero_servicio')
+            ->map(fn($rows) => $rows->pluck('total_sum', 'periodo')->all())
             ->all();
-        $pagadosSet = array_fill_keys(array_map('strval', $pagados), true);
+
+        $pagadosPeriodoActual = [];
+        foreach ($facturaSumsByPeriod as $numKey => $sums) {
+            if (isset($sums[$periodo])) {
+                $pagadosPeriodoActual[(string)$numKey] = (float)$sums[$periodo];
+            }
+        }
         $curStart = Carbon::createFromFormat('Y-m', $periodo)->startOfMonth();
         $prevStart = $curStart->copy()->subMonth(); // tope para excluir mes actual del cálculo
         $dueDate = $curStart->copy()->day(7)->endOfDay();
@@ -936,13 +946,6 @@ class DashboardController extends Controller
 
         $mora = CargoMora::where('periodo', $periodo)->pluck('monto', 'numero_servicio')->toArray();
 
-        $lastPaid = Factura::whereNull('deleted_at')
-            ->whereNotNull('periodo')
-            ->select('numero_servicio', DB::raw('MAX(periodo) as max_periodo'))
-            ->groupBy('numero_servicio')
-            ->get()
-            ->mapWithKeys(fn ($r) => [(string) ($r->numero_servicio ?? '') => (string) ($r->max_periodo ?? '')])
-            ->toArray();
 
         $prepayRows = Factura::whereNull('deleted_at')
             ->whereNotNull('periodo')
@@ -974,15 +977,30 @@ class DashboardController extends Controller
         $items = [];
         foreach ($usuarios as $u) {
             $num = (string) $u->numero_servicio;
-            if ($num === '' || isset($pagadosSet[$num])) {
-                continue; // al corriente
-            }
+            if ($num === '') continue;
+
             $mensualidad = (float) preg_replace('/[^\d.]/', '', (string) ($u->tarifa ?? 0));
             if (! is_finite($mensualidad) || $mensualidad < 0) {
                 $mensualidad = 0.0;
             }
 
-            $ultimoCubierto = $lastPaid[$num] ?? null;
+            // Excluir solo si el pago del período actual fue suficiente (>= mensualidad) Y sin adeudo manual
+            $pagadoEstePeriodo = $pagadosPeriodoActual[$num] ?? 0.0;
+            $pagoSuficienteEstePeriodo = ($mensualidad <= 0 || $pagadoEstePeriodo >= $mensualidad - 0.01);
+            if ($pagoSuficienteEstePeriodo && (float)($u->adeudo_monto ?? 0) <= 0) {
+                continue;
+            }
+
+            // Último período cubierto = último con pago SUFICIENTE; pagos parciales no cuentan
+            $userSums = $facturaSumsByPeriod[$num] ?? [];
+            $ultimoCubierto = null;
+            foreach ($userSums as $p => $sum) {
+                if ($mensualidad <= 0 || (float)$sum >= $mensualidad - 0.01) {
+                    if ($ultimoCubierto === null || $p > $ultimoCubierto) {
+                        $ultimoCubierto = (string)$p;
+                    }
+                }
+            }
             $prepay = $prepayEnd[$num] ?? null;
             if ($prepay && (! $ultimoCubierto || $prepay > $ultimoCubierto)) {
                 $ultimoCubierto = $prepay;
@@ -1007,7 +1025,8 @@ class DashboardController extends Controller
                         $mesesAdeudo = (int) $lp->diffInMonths($prevStart);
                         $desdePeriodo = $lp->copy()->addMonth()->format('Y-m');
                     } else {
-                        continue; // pagó hasta mes actual o más → sin deuda anterior
+                        $mesesAdeudo = 0; // sin deuda de meses anteriores, pero puede tener adeudo_monto
+                        $desdePeriodo = $prevStart->format('Y-m');
                     }
                 } catch (\Throwable $e) {
                     $mesesAdeudo = 1;
@@ -1024,10 +1043,19 @@ class DashboardController extends Controller
             }
             $pendiente = round(($mensualidad * $mesesAdeudo) + $recargoUnaVez, 2);
 
+            // Restar pagos parciales realizados en el rango de deuda
+            $pagadoParcialRango = 0.0;
+            $periodoHastaRango = $prevStart->format('Y-m');
+            foreach ($userSums as $p => $sum) {
+                if ($p >= $desdePeriodo && $p <= $periodoHastaRango) {
+                    $pagadoParcialRango += (float)$sum;
+                }
+            }
+            $pendiente = round(max(0.0, $pendiente - $pagadoParcialRango), 2);
+
             // Integrar adeudo manual (importado)
             if ($u->adeudo_monto > 0) {
                 $pendiente += (float) $u->adeudo_monto;
-                // Eliminamos el $mesesAdeudo += 1 que causaba el desfase
             }
 
             if ($pendiente <= 0 || ($mesesAdeudo <= 0 && $u->adeudo_monto <= 0)) {
