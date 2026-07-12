@@ -11,6 +11,13 @@ use Illuminate\Support\Facades\DB;
 class MorosidadService
 {
     /**
+     * Último mes (YYYY-MM) cubierto por el adeudo_monto importado del Excel.
+     * A partir del mes siguiente, la deuda de clientes con adeudo manual se
+     * acumula mes a mes contra la mensualidad. Importación única de junio 2026.
+     */
+    private const ADEUDO_IMPORT_CUTOFF = '2026-06';
+
+    /**
      * Calcula el adeudo del cliente para un periodo (YYYY-MM).
      *
      * Flujo (corregido para pagos por adelantado):
@@ -156,20 +163,34 @@ class MorosidadService
             if ($proxPagoCovers) {
                 $pendiente = round(max(0.0, $montoManual - $pagadoParcial), 2);
                 $recargo = 0.0;
+                $mesesAdeudo = 1;
+                $desdePeriodo = $periodo;
             } else {
-                // montoManual (adeudo_monto) ya está NETO de pagos: marcarComoPagado lo reduce
-                // cuando pagan hacia el adeudo. Restarle pagadoParcial del rango completo = doble
-                // sustracción. Solo falta sumar la mensualidad del mes ACTUAL (meses pasados ya
-                // están en montoManual), restando únicamente lo pagado de ESTE periodo.
-                $pagadoMesActual = (float) Factura::whereNull('deleted_at')
-                    ->where('numero_servicio', $numero)
-                    ->where('periodo', $periodo)
-                    ->sum('total');
-                $mensualidadActual = max(0.0, $mensualidad - $pagadoMesActual);
-                $pendiente = round(max(0.0, $montoManual + $recargo + $mensualidadActual), 2);
+                // montoManual (adeudo_monto) = deuda manual importada del Excel; representa TODO
+                // el adeudo ACUMULADO hasta el mes de corte de importación (junio 2026, incl.).
+                // Los meses VIVOS (julio 2026 en adelante) se acumulan a la mensualidad, restando
+                // los pagos hechos en esos meses. Así la deuda crece mes a mes sin congelarse y
+                // sin inventar meses intermedios (la descripción solo indica el mes inicial).
+                // montoManual ya está NETO de pagos al adeudo (marcarComoPagado lo reduce).
+                $primerMesVivo = Carbon::createFromFormat('Y-m', self::ADEUDO_IMPORT_CUTOFF)->startOfMonth()->addMonth();
+
+                $extraMonths = 0;
+                if ($primerMesVivo->lessThanOrEqualTo($curStart)) {
+                    $extraMonths = $primerMesVivo->diffInMonths($curStart) + 1;
+                }
+                $pagoExtra = 0.0;
+                if ($extraMonths > 0) {
+                    $pagoExtra = (float) Factura::whereNull('deleted_at')
+                        ->where('numero_servicio', $numero)
+                        ->whereBetween('periodo', [$primerMesVivo->format('Y-m'), $periodo])
+                        ->sum('total');
+                }
+                $extra = max(0.0, ($mensualidad * $extraMonths) - $pagoExtra);
+                $pendiente = round(max(0.0, $montoManual + $recargo + $extra), 2);
+
+                $mesesAdeudo = max(1, $extraMonths);
+                $desdePeriodo = $extraMonths > 0 ? $primerMesVivo->format('Y-m') : $periodo;
             }
-            $mesesAdeudo = 1;
-            $desdePeriodo = $periodo;
         }
 
         // Recargo por pago tardío del periodo actual:
