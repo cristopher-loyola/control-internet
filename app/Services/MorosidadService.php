@@ -157,36 +157,53 @@ class MorosidadService
                 $pendiente = round(max(0.0, $montoManual - $pagadoParcial), 2);
                 $recargo = 0.0;
             } else {
-                // adeudo_monto ya refleja el saldo DESPUÉS de restar pagos parciales (marcarComoPagado lo reduce).
-                // No restar pagadoParcial aquí — causaría doble sustracción.
-                $pendiente = round(max(0.0, $montoManual + $recargo), 2);
+                // montoManual (adeudo_monto) ya está NETO de pagos: marcarComoPagado lo reduce
+                // cuando pagan hacia el adeudo. Restarle pagadoParcial del rango completo = doble
+                // sustracción. Solo falta sumar la mensualidad del mes ACTUAL (meses pasados ya
+                // están en montoManual), restando únicamente lo pagado de ESTE periodo.
+                $pagadoMesActual = (float) Factura::whereNull('deleted_at')
+                    ->where('numero_servicio', $numero)
+                    ->where('periodo', $periodo)
+                    ->sum('total');
+                $mensualidadActual = max(0.0, $mensualidad - $pagadoMesActual);
+                $pendiente = round(max(0.0, $montoManual + $recargo + $mensualidadActual), 2);
             }
             $mesesAdeudo = 1;
             $desdePeriodo = $periodo;
         }
 
-        // Recargo por pago tardío del periodo actual NO cubierto:
-        // Si el cliente pagó la mensualidad del mes pero no el recargo (día >= 8),
-        // el mes se marca "cubierto" (mesesAdeudo=0) y el recargo se pierde. Recuperarlo.
+        // Recargo por pago tardío del periodo actual:
+        // Solo aplica si la mensualidad NO se cubrió a tiempo (antes/en el día 7 de vencimiento).
+        // Si pagó completo y puntual, no debe recargo aunque hoy sea día >= 8.
         if ($usuario->adeudo_monto <= 0 && $mesesAdeudo <= 0) {
-            $recargoActual = ($today->day >= 8) ? 50.0 : 0.0;
-            $moraRowActual = CargoMora::where('periodo', $periodo)->where('numero_servicio', $numero)->first();
-            if ($moraRowActual) {
-                $recargoActual = max($recargoActual, (float) $moraRowActual->monto);
-            }
-            if ($recargoActual > 0) {
-                $pagadoPeriodoActual = (float) Factura::whereNull('deleted_at')
-                    ->where('numero_servicio', $numero)
-                    ->where('periodo', $periodo)
-                    ->sum('total');
-                $dueActual = $mensualidad + $recargoActual;
-                // Solo cuando hubo pago del mes pero no alcanzó a cubrir mensualidad + recargo
-                if ($pagadoPeriodoActual > 0 && $pagadoPeriodoActual < $dueActual - 0.01) {
-                    $faltante = round($dueActual - $pagadoPeriodoActual, 2);
-                    $pendiente = round($pendiente + $faltante, 2);
-                    $recargo = $recargoActual;
-                    $mesesAdeudo = 1;
-                    $desdePeriodo = $periodo;
+            $limiteSinRecargo = Carbon::createFromFormat('Y-m', $periodo)->startOfMonth()->day(7)->endOfDay();
+            $pagadoATiempo = (float) Factura::whereNull('deleted_at')
+                ->where('numero_servicio', $numero)
+                ->where('periodo', $periodo)
+                ->where('created_at', '<=', $limiteSinRecargo)
+                ->sum('total');
+
+            // Hubo pago tardío/incompleto solo si al vencer no se había cubierto la mensualidad
+            if ($pagadoATiempo < $mensualidad - 0.01) {
+                $recargoActual = ($today->day >= 8) ? 50.0 : 0.0;
+                $moraRowActual = CargoMora::where('periodo', $periodo)->where('numero_servicio', $numero)->first();
+                if ($moraRowActual) {
+                    $recargoActual = max($recargoActual, (float) $moraRowActual->monto);
+                }
+                if ($recargoActual > 0) {
+                    $pagadoPeriodoActual = (float) Factura::whereNull('deleted_at')
+                        ->where('numero_servicio', $numero)
+                        ->where('periodo', $periodo)
+                        ->sum('total');
+                    $dueActual = $mensualidad + $recargoActual;
+                    // Solo cuando hubo pago del mes pero no alcanzó a cubrir mensualidad + recargo
+                    if ($pagadoPeriodoActual > 0 && $pagadoPeriodoActual < $dueActual - 0.01) {
+                        $faltante = round($dueActual - $pagadoPeriodoActual, 2);
+                        $pendiente = round($pendiente + $faltante, 2);
+                        $recargo = $recargoActual;
+                        $mesesAdeudo = 1;
+                        $desdePeriodo = $periodo;
+                    }
                 }
             }
         }
