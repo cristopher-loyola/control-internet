@@ -1093,6 +1093,7 @@
                     alert('Por favor permite ventanas emergentes para imprimir el ticket');
                     return;
                 }
+                try {
                 if(!this.ref || !this.ref.id){
                     await this.emitirFactura();
                 }
@@ -1114,7 +1115,7 @@
                 const folio = this.refNumberPad();
                 const prepayLabel = this.form.prepay === 'si' ? 'SÍ' : 'NO';
                 const adeudoLine = (Number(this.adeudoCobro || 0) > 0) ? `<div class="line"><div class="l">Adeudo pendiente</div><div>${this.moneda(Number(this.adeudoCobro))}</div></div>` : '';
-                const adeudoPeriodoLine = (this.adeudo && Number(this.adeudo.meses||0) > 0) ? `<div class="line"><div class="l">Período adeudo</div><div style="max-width:42mm">${this.adeudoPeriodoLabel() || '—'}</div></div>` : '';
+                const adeudoPeriodoLine = (this.adeudo && Number(this.adeudo.meses||0) > 0) ? `<div class="line"><div class="l">Período adeudo</div><div style="max-width:58%">${this.adeudoPeriodoLabel() || '—'}</div></div>` : '';
                 const saldoLine = (this.saldoDespues !== null) ? `<div class="line"><div class="l">Saldo pendiente</div><div>${this.moneda(Number(this.saldoDespues || 0))}</div></div>` : '';
                 const prepayLine = this.form.prepay === 'si' ? `<div class="line"><div class="l">Pago adelantado</div><div>${this.moneda(this.totales.prepay_total || 0)}</div></div><div class="line"><div class="l">Meses adelantados</div><div>${this.form.prepay_months} (hasta ${this.mesFinalCobertura(this.form.prepay_months)})</div></div><div class="sep"></div>` : '';
                 const discountLine = this.appliedDiscount > 0 ? `<div class="line"><div class="l">Descuento</div><div>${this.moneda(this.appliedDiscount)}</div></div>` : '';
@@ -1125,24 +1126,28 @@
 <meta charset="utf-8">
 <title>Recibo</title>
 <style>
+/* Lienzo fijo ancho (640px) con letra grande: al imprimir, el navegador
+   lo encoge para ajustarlo al ancho del papel (nunca lo agranda), así la
+   proporción letra/ancho del ticket es siempre la misma en cualquier rollo. */
 @page{ size:80mm auto; margin:0 }
 html,body{ margin:0; padding:0 }
-.ticket{ width:72mm; max-width:72mm; margin:0 auto; padding:6px 4px; font-family: Arial, sans-serif; font-size:12px; color:#111 }
-.logo{ text-align:center; margin-bottom:6px }
-.logo img{ max-width:70mm; height:auto }
-.banner{ text-align:center; margin-top:8px }
-.banner img{ max-width:70mm; height:auto }
+body{ width:640px }
+.ticket{ width:640px; box-sizing:border-box; margin:0; padding:0; font-family: Arial, sans-serif; font-size:40px; color:#111 }
+.logo{ text-align:center; margin-bottom:10px }
+.logo img{ width:100%; height:auto }
+.banner{ text-align:center; margin-top:14px }
+.banner img{ width:100%; height:auto }
 .center{ text-align:center }
-.title{ font-weight:700; font-size:14px; margin:6px 0 }
-.line{ display:grid; grid-template-columns:auto 1fr; justify-content:space-between; gap:8px; margin:2px 0 }
+.title{ font-weight:700; font-size:48px; margin:10px 0 }
+.line{ display:grid; grid-template-columns:auto 1fr; justify-content:space-between; gap:12px; margin:6px 0 }
 .line .l{ font-weight:600; white-space:nowrap }
-.line .l + div{ text-align:left !important; word-break:break-word; padding-left:4px }
-.sep{ border-top:1px dotted #555; margin:6px 0 }
-.folio{ font-weight:700; font-size:12px; margin-bottom:4px }
-.footer{ font-size:10px; font-weight:600; color:#555; margin-top:6px; padding-top:6px; border-top:1px solid #999; text-align:center }
+.line .l + div{ text-align:left !important; word-break:break-word; padding-left:6px }
+.sep{ border-top:2px dotted #555; margin:10px 0 }
+.folio{ font-weight:700; font-size:40px; margin-bottom:8px }
+.footer{ font-size:30px; font-weight:600; color:#555; margin-top:10px; padding-top:10px; border-top:2px solid #999; text-align:center }
 </style>
 </head>
-<body onload="window.print(); setTimeout(()=>window.close(), 300)">
+<body>
 <div class="ticket">
   <div class="logo"><img src="${logo}" onerror="this.style.display='none'"></div>
   ${folio ? `<div class="folio">Folio: ${folio}</div>` : ''}
@@ -1174,11 +1179,32 @@ Le recordamos que los pagos deben realizarse del día 1 al 7 de cada mes. Poster
   <div class="banner"><img src="${cuenta}" onerror="this.style.display='none'"></div>
   <div class="banner"><img src="${banner}" onerror="this.style.display='none'"></div>
 </div>
+<script>
+(function(){
+  function waitImages(){
+    const imgs = Array.from(document.images);
+    return Promise.all(imgs.map(img => img.complete ? Promise.resolve() : new Promise(res => {
+      img.addEventListener('load', res, {once:true});
+      img.addEventListener('error', res, {once:true});
+    })));
+  }
+  (async function(){
+    try{ await waitImages(); }catch(_){}
+    setTimeout(function(){ window.print(); }, 100);
+  })();
+})();
+<\/script>
 </body>
 </html>`;
-                w.document.open();
-                w.document.write(html);
-                w.document.close();
+                    const blob = new Blob([html], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    w.location.href = url;
+                    setTimeout(() => URL.revokeObjectURL(url), 30000);
+                } catch (e) {
+                    console.error('printThermal error:', e);
+                    w.close();
+                    alert('No se pudo generar el ticket: ' + (e && e.message ? e.message : e));
+                }
             },
             async buscar(){
                 this.error='';

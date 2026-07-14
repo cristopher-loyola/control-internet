@@ -10,6 +10,8 @@ use App\Models\Usuario;
 use App\Services\MorosidadService;
 use App\Services\PrepayDashboardService;
 use App\Services\ZonaDashboardService;
+use Dompdf\Dompdf;
+use Dompdf\Options;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -582,6 +584,96 @@ class ChivatoController extends Controller
                 'id' => $factura->id,
             ]);
         });
+    }
+
+    /**
+     * Generar el ticket térmico como PDF (tamaño de página fijo en el archivo,
+     * en vez de depender de que el navegador respete @page al imprimir HTML).
+     */
+    public function ticketPdf(Request $request)
+    {
+        $request->validate([
+            'html' => ['required', 'string'],
+        ]);
+
+        // Incrustar las imágenes como base64 en vez de dejar que Dompdf las
+        // descargue por HTTP: el servidor de desarrollo (php artisan serve)
+        // es de un solo hilo y se bloquea a sí mismo si intenta atender esa
+        // segunda petición mientras procesa esta.
+        $html = strtr($request->input('html'), [
+            asset('images/logo.png') => $this->imageToDataUri(public_path('images/logo.png')),
+            asset('images/reportes.png') => $this->imageToDataUri(public_path('images/reportes.png')),
+            asset('images/cuenta.png') => $this->imageToDataUri(public_path('images/cuenta.png')),
+        ]);
+
+        // Quitar el @page del HTML: Dompdf le da prioridad sobre setPaper(),
+        // y "auto" no es una altura válida ahí, así que terminaba usando su
+        // tamaño de página por defecto (carta) en vez del ancho de ticket.
+        $html = preg_replace('/@page\s*\{[^}]*\}/i', '', $html);
+
+        $options = new Options();
+        $options->set('isHtml5ParserEnabled', true);
+        $options->set('isRemoteEnabled', false);
+
+        $dompdf = new Dompdf($options);
+        $dompdf->loadHtml($html);
+        // 80mm de ancho x 200mm de alto (holgado para que el ticket completo quepa en una sola página)
+        $dompdf->setPaper([0, 0, 226.77, 566.93]);
+        $dompdf->render();
+
+        // Guardar el PDF y devolver una URL temporal firmada: la app Epson
+        // TM Print Assistant (Android) descarga el archivo por su cuenta, sin
+        // la sesión del navegador, así que la URL debe funcionar sin login.
+        $dir = storage_path('app/tickets');
+        if (! is_dir($dir)) {
+            mkdir($dir, 0775, true);
+        }
+        foreach (glob($dir.'/*.pdf') ?: [] as $old) {
+            if (filemtime($old) < now()->subHour()->getTimestamp()) {
+                @unlink($old);
+            }
+        }
+        $name = \Illuminate\Support\Str::random(40).'.pdf';
+        file_put_contents($dir.'/'.$name, $dompdf->output());
+
+        $url = \Illuminate\Support\Facades\URL::temporarySignedRoute(
+            'chivato.recibos.ticket-pdf.show',
+            now()->addMinutes(10),
+            ['file' => $name]
+        );
+
+        return response()->json(['ok' => true, 'url' => $url]);
+    }
+
+    /**
+     * Servir un ticket PDF generado previamente (URL firmada temporal,
+     * consumida por el visor del navegador o por Epson TM Print Assistant).
+     */
+    public function ticketPdfShow(Request $request, string $file)
+    {
+        if (! preg_match('/^[A-Za-z0-9]{40}\.pdf$/', $file)) {
+            abort(404);
+        }
+        $path = storage_path('app/tickets/'.$file);
+        if (! file_exists($path)) {
+            abort(404);
+        }
+
+        return response()->file($path, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="ticket.pdf"',
+        ]);
+    }
+
+    private function imageToDataUri(string $path): string
+    {
+        if (! file_exists($path)) {
+            return '';
+        }
+
+        $mime = mime_content_type($path) ?: 'image/png';
+
+        return 'data:'.$mime.';base64,'.base64_encode(file_get_contents($path));
     }
 
     /**

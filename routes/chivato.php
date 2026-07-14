@@ -22,6 +22,19 @@ Route::middleware(['auth', 'role:chivato'])
         Route::get('/recibos/prepay-status', [ChivatoController::class, 'recibosPrepayStatus'])->name('recibos.prepay.status');
         Route::get('/recibos/layout', [ChivatoController::class, 'recibosLayoutGet'])->name('recibos.layout.get');
         Route::post('/recibos/facturas', [ChivatoController::class, 'recibosFacturaStore'])->name('recibos.facturas.store');
+        Route::post('/recibos/ticket-pdf', [ChivatoController::class, 'ticketPdf'])->name('recibos.ticket-pdf');
+    });
+
+// Servir el PDF del ticket sin sesión (URL firmada temporal): lo descarga la
+// app Epson TM Print Assistant en la tablet, que no comparte cookies del navegador.
+Route::get('/chivato/recibos/ticket-pdf/{file}', [ChivatoController::class, 'ticketPdfShow'])
+    ->middleware('signed')
+    ->name('chivato.recibos.ticket-pdf.show');
+
+Route::middleware(['auth', 'role:chivato'])
+    ->prefix('chivato')
+    ->name('chivato.')
+    ->group(function () {
 
         // Routes for Corte de Caja
         Route::post('/corte/iniciar', [ChivatoController::class, 'iniciarCorte'])->name('corte.iniciar');

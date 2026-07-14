@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -m 5 -o /dev/null -w \"server HTTP:%{http_code}\\\\n\" http://127.0.0.1:8000/)",
+      "Bash(php -l resources/views/rosalito/pagos.blade.php)",
+      "Bash(php -l resources/views/pozo_hondo/pagos.blade.php)"
+    ]
+  }
+}
