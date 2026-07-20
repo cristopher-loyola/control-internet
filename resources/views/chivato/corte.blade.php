@@ -172,11 +172,18 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                     </svg>
                                 </div>
-                                <button onclick="imprimirTicketTermico()" 
+                                <button onclick="imprimirTicketTermico()"
                                     class="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                                    title="Imprimir ticket térmico">
+                                    title="Imprimir ticket térmico (resumen)">
                                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                    </svg>
+                                </button>
+                                <button onclick="imprimirTicketDetalle()"
+                                    class="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                                    title="Imprimir detalle de pagos">
+                                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17h6m-6-4h6m-6-4h6M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                                     </svg>
                                 </button>
                             </div>
@@ -207,28 +214,28 @@ function imprimirTicketTermico() {
   const html = `
   <html><head><meta charset="UTF-8">
   <style>
+    @page { size: letter; margin: 18mm; }
     * { margin:0; padding:0; box-sizing:border-box }
     body {
       font-family: 'Courier New', monospace;
-      font-size: 10px; color: #000;
-      padding: 8px 6px; width: 200px;
+      font-size: 18px; color: #000;
+      width: 100%;
     }
     .center { text-align: center }
     .right  { text-align: right }
     table   { width: 100%; border-collapse: collapse }
-    td      { padding: 2px 0 }
-    .lbl    { color: #000; font-size: 9px; font-weight: bold }
-    .muted  { color: #000; font-size: 8px }
+    td      { padding: 8px 0; font-size: 18px }
+    .lbl    { color: #000; font-size: 16px; font-weight: bold }
+    .muted  { color: #000; font-size: 15px }
     .bold   { font-weight: bold }
-    .total  { font-size: 12px; font-weight: bold }
-    .dash   { border-top: 1px solid #000; margin: 4px 0 }
-    .solid  { border-top: 2px solid #000; margin: 4px 0 }
-    .footer { font-size: 7px; color: #000; letter-spacing: 1px; font-weight: bold }
+    .total  { font-size: 30px; font-weight: bold }
+    .dash   { border-top: 1px solid #000; margin: 16px 0 }
+    .solid  { border-top: 3px solid #000; margin: 16px 0 }
   </style></head><body>
 
   <div class="center">
-    <div class="bold" style="font-size:12px">TICKET DE CORTE</div>
-    <div style="font-size:9px;letter-spacing:1px;color:#000;font-weight:bold">${zona}</div>
+    <div class="bold" style="font-size:34px">TICKET DE CORTE</div>
+    <div style="font-size:18px;letter-spacing:2px;color:#000;font-weight:bold">${zona}</div>
   </div>
 
   <hr class="dash">
@@ -244,6 +251,7 @@ function imprimirTicketTermico() {
 
   <hr class="dash">
 
+  <table>
     <tr><td class="lbl">Total en caja</td>
         <td class="right">${fmt(totalCaja)}</td></tr>
     <tr><td class="lbl">(-) Comisión recibo</td>
@@ -253,13 +261,104 @@ function imprimirTicketTermico() {
   <hr class="solid">
 
   <table>
-    <tr><td class="bold">TOTAL A ENTREGAR</td>
+    <tr><td class="bold" style="font-size:22px">TOTAL A ENTREGAR</td>
         <td class="right total">${fmt(totalEntregar)}</td></tr>
   </table>
 
   </body></html>`;
 
-  const w = window.open('', '_blank', 'width=240,height=400,toolbar=0');
+  const w = window.open('', '_blank', 'width=850,height=1100,toolbar=0');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => { w.print(); w.close(); }, 600);
+}
+
+@php
+    $pagosDetalle = $pagos->map(fn($p) => [
+        'numero_servicio' => $p['numero_servicio'],
+        'nombre'          => $p['nombre'],
+        'total'           => $p['total'],
+        'fecha'           => $p['fecha_formateada'],
+    ])->values();
+@endphp
+function imprimirTicketDetalle() {
+  const pagos = @json($pagosDetalle);
+  const cobrador = "{{ $cobrador }}";
+  const zona = 'CHIVATO';
+  const fechaImpresion = new Date().toLocaleString('es-MX', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+  const fmt = n => '$' + n.toFixed(2)
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+  const filas = pagos.map(p => `
+    <tr>
+      <td>${p.numero_servicio}</td>
+      <td>${p.nombre || '-'}</td>
+      <td class="right bold">${fmt(p.total)}</td>
+      <td class="right muted">${p.fecha}</td>
+    </tr>
+  `).join('');
+
+  const html = `
+  <html><head><meta charset="UTF-8">
+  <style>
+    @page { size: letter; margin: 15mm; }
+    * { margin:0; padding:0; box-sizing:border-box }
+    body {
+      font-family: 'Courier New', monospace;
+      font-size: 16px; color: #000;
+      width: 100%;
+    }
+    .center  { text-align: center }
+    .right   { text-align: right }
+    table    { width: 100%; border-collapse: collapse }
+    .resumen td { padding: 8px 0; font-size: 18px }
+    .lbl     { color: #000; font-size: 16px; font-weight: bold }
+    .muted   { color: #000; font-size: 13px }
+    .bold    { font-weight: bold }
+    .dash    { border-top: 1px solid #000; margin: 16px 0 }
+    .solid   { border-top: 3px solid #000; margin: 16px 0 }
+    .detalle th { text-align: left; font-size: 15px; padding: 6px 8px; border-bottom: 2px solid #000 }
+    .detalle td { font-size: 16px; padding: 8px; border-bottom: 1px solid #ccc; vertical-align: top }
+  </style></head><body>
+
+  <div class="center">
+    <div class="bold" style="font-size:34px">DETALLE DE PAGOS</div>
+    <div style="font-size:18px;letter-spacing:2px;color:#000;font-weight:bold">${zona}</div>
+  </div>
+
+  <hr class="dash">
+
+  <table class="resumen">
+    <tr><td class="lbl">Fecha impresión</td>
+        <td class="right">${fechaImpresion}</td></tr>
+    <tr><td class="lbl">Cobrador</td>
+        <td class="right bold">${cobrador}</td></tr>
+    <tr><td class="lbl">N° de pagos</td>
+        <td class="right bold">${pagos.length}</td></tr>
+  </table>
+
+  <hr class="solid">
+
+  <table class="detalle">
+    <thead>
+      <tr>
+        <th>No. Serv.</th>
+        <th>Cliente</th>
+        <th class="right">Monto</th>
+        <th class="right">Fecha</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${filas}
+    </tbody>
+  </table>
+
+  </body></html>`;
+
+  const w = window.open('', '_blank', 'width=850,height=1100,toolbar=0');
   w.document.write(html);
   w.document.close();
   setTimeout(() => { w.print(); w.close(); }, 600);
