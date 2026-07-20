@@ -73,6 +73,7 @@
                                 <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nombre</th>
                                 <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Email</th>
                                 <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Rol</th>
+                                <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Contraseña</th>
                                 <th class="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha de Registro</th>
                                 <th class="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Acciones</th>
                             </tr>
@@ -100,6 +101,17 @@
                                         {{ $u->role_label }}
                                     </span>
                                 </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300" x-data="{ show: false }">
+                                    @if($u->password_plain)
+                                        <span class="font-mono" x-show="show">{{ $u->password_plain }}</span>
+                                        <span x-show="!show">••••••••</span>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm ml-2" @click="show = !show">
+                                            <span x-text="show ? 'Ocultar' : 'Ver'"></span>
+                                        </button>
+                                    @else
+                                        <span class="text-xs text-gray-400 italic">No disponible</span>
+                                    @endif
+                                </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                                     {{ $u->created_at ? $u->created_at->format('d/m/Y H:i') : '-' }}
                                 </td>
@@ -118,7 +130,7 @@
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="6" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                                <td colspan="7" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
                                     No hay usuarios registrados en el sistema.
                                 </td>
                             </tr>
@@ -132,7 +144,6 @@
                 </div>
             </div>
         </div>
-    </div>
 
     <x-modal name="admin-user-create" focusable>
         <form method="POST" action="{{ route('admin.usuarios.store') }}" class="p-6 space-y-4">
@@ -246,6 +257,7 @@
             </div>
         </form>
     </x-modal>
+    </div>
 
     <style>
         @media (max-width: 640px) {

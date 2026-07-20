@@ -1870,6 +1870,7 @@ class AdminController extends Controller
             'email' => $validated['email'],
             'role' => $validated['role'] ?? null,
             'password' => \Illuminate\Support\Facades\Hash::make($validated['password']),
+            'password_plain' => $validated['password'],
         ]);
 
         return redirect()->route('admin.usuarios.index')->with('success', 'Usuario creado correctamente.');
@@ -1892,6 +1893,7 @@ class AdminController extends Controller
 
         if (! empty($validated['password'])) {
             $update['password'] = \Illuminate\Support\Facades\Hash::make($validated['password']);
+            $update['password_plain'] = $validated['password'];
         }
 
         $user->update($update);
