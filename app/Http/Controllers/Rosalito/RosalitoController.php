@@ -9,6 +9,7 @@ use App\Models\Factura;
 use App\Models\Usuario;
 use App\Services\MorosidadService;
 use App\Services\PrepayDashboardService;
+use App\Services\WhatsAppNotifierService;
 use App\Services\ZonaDashboardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -341,7 +342,7 @@ class RosalitoController extends Controller
         ]);
     }
 
-    public function recibosFacturaStore(Request $request)
+    public function recibosFacturaStore(Request $request, MorosidadService $morosidadService, WhatsAppNotifierService $whatsapp)
     {
         $request->validate([
             'numero_servicio' => ['nullable', 'string'],
@@ -362,7 +363,7 @@ class RosalitoController extends Controller
             ], 422);
         }
 
-        return DB::transaction(function () use ($request) {
+        return DB::transaction(function () use ($request, $morosidadService, $whatsapp) {
             $payloadInput = $request->input('payload', []);
             $periodoOverride = isset($payloadInput['periodo_override']) && preg_match('/^\d{4}-\d{2}$/', $payloadInput['periodo_override'])
                 ? $payloadInput['periodo_override'] : null;
@@ -520,6 +521,11 @@ class RosalitoController extends Controller
                 ->where('name', 'facturas')
                 ->update(['current_value' => $next, 'updated_at' => now()]);
 
+            // Estado de adeudo ANTES de registrar este pago: si el cliente ya
+            // debía estar cortado por morosidad, se notifica a soporte para reactivar.
+            $debiaCortarse = $numero ? $morosidadService->debeSerCortadoPorNumero($numero) : false;
+            $nombreClienteNotif = $payload['nombre'] ?? null;
+
             try {
                 $factura = new Factura;
                 $factura->reference_number = $next;
@@ -576,10 +582,17 @@ class RosalitoController extends Controller
                 'updated_at' => now(),
             ]);
 
+            $notificacionEnviada = false;
+            if ($debiaCortarse && $numero) {
+                $notificacionEnviada = $whatsapp->enviarNotificacionReactivacion($numero, $nombreClienteNotif);
+            }
+
             return response()->json([
                 'ok' => true,
                 'referencia' => $factura->reference_number,
                 'id' => $factura->id,
+                'necesita_reactivacion' => $debiaCortarse,
+                'notificacion_enviada' => $notificacionEnviada,
             ]);
         });
     }

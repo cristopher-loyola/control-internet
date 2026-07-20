@@ -391,6 +391,68 @@ class MorosidadService
         return round($base * (1 - ($percent / 100)), 2);
     }
 
+    /**
+     * Determina si un usuario debe estar cortado según su adeudo, con la
+     * misma regla que usa la pantalla de Cortes: adeudo de un periodo
+     * anterior + ya pasó el día 7 del mes actual.
+     */
+    public function debeSerCortado(Usuario $usuario, array $adeudo, string $mesActual, int $diaDelMes): bool
+    {
+        $mesesAdeudo = $adeudo['meses_adeudo'] ?? 0;
+        $desdePeriodo = $adeudo['desde_periodo'] ?? $mesActual;
+
+        $originalPagado = true;
+        if ($mesesAdeudo == 0) {
+            $originalPagado = true;
+        } elseif ($mesesAdeudo == 1 && $desdePeriodo === $mesActual) {
+            $originalPagado = true;
+        } elseif ($mesesAdeudo >= 1 && $desdePeriodo < $mesActual && $diaDelMes < 8) {
+            $originalPagado = true;
+        } elseif ($mesesAdeudo >= 1 && $desdePeriodo < $mesActual && $diaDelMes >= 8) {
+            $originalPagado = false;
+        } else {
+            $originalPagado = true;
+        }
+
+        if (! $originalPagado) {
+            return true;
+        }
+
+        // Adeudo manual (importado)
+        if ($usuario->adeudo_monto <= 0) {
+            return false;
+        }
+
+        $parsedPeriodo = $this->parsePeriodoFromDescripcion($usuario->adeudo_descripcion ?? '');
+        if ($parsedPeriodo && $parsedPeriodo < $mesActual) {
+            return true;
+        }
+
+        if (! empty($usuario->proximo_pago) && preg_match('/^\d{4}-\d{2}$/', $usuario->proximo_pago)) {
+            if ($usuario->proximo_pago < $mesActual) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Atajo: calcula el adeudo y evalúa debeSerCortado() para un número de
+     * servicio, usando el estado actual (antes de registrar un nuevo pago).
+     */
+    public function debeSerCortadoPorNumero(string $numeroServicio): bool
+    {
+        $usuario = Usuario::where('numero_servicio', (string) $numeroServicio)->first();
+        if (! $usuario) {
+            return false;
+        }
+
+        $adeudo = $this->calcularAdeudoUsuario((string) $numeroServicio);
+
+        return $this->debeSerCortado($usuario, $adeudo, now()->format('Y-m'), now()->day);
+    }
+
     public function parsePeriodoFromDescripcion(string $desc): ?string
     {
         $meses = [

@@ -40,4 +40,9 @@ return [
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
     ],
 
+    'whatsapp' => [
+        'url'   => env('WHATSAPP_SERVICE_URL', 'http://127.0.0.1:3300'),
+        'token' => env('WHATSAPP_SERVICE_TOKEN', 'dev-token-cambiar'),
+    ],
+
 ];

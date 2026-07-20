@@ -12,6 +12,7 @@ use App\Services\MegasAssigner;
 use App\Services\FacturaService;
 use App\Services\MorosidadService;
 use App\Services\PrepayDashboardService;
+use App\Services\WhatsAppNotifierService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -103,6 +104,45 @@ class AdminController extends Controller
             ['key' => 'receipt_layout'],
             ['value' => $layout]
         );
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function whatsappIndex(WhatsAppNotifierService $whatsapp)
+    {
+        return view('admin.whatsapp', [
+            'estado' => $whatsapp->estado(),
+            'destinatario' => $whatsapp->destinatario(),
+        ]);
+    }
+
+    public function whatsappStatus(WhatsAppNotifierService $whatsapp)
+    {
+        return response()->json($whatsapp->estado());
+    }
+
+    public function whatsappQr(WhatsAppNotifierService $whatsapp)
+    {
+        $png = $whatsapp->qrImage();
+        if (! $png) {
+            return response()->json(['ok' => false, 'message' => 'QR no disponible'], 404);
+        }
+
+        return response($png, 200)->header('Content-Type', 'image/png');
+    }
+
+    public function whatsappRelink(WhatsAppNotifierService $whatsapp)
+    {
+        return response()->json($whatsapp->relink());
+    }
+
+    public function whatsappDestinatarioStore(Request $request, WhatsAppNotifierService $whatsapp)
+    {
+        $validated = $request->validate([
+            'numero' => ['required', 'string', 'regex:/^\d{10,15}$/'],
+        ]);
+
+        $whatsapp->guardarDestinatario($validated['numero']);
 
         return response()->json(['ok' => true]);
     }
