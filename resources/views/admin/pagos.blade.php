@@ -239,9 +239,9 @@
         <p class="text-xs text-red-600 mt-1" x-show="manualEditError" x-text="manualEditError"></p>
     </div>
 
-    <button class="btn btn-primary w-full shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150" @click="metodoValido() && openConfirm('ticket')">🧾 Imprimir Ticket</button>
+    <button class="btn btn-primary w-full shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150" :class="{ 'opacity-50 cursor-not-allowed': loadingClient }" :disabled="loadingClient" @click="!loadingClient && metodoValido() && openConfirm('ticket')" x-text="loadingClient ? '⏳ Cargando datos...' : '🧾 Imprimir Ticket'"></button>
 <!-- para que aparezca de nuevo el boton imprimir recibo borrar el display -->
-    <button style="display: none !important;" class="btn btn-danger w-full shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150" @click="metodoValido() && openConfirm('receipt')">🖨️ Imprimir Recibo</button>
+    <button style="display: none !important;" class="btn btn-danger w-full shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150" :disabled="loadingClient" @click="!loadingClient && metodoValido() && openConfirm('receipt')">🖨️ Imprimir Recibo</button>
 </div>
 </div>
 

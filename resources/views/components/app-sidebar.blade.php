@@ -15,6 +15,10 @@
         <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <style>
             [x-cloak] { display: none !important; }
+            /* Evita que el navegador (Firefox/Chrome en modo oscuro del SO) pinte
+               inputs/selects nativos con su propio esquema oscuro, ilegible sobre
+               los fondos claros de los formularios de esta app. */
+            html { color-scheme: light; }
         </style>
     </head>
     <body class="font-sans antialiased bg-white" x-data="{ sidebarOpen: false }">

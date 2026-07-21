@@ -24,6 +24,7 @@ let sock = null;
 let latestQr = null;
 let connectedNumber = null;
 let isConnected = false;
+let reconnectAttempts = 0;
 
 async function startSock() {
     const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
@@ -48,6 +49,7 @@ async function startSock() {
         if (connection === 'open') {
             isConnected = true;
             latestQr = null;
+            reconnectAttempts = 0;
             connectedNumber = sock.user?.id?.split(':')[0] || sock.user?.id || null;
             console.log('[whatsapp-service] Conectado como', connectedNumber);
         }
@@ -60,11 +62,17 @@ async function startSock() {
                 : null;
             const loggedOut = statusCode === DisconnectReason.loggedOut;
 
-            console.log('[whatsapp-service] Conexion cerrada.', loggedOut ? 'Sesion cerrada (logout).' : 'Reintentando...');
-
-            if (!loggedOut) {
-                startSock();
+            if (loggedOut) {
+                console.log('[whatsapp-service] Sesion cerrada (logout). Esperando /relink para vincular de nuevo.');
+                return;
             }
+
+            // Backoff exponencial (tope 30s) para no martillar los servidores de
+            // WhatsApp si la conexion sigue fallando de forma persistente.
+            reconnectAttempts += 1;
+            const delayMs = Math.min(30000, 1000 * (2 ** Math.min(reconnectAttempts, 5)));
+            console.log(`[whatsapp-service] Conexion cerrada. Reintentando en ${delayMs}ms (intento ${reconnectAttempts})...`);
+            setTimeout(startSock, delayMs);
         }
     });
 }

@@ -462,7 +462,7 @@ class PagosController extends Controller
         $request->validate([
             'numero_servicio' => ['nullable', 'string'],
             'usuario_id' => ['nullable', 'integer'],
-            'total' => ['nullable', 'numeric'],
+            'total' => ['nullable', 'numeric', 'min:0'],
             'payload' => ['nullable', 'array'],
         ]);
 

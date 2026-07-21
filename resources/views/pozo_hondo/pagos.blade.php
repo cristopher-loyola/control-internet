@@ -390,7 +390,7 @@
             .divider-line{display:none!important}
             .print-sheet::after{content:'';position:absolute;left:0;right:0;top:calc(33% + 20mm);height:0.6mm;background:#111;z-index:50}
         }
-        .print-sheet{position:relative;width:210mm;max-width:none;margin:0 auto;transform:none;height:297mm;background:#fff}       
+        .print-sheet{position:relative;width:210mm;max-width:none;margin:0 auto;transform:none;height:297mm;background:#fff;color:#111}       
         .sheet-abs{position:absolute;inset:0;z-index:20;pointer-events:none}
         .receipt{position:relative;height:calc(33% + 20mm);border:1px solid #d1d5db;border-radius:8px;padding:4mm 6mm 2mm 6mm;background:#fff}
         .divider-line{height:0.6mm;background:#111;margin:0}

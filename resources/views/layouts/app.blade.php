@@ -16,7 +16,13 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-        <style>[x-cloak]{display:none!important}</style>
+        <style>
+            [x-cloak]{display:none!important}
+            /* Evita que el navegador (Firefox/Chrome en modo oscuro del SO) pinte
+               inputs/selects nativos con su propio esquema oscuro, ilegible sobre
+               los fondos claros de los formularios de esta app. */
+            html { color-scheme: light; }
+        </style>
         <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     </head>
     <body class="font-sans antialiased">

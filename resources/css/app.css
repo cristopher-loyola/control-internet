@@ -1,3 +1,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Los inputs/selects de @tailwindcss/forms siempre tienen fondo blanco
+   (no varían con el modo oscuro), pero no fijan el color de texto, así
+   que heredan el gris claro de "dark:text-gray-*" de un ancestro y
+   quedan casi ilegibles. Forzamos texto oscuro siempre. */
+.form-input,
+.form-select,
+.form-textarea,
+.form-multiselect {
+    color: #111827;
+}

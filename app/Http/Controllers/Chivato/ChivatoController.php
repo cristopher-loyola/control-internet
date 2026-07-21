@@ -367,14 +367,14 @@ class ChivatoController extends Controller
         $request->validate([
             'numero_servicio' => ['nullable', 'string'],
             'usuario_id' => ['nullable', 'integer'],
-            'total' => ['nullable', 'numeric'],
+            'total' => ['nullable', 'numeric', 'min:0'],
             'payload' => ['nullable', 'array'],
         ]);
 
         // Verificar que haya un corte activo antes de permitir el pago
         $user = $request->user();
         $zona = 'chivato';
-        
+
         if (!CorteCaja::tieneActivo($zona, $user->id)) {
             return response()->json([
                 'ok' => false,
@@ -383,7 +383,10 @@ class ChivatoController extends Controller
             ], 422);
         }
 
-        return DB::transaction(function () use ($request, $morosidadService, $whatsapp) {
+        // La notificación de WhatsApp se manda DESPUÉS de confirmar la transacción
+        // (nunca dentro de ella): una llamada HTTP externa lenta no debe retener el
+        // lock del contador de facturas, compartido por los 3 perfiles de cobro.
+        $resultado = DB::transaction(function () use ($request, $morosidadService) {
             $payloadInput = $request->input('payload', []);
             $periodoOverride = isset($payloadInput['periodo_override']) && preg_match('/^\d{4}-\d{2}$/', $payloadInput['periodo_override'])
                 ? $payloadInput['periodo_override'] : null;
@@ -412,10 +415,10 @@ class ChivatoController extends Controller
                     $venceAt = PrepayDashboardService::venceAt($from, $months);
                     $estado = PrepayDashboardService::estadoPorVencimiento($venceAt, now());
                     if ($venceAt && ! $estado['vencido']) {
-                        return response()->json([
+                        return ['status' => 409, 'body' => [
                             'ok' => false,
                             'message' => 'Pago adelantado vigente hasta '.$venceAt->locale('es')->translatedFormat('F Y'),
-                        ], 409);
+                        ]];
                     }
                 }
             }
@@ -470,12 +473,12 @@ class ChivatoController extends Controller
                     'updated_at' => now(),
                 ]);
 
-                return response()->json([
+                return ['status' => 200, 'body' => [
                     'ok' => true,
                     'referencia' => $existing->reference_number,
                     'id' => $existing->id,
                     'reused' => true,
-                ]);
+                ]];
             }
 
             $trashedByFingerprint = Factura::withTrashed()->where('fingerprint', $fingerprint)->first();
@@ -493,12 +496,12 @@ class ChivatoController extends Controller
                     'updated_at' => now(),
                 ]);
 
-                return response()->json([
+                return ['status' => 200, 'body' => [
                     'ok' => true,
                     'referencia' => $trashedByFingerprint->reference_number,
                     'id' => $trashedByFingerprint->id,
                     'reused' => true,
-                ]);
+                ]];
             }
 
             if (($numero !== null && $numero !== '') || ! empty($usuarioId)) {
@@ -529,12 +532,12 @@ class ChivatoController extends Controller
                     'updated_at' => now(),
                 ]);
 
-                return response()->json([
+                return ['status' => 409, 'body' => [
                     'ok' => false,
                     'message' => 'Ya existe un pago registrado para este periodo',
                     'referencia' => $dup->reference_number,
                     'periodo' => $periodo,
-                ], 409);
+                ]];
             }
             $next = (int) $row->current_value + 1;
             DB::table('invoice_sequences')
@@ -570,21 +573,31 @@ class ChivatoController extends Controller
                         $factura->saveQuietly();
                     }
                     $usuario->update([
-                        'estatus_servicio_id' => 1,
-                        'estado_id' => 1,
                         'adeudo_monto' => $resultadoAdeudo['adeudo_monto'],
                         'adeudo_descripcion' => $resultadoAdeudo['adeudo_descripcion'],
+                    ]);
+
+                    // El estatus depende de si el pago cubrió TODO lo pendiente, no
+                    // de que la factura se haya guardado (un abono parcial no debe
+                    // marcar al cliente como "Pagado").
+                    $adeudoReal = $morosidadService->calcularAdeudoUsuario($usuario->numero_servicio, null);
+                    $tienePendiente = (float) ($adeudoReal['pendiente'] ?? 0) > 0.01;
+                    $estatusPagadoId = \App\Models\EstatusServicio::whereRaw('LOWER(nombre) = ?', ['pagado'])->value('id') ?? 1;
+                    $estatusPendienteId = \App\Models\EstatusServicio::whereRaw('LOWER(nombre) = ?', ['pendiente de pago'])->value('id') ?? 4;
+                    $usuario->update([
+                        'estatus_servicio_id' => $tienePendiente ? $estatusPendienteId : $estatusPagadoId,
+                        'estado_id' => 1,
                     ]);
                 }
             } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
                 $c = Factura::withTrashed()->where('fingerprint', $fingerprint)->first();
                 if ($c) {
-                    return response()->json([
+                    return ['status' => 200, 'body' => [
                         'ok' => true,
                         'referencia' => $c->reference_number,
                         'id' => $c->id,
                         'reused' => true,
-                    ]);
+                    ]];
                 }
                 throw $e;
             }
@@ -602,19 +615,25 @@ class ChivatoController extends Controller
                 'updated_at' => now(),
             ]);
 
-            $notificacionEnviada = false;
-            if ($debiaCortarse && $numero) {
-                $notificacionEnviada = $whatsapp->enviarNotificacionReactivacion($numero, $nombreClienteNotif);
-            }
-
-            return response()->json([
-                'ok' => true,
-                'referencia' => $factura->reference_number,
-                'id' => $factura->id,
-                'necesita_reactivacion' => $debiaCortarse,
-                'notificacion_enviada' => $notificacionEnviada,
-            ]);
+            return [
+                'status' => 200,
+                'body' => [
+                    'ok' => true,
+                    'referencia' => $factura->reference_number,
+                    'id' => $factura->id,
+                    'necesita_reactivacion' => $debiaCortarse,
+                ],
+                'debia_cortarse' => $debiaCortarse,
+                'numero' => $numero,
+                'nombre' => $nombreClienteNotif,
+            ];
         });
+
+        if (!empty($resultado['debia_cortarse']) && !empty($resultado['numero'])) {
+            $resultado['body']['notificacion_enviada'] = $whatsapp->enviarNotificacionReactivacion($resultado['numero'], $resultado['nombre']);
+        }
+
+        return response()->json($resultado['body'], $resultado['status']);
     }
 
     /**
