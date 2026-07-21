@@ -596,6 +596,7 @@ class FacturaService
         $payload = is_array($factura->payload) ? $factura->payload : (is_string($factura->payload) ? @json_decode($factura->payload, true) : []);
         $esAdeudoManual = !empty($payload['es_adeudo_manual']);
         $esPrepay = !empty($payload['prepay']) && ($payload['prepay'] === 'si' || $payload['prepay'] === true);
+        $esEdicionManual = !empty($payload['manual_total_enabled']);
 
         // Limpiar adeudo_monto solo cuando el pago cubre TODO el saldo manual (pagos parciales solo restan)
         $limpiarAdeudoManual = $adeudoMonto > 0 && $totalPagado >= $adeudoMonto - 0.01;
@@ -607,18 +608,60 @@ class FacturaService
             $factura->payload = $payload;
             $factura->saveQuietly();
 
-            if ($limpiarAdeudoManual) {
-                // Pago cubre la mensualidad completa → limpiar todo el adeudo manual
-                $usuario->adeudo_monto = 0;
-                $usuario->adeudo_descripcion = null;
-            } else {
-                // Pago parcial → restar lo pagado del adeudo manual
-                $restante = round($adeudoMonto - $totalPagado, 2);
-                if ($restante <= 0) {
+            if ($esEdicionManual) {
+                // "Modificar total" es una decisión deliberada del admin (con motivo
+                // obligatorio, ej. descuento/condonación): se comporta como antes,
+                // liquida el adeudo manual con lo que se decidió cobrar.
+                if ($limpiarAdeudoManual) {
                     $usuario->adeudo_monto = 0;
                     $usuario->adeudo_descripcion = null;
                 } else {
-                    $usuario->adeudo_monto = $restante;
+                    $restante = round($adeudoMonto - $totalPagado, 2);
+                    if ($restante <= 0) {
+                        $usuario->adeudo_monto = 0;
+                        $usuario->adeudo_descripcion = null;
+                    } else {
+                        $usuario->adeudo_monto = $restante;
+                    }
+                }
+            } else {
+                // Pago real (Transferencias u otro flujo sin edición manual): el
+                // monto reportado primero cubre la mensualidad + recargo del periodo
+                // actual, y solo el sobrante reduce el adeudo manual viejo. Si no
+                // alcanza ni para el periodo actual, el adeudo manual no se toca.
+                //
+                // Ojo: la factura de este pago puede quedar guardada con un periodo
+                // VIEJO (ej. Transferencias usa el mes más antiguo que se debía), así
+                // que el cálculo de "meses vividos desde el corte" de MorosidadService
+                // no la ve como pago del mes actual y seguiría sumando ese cargo otra
+                // vez. Por eso, si el pago sí alcanzó a cubrir el periodo actual,
+                // adelantamos proximo_pago para que el sistema lo reconozca como
+                // saldado (mismo mecanismo que ya usa el pago por adelantado).
+                $hoy = now();
+                $recargoActual = $hoy->day >= 8 ? 50.0 : 0.0;
+                $moraRow = \App\Models\CargoMora::where('periodo', $hoy->format('Y-m'))
+                    ->where('numero_servicio', $usuario->numero_servicio)
+                    ->first();
+                if ($moraRow) {
+                    $recargoActual = max($recargoActual, (float) $moraRow->monto);
+                }
+
+                $cargoPeriodoActual = $mensualidad + $recargoActual;
+                $disponibleParaAdeudoViejo = max(0.0, $totalPagado - $cargoPeriodoActual);
+                $nuevoAdeudo = max(0.0, round($adeudoMonto - $disponibleParaAdeudoViejo, 2));
+
+                if ($disponibleParaAdeudoViejo > 0) {
+                    $siguientePeriodo = $hoy->copy()->addMonth()->format('Y-m');
+                    if (empty($usuario->proximo_pago) || strcmp($siguientePeriodo, (string) $usuario->proximo_pago) > 0) {
+                        $usuario->proximo_pago = $siguientePeriodo;
+                    }
+                }
+
+                if ($nuevoAdeudo <= 0) {
+                    $usuario->adeudo_monto = 0;
+                    $usuario->adeudo_descripcion = null;
+                } else {
+                    $usuario->adeudo_monto = $nuevoAdeudo;
                 }
             }
         }
@@ -642,6 +685,7 @@ class FacturaService
             Usuario::where('numero_servicio', $usuario->numero_servicio)->update([
                 'adeudo_monto'       => $usuario->adeudo_monto,
                 'adeudo_descripcion' => $usuario->adeudo_descripcion,
+                'proximo_pago'       => $usuario->proximo_pago,
             ]);
         }
 
