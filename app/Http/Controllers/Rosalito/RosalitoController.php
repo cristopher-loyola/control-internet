@@ -545,6 +545,8 @@ class RosalitoController extends Controller
                         $usuario->update([
                             'estatus_servicio_id' => 1,
                             'estado_id' => 1,
+                            'adeudo_monto' => 0,
+                            'adeudo_descripcion' => null,
                         ]);
                     }
                 } elseif ($request->input('numero_servicio')) {
@@ -553,6 +555,8 @@ class RosalitoController extends Controller
                         $usuario->update([
                             'estatus_servicio_id' => 1,
                             'estado_id' => 1,
+                            'adeudo_monto' => 0,
+                            'adeudo_descripcion' => null,
                         ]);
                     }
                 }

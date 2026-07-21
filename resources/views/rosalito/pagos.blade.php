@@ -1083,13 +1083,6 @@
                         this.ref.id = j.id;
                         this.ref.created_at = new Date().toISOString();
                         await this.fetchPagoAnterior();
-                        if(j.necesita_reactivacion){
-                            if(j.notificacion_enviada){
-                                alert('Este cliente estaba pendiente de corte por adeudo. Se notificó a soporte técnico para reactivar su servicio.');
-                            } else {
-                                alert('Este cliente estaba pendiente de corte por adeudo, pero no se pudo notificar a soporte automáticamente. Avísales manualmente para reactivar el servicio.');
-                            }
-                        }
                     }
                 }catch(_){}
             },

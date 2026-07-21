@@ -99,7 +99,7 @@
                         <p class="text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-3">
                             Sin vincular. Escanea el código con WhatsApp → Dispositivos vinculados → Vincular un dispositivo.
                         </p>
-                        <img :src="qrSrc" alt="Código QR de WhatsApp" class="w-64 h-64 border rounded-lg bg-white p-2" @error="setTimeout(() => refreshQr(), 2000)">
+                        <img :src="qrSrc" alt="Código QR de WhatsApp" class="w-64 h-64 border rounded-lg bg-white p-2" x-on:error="setTimeout(() => refreshQr(), 2000)">
                     </div>
                 </template>
 
