@@ -438,6 +438,42 @@ class MorosidadService
     }
 
     /**
+     * Aplica un pago sobre el adeudo manual (importado) de un usuario: si el
+     * pago cubre el adeudo completo lo limpia, si es parcial lo reduce.
+     * Guarda el valor previo dentro del payload de la factura
+     * (adeudo_monto_previo / adeudo_descripcion_previa) para que, si la
+     * factura se cancela después, se pueda restaurar (mismo patrón que
+     * FacturaService::marcarComoPagado, usado por Admin/Pagos).
+     *
+     * Devuelve ['payload' => array, 'adeudo_monto' => float, 'adeudo_descripcion' => ?string].
+     * Si no había adeudo manual o no se pagó nada, regresa el payload intacto.
+     */
+    public function aplicarPagoAAdeudoManual(Usuario $usuario, float $totalPagado, array $payload): array
+    {
+        $adeudoMonto = (float) ($usuario->adeudo_monto ?? 0);
+
+        if ($adeudoMonto <= 0 || $totalPagado <= 0) {
+            return [
+                'payload' => $payload,
+                'adeudo_monto' => $usuario->adeudo_monto,
+                'adeudo_descripcion' => $usuario->adeudo_descripcion,
+            ];
+        }
+
+        $payload['adeudo_monto_previo'] = $adeudoMonto;
+        $payload['adeudo_descripcion_previa'] = $usuario->adeudo_descripcion;
+
+        $cubreTodo = $totalPagado >= $adeudoMonto - 0.01;
+        $restante = $cubreTodo ? 0 : round($adeudoMonto - $totalPagado, 2);
+
+        return [
+            'payload' => $payload,
+            'adeudo_monto' => $restante > 0 ? $restante : 0,
+            'adeudo_descripcion' => $restante > 0 ? $usuario->adeudo_descripcion : null,
+        ];
+    }
+
+    /**
      * Atajo: calcula el adeudo y evalúa debeSerCortado() para un número de
      * servicio, usando el estado actual (antes de registrar un nuevo pago).
      */

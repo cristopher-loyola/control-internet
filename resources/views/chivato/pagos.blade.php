@@ -122,17 +122,17 @@
                                 <span>📋</span><span>Historial</span>
                             </a>
 
-                            <button class="w-full px-4 py-3 rounded-lg bg-blue-600 text-white font-medium shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150 min-h-[48px] flex items-center justify-center gap-2" 
-                                :class="{ 'opacity-50 cursor-not-allowed': !corteActivo }" 
-                                :disabled="!corteActivo || readOnlyMode" 
-                                @click="corteActivo && metodoValido() && openConfirm('ticket')">
-                                <span>🧾</span><span>Imprimir Ticket</span>
+                            <button class="w-full px-4 py-3 rounded-lg bg-blue-600 text-white font-medium shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150 min-h-[48px] flex items-center justify-center gap-2"
+                                :class="{ 'opacity-50 cursor-not-allowed': !corteActivo || isLoading }"
+                                :disabled="!corteActivo || readOnlyMode || isLoading"
+                                @click="corteActivo && !isLoading && metodoValido() && openConfirm('ticket')">
+                                <span>🧾</span><span x-text="isLoading ? 'Cargando datos...' : 'Imprimir Ticket'"></span>
                             </button>
 
-                            <button class="hidden w-full px-4 py-3 rounded-lg bg-red-600 text-white font-medium shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150 min-h-[48px] flex items-center justify-center gap-2" 
-                                :class="{ 'opacity-50 cursor-not-allowed': !corteActivo }" 
-                                :disabled="!corteActivo || readOnlyMode" 
-                                @click="corteActivo && metodoValido() && openConfirm('receipt')">
+                            <button class="hidden w-full px-4 py-3 rounded-lg bg-red-600 text-white font-medium shadow hover:shadow-md hover:brightness-110 active:scale-95 transition-all duration-150 min-h-[48px] flex items-center justify-center gap-2"
+                                :class="{ 'opacity-50 cursor-not-allowed': !corteActivo || isLoading }"
+                                :disabled="!corteActivo || readOnlyMode || isLoading"
+                                @click="corteActivo && !isLoading && metodoValido() && openConfirm('receipt')">
                                 <span>🖨️</span><span>Imprimir Recibo</span>
                             </button>
                         </div>

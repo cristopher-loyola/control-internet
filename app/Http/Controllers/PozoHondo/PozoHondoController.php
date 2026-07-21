@@ -146,23 +146,41 @@ class PozoHondoController extends Controller
         return view('pozo_hondo.historial', ['pagos' => $items]);
     }
 
-    public function eliminarPago(Request $request, $id)
+    public function eliminarPago(Request $request, $id, MorosidadService $morosidadService)
     {
         $factura = Factura::findOrFail($id);
-        
+
         // Verificar que el pago pertenece a un cajero del perfil pozo_hondo
         $cajero = \App\Models\User::find($factura->created_by);
         if (!$cajero || $cajero->role !== 'pozo_hondo') {
             return redirect()->route('pozo_hondo.historial')->with('error', 'No tienes permiso para eliminar este pago.');
         }
-        
+
         // Soft delete
         if ($factura->fingerprint) {
             $factura->fingerprint = substr($factura->fingerprint, 0, 40).'_can_'.now()->timestamp;
             $factura->save();
         }
         $factura->delete();
-        
+
+        // Restaurar adeudo_monto si fue limpiado/reducido al registrar este recibo
+        $payload = is_array($factura->payload) ? $factura->payload : (is_string($factura->payload) ? @json_decode($factura->payload, true) : []);
+        if ($factura->numero_servicio) {
+            if (!empty($payload['adeudo_monto_previo']) && (float) $payload['adeudo_monto_previo'] > 0) {
+                Usuario::where('numero_servicio', $factura->numero_servicio)->update([
+                    'adeudo_monto' => (float) $payload['adeudo_monto_previo'],
+                    'adeudo_descripcion' => $payload['adeudo_descripcion_previa'] ?? null,
+                ]);
+            }
+
+            $adeudo = $morosidadService->calcularAdeudoUsuario((string) $factura->numero_servicio, null);
+            $tienePendiente = (float) ($adeudo['pendiente'] ?? 0) > 0.01;
+            $estatusPagadoId = \App\Models\EstatusServicio::whereRaw('LOWER(nombre) = ?', ['pagado'])->value('id') ?? 1;
+            $estatusPendienteId = \App\Models\EstatusServicio::whereRaw('LOWER(nombre) = ?', ['pendiente de pago'])->value('id') ?? 4;
+            Usuario::where('numero_servicio', $factura->numero_servicio)
+                ->update(['estatus_servicio_id' => $tienePendiente ? $estatusPendienteId : $estatusPagadoId]);
+        }
+
         return redirect()->route('pozo_hondo.historial')->with('success', 'Pago eliminado correctamente.');
     }
 
@@ -539,26 +557,22 @@ class PozoHondoController extends Controller
                 $factura->corte_caja_id = $corteActivo?->id; // Asociar al corte activo si existe
                 $factura->save();
 
-                if ($request->input('usuario_id')) {
-                    $usuario = Usuario::find($request->input('usuario_id'));
-                    if ($usuario) {
-                        $usuario->update([
-                            'estatus_servicio_id' => 1,
-                            'estado_id' => 1,
-                            'adeudo_monto' => 0,
-                            'adeudo_descripcion' => null,
-                        ]);
+                $usuario = $request->input('usuario_id')
+                    ? Usuario::find($request->input('usuario_id'))
+                    : ($request->input('numero_servicio') ? Usuario::where('numero_servicio', $request->input('numero_servicio'))->first() : null);
+
+                if ($usuario) {
+                    $resultadoAdeudo = $morosidadService->aplicarPagoAAdeudoManual($usuario, (float) $factura->total, $payload);
+                    if ($resultadoAdeudo['payload'] !== $payload) {
+                        $factura->payload = $resultadoAdeudo['payload'];
+                        $factura->saveQuietly();
                     }
-                } elseif ($request->input('numero_servicio')) {
-                    $usuario = Usuario::where('numero_servicio', $request->input('numero_servicio'))->first();
-                    if ($usuario) {
-                        $usuario->update([
-                            'estatus_servicio_id' => 1,
-                            'estado_id' => 1,
-                            'adeudo_monto' => 0,
-                            'adeudo_descripcion' => null,
-                        ]);
-                    }
+                    $usuario->update([
+                        'estatus_servicio_id' => 1,
+                        'estado_id' => 1,
+                        'adeudo_monto' => $resultadoAdeudo['adeudo_monto'],
+                        'adeudo_descripcion' => $resultadoAdeudo['adeudo_descripcion'],
+                    ]);
                 }
             } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
                 $c = Factura::withTrashed()->where('fingerprint', $fingerprint)->first();
