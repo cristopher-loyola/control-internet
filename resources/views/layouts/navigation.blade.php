@@ -132,10 +132,10 @@
     class="border-b border-gray-100 dark:border-gray-700 {{ ($roleColors[$role] ?? $defaultNavColor) }}"
 >
     <!-- Primary Navigation Menu -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex h-16">
             <!-- Logo -->
-            <div class="shrink-0 flex items-center">
+            <div class="shrink-0 sm:w-48 flex items-center">
                 <a href="{{ $dashboardRoute }}">
                     @if ($role === 'admin')
                         <img src="{{ asset('images/Clogo.png') }}" class="block h-9 w-auto object-contain" alt="Control Internet Logo" />
@@ -309,7 +309,7 @@
                 </div>
 
                 <!-- Settings Dropdown -->
-                <div class="hidden sm:flex sm:items-center shrink-0">
+                <div class="hidden sm:flex sm:items-center sm:justify-end shrink-0 sm:w-48">
                     <x-dropdown align="right" width="48">
                         <x-slot name="trigger">
                             <button class="inline-flex items-center px-3 py-2 border-0 text-sm leading-4 font-medium rounded-md text-white bg-transparent hover:text-white focus:outline-none transition ease-in-out duration-150">
