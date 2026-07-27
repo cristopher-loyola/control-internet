@@ -214,28 +214,28 @@ function imprimirTicketTermico() {
   const html = `
   <html><head><meta charset="UTF-8">
   <style>
-    @page { size: letter; margin: 18mm; }
+    @page { margin: 10mm; }
     * { margin:0; padding:0; box-sizing:border-box }
     body {
       font-family: 'Courier New', monospace;
-      font-size: 18px; color: #000;
+      font-size: 30px; color: #000;
       width: 100%;
     }
     .center { text-align: center }
     .right  { text-align: right }
     table   { width: 100%; border-collapse: collapse }
-    td      { padding: 8px 0; font-size: 18px }
-    .lbl    { color: #000; font-size: 16px; font-weight: bold }
-    .muted  { color: #000; font-size: 15px }
+    td      { padding: 14px 0; font-size: 28px }
+    .lbl    { color: #000; font-size: 26px; font-weight: bold }
+    .muted  { color: #000; font-size: 22px }
     .bold   { font-weight: bold }
-    .total  { font-size: 30px; font-weight: bold }
-    .dash   { border-top: 1px solid #000; margin: 16px 0 }
-    .solid  { border-top: 3px solid #000; margin: 16px 0 }
+    .total  { font-size: 48px; font-weight: bold }
+    .dash   { border-top: 2px solid #000; margin: 22px 0 }
+    .solid  { border-top: 4px solid #000; margin: 22px 0 }
   </style></head><body>
 
   <div class="center">
-    <div class="bold" style="font-size:34px">TICKET DE CORTE</div>
-    <div style="font-size:18px;letter-spacing:2px;color:#000;font-weight:bold">${zona}</div>
+    <div class="bold" style="font-size:56px">TICKET DE CORTE</div>
+    <div style="font-size:30px;letter-spacing:2px;color:#000;font-weight:bold">${zona}</div>
   </div>
 
   <hr class="dash">
@@ -261,7 +261,7 @@ function imprimirTicketTermico() {
   <hr class="solid">
 
   <table>
-    <tr><td class="bold" style="font-size:22px">TOTAL A ENTREGAR</td>
+    <tr><td class="bold" style="font-size:36px">TOTAL A ENTREGAR</td>
         <td class="right total">${fmt(totalEntregar)}</td></tr>
   </table>
 
@@ -293,40 +293,39 @@ function imprimirTicketDetalle() {
     .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
   const filas = pagos.map(p => `
-    <tr>
-      <td>${p.numero_servicio}</td>
-      <td>${p.nombre || '-'}</td>
-      <td class="right bold">${fmt(p.total)}</td>
-      <td class="right muted">${p.fecha}</td>
-    </tr>
+    <div style="display:flex;justify-content:space-between;margin-top:18px">
+      <span class="bold" style="font-size:30px">${p.numero_servicio}</span>
+      <span class="bold" style="font-size:30px">${fmt(p.total)}</span>
+    </div>
+    <div style="font-size:26px">${p.nombre || '-'}</div>
+    <div class="muted" style="font-size:22px">${p.fecha}</div>
+    <hr class="dash">
   `).join('');
 
   const html = `
   <html><head><meta charset="UTF-8">
   <style>
-    @page { size: letter; margin: 15mm; }
+    @page { margin: 10mm; }
     * { margin:0; padding:0; box-sizing:border-box }
     body {
       font-family: 'Courier New', monospace;
-      font-size: 16px; color: #000;
+      font-size: 26px; color: #000;
       width: 100%;
     }
     .center  { text-align: center }
     .right   { text-align: right }
     table    { width: 100%; border-collapse: collapse }
-    .resumen td { padding: 8px 0; font-size: 18px }
-    .lbl     { color: #000; font-size: 16px; font-weight: bold }
-    .muted   { color: #000; font-size: 13px }
+    .resumen td { padding: 12px 0; font-size: 28px }
+    .lbl     { color: #000; font-size: 26px; font-weight: bold }
+    .muted   { color: #000; font-size: 22px }
     .bold    { font-weight: bold }
-    .dash    { border-top: 1px solid #000; margin: 16px 0 }
-    .solid   { border-top: 3px solid #000; margin: 16px 0 }
-    .detalle th { text-align: left; font-size: 15px; padding: 6px 8px; border-bottom: 2px solid #000 }
-    .detalle td { font-size: 16px; padding: 8px; border-bottom: 1px solid #ccc; vertical-align: top }
+    .dash    { border-top: 2px solid #000; margin: 18px 0 }
+    .solid   { border-top: 4px solid #000; margin: 22px 0 }
   </style></head><body>
 
   <div class="center">
-    <div class="bold" style="font-size:34px">DETALLE DE PAGOS</div>
-    <div style="font-size:18px;letter-spacing:2px;color:#000;font-weight:bold">${zona}</div>
+    <div class="bold" style="font-size:52px">DETALLE DE PAGOS</div>
+    <div style="font-size:30px;letter-spacing:2px;color:#000;font-weight:bold">${zona}</div>
   </div>
 
   <hr class="dash">
@@ -342,19 +341,7 @@ function imprimirTicketDetalle() {
 
   <hr class="solid">
 
-  <table class="detalle">
-    <thead>
-      <tr>
-        <th>No. Serv.</th>
-        <th>Cliente</th>
-        <th class="right">Monto</th>
-        <th class="right">Fecha</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${filas}
-    </tbody>
-  </table>
+  ${filas}
 
   </body></html>`;
 
