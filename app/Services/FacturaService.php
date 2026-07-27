@@ -605,6 +605,7 @@ class FacturaService
             // Guardar siempre el previo para poder restaurar si se cancela
             $payload['adeudo_monto_previo']      = $adeudoMonto;
             $payload['adeudo_descripcion_previa'] = $usuario->adeudo_descripcion;
+            $payload['proximo_pago_previo']       = $usuario->proximo_pago;
             $factura->payload = $payload;
             $factura->saveQuietly();
 
