@@ -349,6 +349,8 @@
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
                                 <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
+                                <div x-show="adeudo && adeudo.pendiente > 0">Adeudo pendiente</div><div x-show="adeudo && adeudo.pendiente > 0" x-text="moneda(adeudo.pendiente)"></div>
+                                <div x-show="form.prepay==='si'">Total adelanto</div><div x-show="form.prepay==='si'" x-text="moneda(totales.prepay_total || 0)"></div>
                                 <div x-show="form.prepay==='si'">Meses adelantados</div><div x-show="form.prepay==='si'" x-text="`${form.prepay_months} (hasta ${mesFinalCobertura(form.prepay_months)})` || '-'"></div>
                                 <div>Su pago anterior</div><div x-text="moneda(form.pago_anterior || 0)"></div>
                                 <div>Fecha de pago anterior</div><div x-text="pagoAnteriorFecha || '—'"></div>
@@ -383,6 +385,8 @@
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="form.recargo === 'si' ? moneda(50) : moneda(0)"></div>
                                 <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
+                                <div x-show="adeudo && adeudo.pendiente > 0">Adeudo pendiente</div><div x-show="adeudo && adeudo.pendiente > 0" x-text="moneda(adeudo.pendiente)"></div>
+                                <div x-show="form.prepay==='si'">Total adelanto</div><div x-show="form.prepay==='si'" x-text="moneda(totales.prepay_total || 0)"></div>
                                 <div x-show="form.prepay==='si'">Meses adelantados</div><div x-show="form.prepay==='si'" x-text="`${form.prepay_months} (hasta ${mesFinalCobertura(form.prepay_months)})` || '-'"></div>
                                 <div>Su pago anterior</div><div x-text="moneda(form.pago_anterior || 0)"></div>
                                 <div>Fecha de pago anterior</div><div x-text="pagoAnteriorFecha || '—'"></div>
@@ -500,7 +504,7 @@
             form:{ numero:'', recargo:'no', pago_anterior:0, metodo:'', cobro:'', prepay:'no', prepay_months:6, otro:'no' },
             pagoAnteriorFecha:'',
             datos:{ nombre:'', mensualidad:0 },
-            totales:{ total:0, letra:'' },
+            totales:{ total:0, letra:'', prepay_total:0 },
             adeudo:null,
             pagadoMesActual: false,
             prepayConfig:{ enabled:{}, matrix:{} },
@@ -854,14 +858,14 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                             this.totales.prepay_total = Math.round((base * (1 - percent/100)) * 100) / 100;
                         }
                     }
-                    total = this.totales.prepay_total;
+                    const adeudoPendiente = this.adeudo && this.adeudo.pendiente ? Number(this.adeudo.pendiente) : 0;
+                    total = Math.round((adeudoPendiente + this.totales.prepay_total) * 100) / 100;
                 }else{
                     if (this.adeudo && this.adeudo.meses > 0) {
-                        const base = mensualidad * this.adeudo.meses;
-                        const pagado = this.adeudo.pagado_parcial || 0;
-                        total = Math.round((Math.max(0, base - pagado) + rec) * 100) / 100;
+                        const pendienteSrv = Number(this.adeudo.pendiente || 0);
+                        total = Math.round(pendienteSrv * 100) / 100;
                     } else {
-                        total = mensualidad + rec;
+                        total = Math.round((mensualidad + rec) * 100) / 100;
                     }
                 }
                 
@@ -929,22 +933,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 this.discountAmount = 0;
             },
             removeDiscount(){
-                // Restaurar el total original sin descuento
-                const mensualidad = this.datos.mensualidad || 0;
-                const recargo = this.form.recargo === 'si' ? 50 : 0;
-                const pagoAnterior = this.form.pago_anterior || 0;
-                const prepayTotal = this.totales.prepay_total || 0;
-                
-                if (prepayTotal > 0) {
-                    this.totales.total = prepayTotal;
-                } else {
-                    this.totales.total = mensualidad + recargo + pagoAnterior;
-                }
-                
-                this.totales.letra = toWords(this.totales.total);
-                
-                // Eliminar el descuento aplicado
                 this.appliedDiscount = 0;
+                this.recalcular();
             },
             refNumberPad(){
                 const n = this.ref.numero;
@@ -1084,7 +1074,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 recargo: this.form.recargo,
                                 prepay: this.form.prepay,
                                 prepay_months: this.form.prepay==='si'? this.form.prepay_months : null,
-                                prepay_total: this.form.prepay==='si'? this.totales.total : null,
+                                prepay_total: this.form.prepay==='si'? this.totales.prepay_total : null,
+                                adeudo_pendiente: this.adeudo && this.adeudo.pendiente ? Number(this.adeudo.pendiente) : 0,
                                 pago_anterior: this.form.pago_anterior,
                                 metodo: this.form.metodo,
                                 cobro: this.form.cobro,
@@ -1125,7 +1116,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 recargo: this.form.recargo,
                                 prepay: this.form.prepay,
                                 prepay_months: this.form.prepay==='si'? this.form.prepay_months : null,
-                                prepay_total: this.form.prepay==='si'? this.totales.total : null,
+                                prepay_total: this.form.prepay==='si'? this.totales.prepay_total : null,
+                                adeudo_pendiente: this.adeudo && this.adeudo.pendiente ? Number(this.adeudo.pendiente) : 0,
                                 pago_anterior: this.form.pago_anterior,
                                 metodo: this.form.metodo,
                                 cobro: this.form.cobro,
@@ -1167,7 +1159,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 const hora = this.hora();
                 const folio = this.refNumberPad();
                 const prepayLabel = this.form.prepay === 'si' ? 'SÍ' : 'NO';
-                const prepayLine = this.form.prepay === 'si' ? `<div class="line"><div class="l">Meses adelantados</div><div>${this.form.prepay_months} (hasta ${this.mesFinalCobertura(this.form.prepay_months)})</div></div><div class="sep"></div>` : '';
+                const adeudoLine = (this.adeudo && Number(this.adeudo.pendiente) > 0) ? `<div class="line"><div class="l">Adeudo pendiente</div><div>${this.moneda(Number(this.adeudo.pendiente))}</div></div>` : '';
+                const prepayLine = this.form.prepay === 'si' ? `<div class="line"><div class="l">Pago adelantado</div><div>${this.moneda(this.totales.prepay_total || 0)}</div></div><div class="line"><div class="l">Meses adelantados</div><div>${this.form.prepay_months} (hasta ${this.mesFinalCobertura(this.form.prepay_months)})</div></div><div class="sep"></div>` : '';
                 const discountLine = this.appliedDiscount > 0 ? `<div class="line"><div class="l">Descuento</div><div>${this.moneda(this.appliedDiscount)}</div></div>` : '';
                 const html = `
 <!doctype html>
@@ -1205,6 +1198,7 @@ html,body{ margin:0; padding:0 }
   <div class="line"><div class="l">Recargo</div><div>${recargo}</div></div>
   <div class="line"><div class="l">Pago por adelantado</div><div>${prepayLabel}</div></div>
   <div class="sep"></div>
+  ${adeudoLine}
   ${prepayLine}
   <div class="line"><div class="l">Total (número)</div><div>${totalNum}</div></div>
   <div class="line"><div class="l">Total (letra)</div><div style="max-width:42mm;text-align:right">${totalLetra}</div></div>
