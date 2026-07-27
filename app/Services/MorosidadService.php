@@ -193,41 +193,13 @@ class MorosidadService
             }
         }
 
-        // Recargo por pago tardío del periodo actual:
-        // Solo aplica si la mensualidad NO se cubrió a tiempo (antes/en el día 7 de vencimiento).
-        // Si pagó completo y puntual, no debe recargo aunque hoy sea día >= 8.
-        if ($usuario->adeudo_monto <= 0 && $mesesAdeudo <= 0) {
-            $limiteSinRecargo = Carbon::createFromFormat('Y-m', $periodo)->startOfMonth()->day(7)->endOfDay();
-            $pagadoATiempo = (float) Factura::whereNull('deleted_at')
-                ->where('numero_servicio', $numero)
-                ->where('periodo', $periodo)
-                ->where('created_at', '<=', $limiteSinRecargo)
-                ->sum('total');
-
-            // Hubo pago tardío/incompleto solo si al vencer no se había cubierto la mensualidad
-            if ($pagadoATiempo < $mensualidad - 0.01) {
-                $recargoActual = ($today->day >= 8) ? 50.0 : 0.0;
-                $moraRowActual = CargoMora::where('periodo', $periodo)->where('numero_servicio', $numero)->first();
-                if ($moraRowActual) {
-                    $recargoActual = max($recargoActual, (float) $moraRowActual->monto);
-                }
-                if ($recargoActual > 0) {
-                    $pagadoPeriodoActual = (float) Factura::whereNull('deleted_at')
-                        ->where('numero_servicio', $numero)
-                        ->where('periodo', $periodo)
-                        ->sum('total');
-                    $dueActual = $mensualidad + $recargoActual;
-                    // Solo cuando hubo pago del mes pero no alcanzó a cubrir mensualidad + recargo
-                    if ($pagadoPeriodoActual > 0 && $pagadoPeriodoActual < $dueActual - 0.01) {
-                        $faltante = round($dueActual - $pagadoPeriodoActual, 2);
-                        $pendiente = round($pendiente + $faltante, 2);
-                        $recargo = $recargoActual;
-                        $mesesAdeudo = 1;
-                        $desdePeriodo = $periodo;
-                    }
-                }
-            }
-        }
+        // NOTA: antes había aquí una detección automática de "recargo por pago
+        // tardío" que volvía a sumar $50 si el pago del periodo no lo incluía,
+        // sin importar que el cobrador hubiera decidido explícitamente no
+        // cobrarlo con el selector Recargo Sí/No. Eso contradice la regla real
+        // del negocio: el cobrador decide con ese botón, y su decisión es
+        // definitiva — un pago registrado (con o sin recargo) siempre liquida
+        // el periodo, nunca debe quedar un residuo automático.
 
         // Detectar si el cliente está cubierto este mes sin deuda (pagó por transferencia/adelanto).
         // Solo se requiere proximo_pago en el futuro; la descripción puede ser vacía.
@@ -460,16 +432,19 @@ class MorosidadService
             ];
         }
 
+        // Chivato/Pozo Hondo/Rosalito no tienen "Modificar total": el único
+        // monto ajustable es el recargo (Sí/No), decisión manual del cobrador.
+        // Sea cual sea el total resultante, la transacción siempre liquida el
+        // periodo completo — nunca debe quedar un residuo de adeudo por no
+        // haber cobrado el recargo (a diferencia de Transferencias, donde el
+        // monto sí puede ser un pago genuinamente parcial).
         $payload['adeudo_monto_previo'] = $adeudoMonto;
         $payload['adeudo_descripcion_previa'] = $usuario->adeudo_descripcion;
 
-        $cubreTodo = $totalPagado >= $adeudoMonto - 0.01;
-        $restante = $cubreTodo ? 0 : round($adeudoMonto - $totalPagado, 2);
-
         return [
             'payload' => $payload,
-            'adeudo_monto' => $restante > 0 ? $restante : 0,
-            'adeudo_descripcion' => $restante > 0 ? $usuario->adeudo_descripcion : null,
+            'adeudo_monto' => 0,
+            'adeudo_descripcion' => null,
         ];
     }
 
