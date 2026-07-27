@@ -639,24 +639,38 @@ class FacturaService
                 // adelantamos proximo_pago para que el sistema lo reconozca como
                 // saldado (mismo mecanismo que ya usa el pago por adelantado).
                 $hoy = now();
-                $recargoActual = $hoy->day >= 8 ? 50.0 : 0.0;
-                $moraRow = \App\Models\CargoMora::where('periodo', $hoy->format('Y-m'))
-                    ->where('numero_servicio', $usuario->numero_servicio)
-                    ->first();
-                if ($moraRow) {
-                    $recargoActual = max($recargoActual, (float) $moraRow->monto);
-                }
 
-                $cargoPeriodoActual = $mensualidad + $recargoActual;
-                $disponibleParaAdeudoViejo = max(0.0, $totalPagado - $cargoPeriodoActual);
-                $nuevoAdeudo = max(0.0, round($adeudoMonto - $disponibleParaAdeudoViejo, 2));
+                // Si el admin marcó explícitamente el pago para un periodo YA
+                // pasado (ej. Transferencias -> "mes pasado"), el pago completo
+                // va directo al adeudo viejo: no se reparte contra la mensualidad
+                // de HOY (ese mes no es lo que se está pagando) ni se adelanta
+                // proximo_pago (no cubre el mes actual, cubre uno anterior).
+                $periodoPago = $factura->periodo;
+                $esPeriodoPasado = $periodoPago && $periodoPago < $hoy->format('Y-m');
 
-                if ($disponibleParaAdeudoViejo > 0) {
-                    $siguientePeriodo = $hoy->copy()->addMonth()->format('Y-m');
-                    if (empty($usuario->proximo_pago) || strcmp($siguientePeriodo, (string) $usuario->proximo_pago) > 0) {
-                        $usuario->proximo_pago = $siguientePeriodo;
+                if ($esPeriodoPasado) {
+                    $disponibleParaAdeudoViejo = $totalPagado;
+                } else {
+                    $recargoActual = $hoy->day >= 8 ? 50.0 : 0.0;
+                    $moraRow = \App\Models\CargoMora::where('periodo', $hoy->format('Y-m'))
+                        ->where('numero_servicio', $usuario->numero_servicio)
+                        ->first();
+                    if ($moraRow) {
+                        $recargoActual = max($recargoActual, (float) $moraRow->monto);
+                    }
+
+                    $cargoPeriodoActual = $mensualidad + $recargoActual;
+                    $disponibleParaAdeudoViejo = max(0.0, $totalPagado - $cargoPeriodoActual);
+
+                    if ($disponibleParaAdeudoViejo > 0) {
+                        $siguientePeriodo = $hoy->copy()->addMonth()->format('Y-m');
+                        if (empty($usuario->proximo_pago) || strcmp($siguientePeriodo, (string) $usuario->proximo_pago) > 0) {
+                            $usuario->proximo_pago = $siguientePeriodo;
+                        }
                     }
                 }
+
+                $nuevoAdeudo = max(0.0, round($adeudoMonto - $disponibleParaAdeudoViejo, 2));
 
                 if ($nuevoAdeudo <= 0) {
                     $usuario->adeudo_monto = 0;
