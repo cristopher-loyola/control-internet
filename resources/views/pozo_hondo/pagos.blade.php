@@ -933,13 +933,11 @@
                         this.pagoAnteriorFecha = this.fechaLocal(j.data.fecha || j.data.created_at);
                         const now = new Date();
                         const day = now.getDate();
-                        let paidThisMonth = false;
-                        try {
-                            const paidDate = j.data.created_at ? new Date(j.data.created_at) : (j.data.fecha ? new Date(j.data.fecha) : null);
-                            if (paidDate) {
-                                paidThisMonth = (paidDate.getFullYear() === now.getFullYear() && paidDate.getMonth() === now.getMonth());
-                            }
-                        } catch(_) {}
+                        // Comparar el PERIODO de la factura contra el mes actual, no la fecha
+                        // de creación (un recibo de reconciliación de un mes viejo, creado hoy,
+                        // no debe marcar el mes actual como pagado).
+                        const currentPeriodo = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+                        const paidThisMonth = (j.data.periodo === currentPeriodo);
                         this.pagadoMesActual = paidThisMonth;
                         if (day >= 8 && !paidThisMonth) {
                             this.form.recargo = 'si';
