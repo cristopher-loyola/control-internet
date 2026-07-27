@@ -82,17 +82,25 @@
                                         @endif
                                     </td>
                                     <td class="px-4 py-3">
-                                        @if($index === 0 && !$corteActivo && $corte->estado === 'cerrado')
-                                            <button onclick="reanudarCorte({{ $corte->id }})" 
-                                                    class="inline-flex items-center px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-medium rounded-lg transition-colors duration-200">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                                                </svg>
-                                                Reanudar
+                                        <div class="flex items-center gap-1.5">
+                                            @if($index === 0 && !$corteActivo && $corte->estado === 'cerrado')
+                                                <button onclick="reanudarCorte({{ $corte->id }})"
+                                                        class="inline-flex items-center px-3 py-1.5 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-medium rounded-lg transition-colors duration-200">
+                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                                    </svg>
+                                                    Reanudar
+                                                </button>
+                                            @endif
+                                            <button onclick="imprimirTicketCorte({{ $corte->id }})" title="Imprimir ticket de corte"
+                                                    class="inline-flex items-center px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors duration-200">
+                                                🧾
                                             </button>
-                                        @else
-                                            <span class="text-gray-400">-</span>
-                                        @endif
+                                            <button onclick="imprimirDetallePagos({{ $corte->id }})" title="Imprimir detalle de pagos"
+                                                    class="inline-flex items-center px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors duration-200">
+                                                📋
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             @empty
@@ -173,6 +181,121 @@
                         });
                     });
                 }
+
+                function fmtMoney(n) {
+                    return '$' + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                }
+
+                async function obtenerDetalleCorte(corteId) {
+                    const r = await fetch('/pozo-hondo/corte/' + corteId + '/detalle', { headers: { 'Accept': 'application/json' } });
+                    const j = await r.json();
+                    if (!j.ok) {
+                        Swal.fire({ title: 'Error', text: j.message || 'No se pudo obtener el corte', icon: 'error', confirmButtonColor: '#EF4444' });
+                        return null;
+                    }
+                    return j;
+                }
+
+                async function imprimirTicketCorte(corteId) {
+                    const d = await obtenerDetalleCorte(corteId);
+                    if (!d) return;
+                    const totalCaja = d.total_caja;
+                    const comisionRecibo = d.total_comision_recibo;
+                    const totalEntregar = totalCaja - comisionRecibo;
+                    const numPagos = d.pagos.length;
+                    const cobrador = d.cobrador;
+                    const zona = 'POZO HONDO';
+                    const fecha = new Date().toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+                    const html = `
+                    <html><head><meta charset="UTF-8">
+                    <style>
+                      @page { margin: 10mm; }
+                      * { margin:0; padding:0; box-sizing:border-box }
+                      body { font-family:'Courier New', monospace; font-size:30px; color:#000; width:100% }
+                      .center { text-align:center } .right { text-align:right }
+                      table { width:100%; border-collapse:collapse }
+                      td { padding:14px 0; font-size:28px }
+                      .lbl { font-size:26px; font-weight:bold } .muted { font-size:22px }
+                      .bold { font-weight:bold } .total { font-size:48px; font-weight:bold }
+                      .dash { border-top:2px solid #000; margin:22px 0 } .solid { border-top:4px solid #000; margin:22px 0 }
+                    </style></head><body>
+                    <div class="center">
+                      <div class="bold" style="font-size:56px">TICKET DE CORTE</div>
+                      <div style="font-size:30px;letter-spacing:2px;font-weight:bold">${zona}</div>
+                    </div>
+                    <hr class="dash">
+                    <table>
+                      <tr><td class="lbl">Fecha</td><td class="right">${fecha}</td></tr>
+                      <tr><td class="lbl">Cobrador</td><td class="right bold">${cobrador}</td></tr>
+                      <tr><td class="lbl">N° de pagos</td><td class="right bold">${numPagos}</td></tr>
+                    </table>
+                    <hr class="dash">
+                    <table>
+                      <tr><td class="lbl">Total en caja</td><td class="right">${fmtMoney(totalCaja)}</td></tr>
+                      <tr><td class="lbl">(-) Comisión recibo</td><td class="right">${fmtMoney(comisionRecibo)}</td></tr>
+                    </table>
+                    <hr class="solid">
+                    <table>
+                      <tr><td class="bold" style="font-size:36px">TOTAL A ENTREGAR</td><td class="right total">${fmtMoney(totalEntregar)}</td></tr>
+                    </table>
+                    </body></html>`;
+
+                    const w = window.open('', '_blank', 'width=850,height=1100,toolbar=0');
+                    w.document.write(html);
+                    w.document.close();
+                    setTimeout(() => { w.print(); w.close(); }, 600);
+                }
+
+                async function imprimirDetallePagos(corteId) {
+                    const d = await obtenerDetalleCorte(corteId);
+                    if (!d) return;
+                    const cobrador = d.cobrador;
+                    const zona = 'POZO HONDO';
+                    const fechaImpresion = new Date().toLocaleString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+                    const filas = d.pagos.map(p => `
+                      <div style="display:flex;justify-content:space-between;margin-top:18px">
+                        <span class="bold" style="font-size:30px">${p.numero_servicio}</span>
+                        <span class="bold" style="font-size:30px">${fmtMoney(p.total)}</span>
+                      </div>
+                      <div style="font-size:26px">${p.nombre || '-'}</div>
+                      <div class="muted" style="font-size:22px">${p.fecha}</div>
+                      <hr class="dash">
+                    `).join('');
+
+                    const html = `
+                    <html><head><meta charset="UTF-8">
+                    <style>
+                      @page { margin: 10mm; }
+                      * { margin:0; padding:0; box-sizing:border-box }
+                      body { font-family:'Courier New', monospace; font-size:26px; color:#000; width:100% }
+                      .center { text-align:center } .right { text-align:right }
+                      table { width:100%; border-collapse:collapse }
+                      .resumen td { padding:12px 0; font-size:28px }
+                      .lbl { font-size:26px; font-weight:bold } .muted { font-size:22px }
+                      .bold { font-weight:bold }
+                      .dash { border-top:2px solid #000; margin:18px 0 } .solid { border-top:4px solid #000; margin:22px 0 }
+                    </style></head><body>
+                    <div class="center">
+                      <div class="bold" style="font-size:52px">DETALLE DE PAGOS</div>
+                      <div style="font-size:30px;letter-spacing:2px;font-weight:bold">${zona}</div>
+                    </div>
+                    <hr class="dash">
+                    <table class="resumen">
+                      <tr><td class="lbl">Fecha impresión</td><td class="right">${fechaImpresion}</td></tr>
+                      <tr><td class="lbl">Cobrador</td><td class="right bold">${cobrador}</td></tr>
+                      <tr><td class="lbl">N° de pagos</td><td class="right bold">${d.pagos.length}</td></tr>
+                    </table>
+                    <hr class="solid">
+                    ${filas}
+                    </body></html>`;
+
+                    const w = window.open('', '_blank', 'width=850,height=1100,toolbar=0');
+                    w.document.write(html);
+                    w.document.close();
+                    setTimeout(() => { w.print(); w.close(); }, 600);
+                }
             </script>
 
             <!-- Resumen -->
@@ -185,18 +308,6 @@
                                 <p class="text-xs text-gray-500 mt-1">
                                     {{ $cortes->count() }} corte{{ $cortes->count() !== 1 ? 's' : '' }} registrado{{ $cortes->count() !== 1 ? 's' : '' }}
                                 </p>
-                                <div class="mt-3 pt-3 border-t border-gray-200">
-                                    <p class="text-sm text-gray-600">Total de Cobros</p>
-                                    <p class="text-xl font-bold text-blue-600">
-                                        {{ $cortes->sum('total_pagos') }}
-                                    </p>
-                                </div>
-                                <div class="mt-3 pt-3 border-t border-gray-200">
-                                    <p class="text-sm text-gray-600">Total Recaudado</p>
-                                    <p class="text-xl font-bold text-green-600">
-                                        ${{ number_format($cortes->sum('total_recaudado'), 2) }}
-                                    </p>
-                                </div>
                             </div>
                             <div class="p-3 bg-indigo-100 rounded-lg">
                                 <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

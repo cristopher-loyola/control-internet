@@ -42,4 +42,5 @@ Route::middleware(['auth', 'role:chivato'])
         Route::post('/corte/reanudar', [ChivatoController::class, 'reanudarCorte'])->name('corte.reanudar');
         Route::get('/corte/activo', [ChivatoController::class, 'corteActivo'])->name('corte.activo');
         Route::get('/corte/exportar', [ChivatoController::class, 'exportarCorteExcel'])->name('corte.exportar');
+        Route::get('/corte/{id}/detalle', [ChivatoController::class, 'corteDetalleJson'])->name('corte.detalle');
     });

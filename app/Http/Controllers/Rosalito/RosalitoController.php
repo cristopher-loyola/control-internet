@@ -771,6 +771,53 @@ class RosalitoController extends Controller
     }
 
     /**
+     * Detalle de pagos de un corte (activo o cerrado) para imprimir sus
+     * tickets desde el Historial de Cortes.
+     */
+    public function corteDetalleJson(Request $request, $id)
+    {
+        $user = $request->user();
+        $zona = 'rosalito';
+
+        $corte = CorteCaja::where('id', $id)
+            ->where('zona', $zona)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (! $corte) {
+            return response()->json(['ok' => false, 'message' => 'Corte no encontrado'], 404);
+        }
+
+        $facturas = Factura::whereNull('deleted_at')
+            ->where('corte_caja_id', $corte->id)
+            ->orderBy('created_at')
+            ->get(['numero_servicio', 'total', 'payload', 'created_at']);
+
+        $pagos = $facturas->map(function ($f) {
+            $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+            $recargoCobrado = isset($payload['recargo']) && $payload['recargo'] === 'si';
+            $comisionReconexion = $recargoCobrado ? 50 : 0;
+
+            return [
+                'numero_servicio' => $f->numero_servicio,
+                'nombre' => $payload['nombre'] ?? '-',
+                'total' => (float) $f->total - $comisionReconexion,
+                'fecha' => $f->created_at ? $f->created_at->format('d/m/Y H:i') : null,
+            ];
+        })->values();
+
+        return response()->json([
+            'ok' => true,
+            'corte_id' => $corte->id,
+            'fecha_inicio' => $corte->fecha_inicio?->format('d/m/Y H:i'),
+            'cobrador' => $user->name,
+            'pagos' => $pagos,
+            'total_caja' => round($pagos->sum('total'), 2),
+            'total_comision_recibo' => $pagos->count() * 10,
+        ]);
+    }
+
+    /**
      * Verificar si hay un corte activo
      */
     public function corteActivo(Request $request)

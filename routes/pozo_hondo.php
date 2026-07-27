@@ -29,4 +29,5 @@ Route::middleware(['auth', 'role:pozo_hondo'])
         Route::post('/corte/reanudar', [PozoHondoController::class, 'reanudarCorte'])->name('corte.reanudar');
         Route::get('/corte/activo', [PozoHondoController::class, 'corteActivo'])->name('corte.activo');
         Route::get('/corte/exportar', [PozoHondoController::class, 'exportarCorteExcel'])->name('corte.exportar');
+        Route::get('/corte/{id}/detalle', [PozoHondoController::class, 'corteDetalleJson'])->name('corte.detalle');
     });

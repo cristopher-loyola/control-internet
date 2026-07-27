@@ -6,7 +6,10 @@
       "Bash(php -l resources/views/pozo_hondo/pagos.blade.php)",
       "Bash(netstat -ano)",
       "PowerShell(Get-NetTCPConnection -LocalPort 8000 -State Listen -ErrorAction SilentlyContinue)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:8000/)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:8000/)",
+      "Bash(php -l routes/rosalito.php)",
+      "Bash(php -l routes/chivato.php)",
+      "Bash(php -l routes/pozo_hondo.php)"
     ]
   }
 }

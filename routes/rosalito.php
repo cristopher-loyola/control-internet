@@ -29,4 +29,5 @@ Route::middleware(['auth', 'role:rosalito'])
         Route::post('/corte/reanudar', [RosalitoController::class, 'reanudarCorte'])->name('corte.reanudar');
         Route::get('/corte/activo', [RosalitoController::class, 'corteActivo'])->name('corte.activo');
         Route::get('/corte/exportar', [RosalitoController::class, 'exportarCorteExcel'])->name('corte.exportar');
+        Route::get('/corte/{id}/detalle', [RosalitoController::class, 'corteDetalleJson'])->name('corte.detalle');
     });
