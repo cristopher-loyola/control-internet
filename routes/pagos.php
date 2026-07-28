@@ -10,7 +10,7 @@ Route::middleware(['auth', 'role:pagos'])
     ->name('pagos.')
     ->group(function () {
         Route::get('/', [PagosController::class, 'index'])->name('index');
-        
+
         // Dashboard metrics para pagos
         Route::get('/dashboard/metrics', [DashboardController::class, 'metrics'])->name('dashboard.metrics');
         Route::get('/dashboard/cancelados/all', [DashboardController::class, 'allCancelados'])->name('dashboard.cancelados.all');
@@ -20,6 +20,7 @@ Route::middleware(['auth', 'role:pagos'])
         Route::get('/dashboard/activos/pagados', [DashboardController::class, 'activosPagadosIndex'])->name('dashboard.activos.pagados');
         Route::get('/dashboard/morosos', [DashboardController::class, 'morososIndex'])->name('dashboard.morosos');
         Route::get('/dashboard/pagos-adelantados', [DashboardController::class, 'prepayClientsIndex'])->name('dashboard.prepay.index');
+        Route::get('/dashboard/pagos-adelantados/search', [DashboardController::class, 'prepayClientsSearch'])->name('dashboard.prepay.search');
 
         // Rutas módulo recibos
         Route::get('/recibos', [PagosController::class, 'recibos'])->name('recibos');

@@ -128,20 +128,20 @@
                     </div>
                     <a href="{{ route('pagos.dashboard.cancelados') }}" class="btn btn-primary btn-sm">Ver todos</a>
                 </div>
-                <div class="text-3xl font-bold text-gray-800 dark:text-white" x-text="allCancelados.cancelados_count ?? 0"></div>
+                <div class="text-3xl font-bold text-gray-800 dark:text-white" x-text="metrics.cancelados_count ?? 0"></div>
                 <div class="text-xs text-gray-500 mt-1">Total de cancelaciones</div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead><tr class="text-left text-gray-400 border-b border-gray-100 dark:border-gray-700"><th class="pb-2 font-medium">Número</th><th class="pb-2 font-medium">Nombre</th><th class="pb-2 font-medium">Fecha</th></tr></thead>
                         <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
-                            <template x-for="c in allCancelados.cancelados" :key="c.id">
+                            <template x-for="c in (metrics.cancelados || [])" :key="c.id">
                                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
                                     <td class="py-2" x-text="c.numero_servicio"></td>
                                     <td class="py-2" x-text="c.nombre_cliente"></td>
                                     <td class="py-2 text-gray-500" x-text="(c.updated_at ?? '').replace('T',' ').slice(0,10)"></td>
                                 </tr>
                             </template>
-                            <tr x-show="!allCancelados.cancelados || allCancelados.cancelados.length === 0"><td colspan="3" class="py-5 text-center text-gray-400 italic">Sin cancelaciones</td></tr>
+                            <tr x-show="!metrics.cancelados || metrics.cancelados.length === 0"><td colspan="3" class="py-5 text-center text-gray-400 italic">Sin cancelaciones</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -233,7 +233,13 @@
                                         <span class="px-2 py-0.5 rounded-full bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 text-[11px] font-bold" x-text="p.desde"></span>
                                     </td>
                                     <td class="py-3 text-center">
-                                        <span class="px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-[11px] font-bold" x-text="p.hasta"></span>
+                                            <div class="flex flex-col items-center gap-1">
+                                                <span class="px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-[11px] font-bold" x-text="p.hasta"></span>
+                                                <template x-if="p.expira_pronto">
+                                                    <span class="px-2 py-0.5 rounded-full bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300 text-[11px] font-bold"
+                                                          x-text="(p.dias_para_vencer ?? 0) === 0 ? 'Vence hoy' : `Vence en ${(p.dias_para_vencer ?? 0)}d`"></span>
+                                                </template>
+                                            </div>
                                     </td>
                                 </tr>
                             </template>
@@ -258,15 +264,16 @@
             weekTo: null,
             monthVal: null,
             validWeek: true,
-            metrics: { metodos: [], clientes_nuevos: {day:0,week:0,month:0}, ventas_series: {labels:[], values:[]}, prepay_clients: [] },
-            allCancelados: { cancelados_count: 0, cancelados: [] },
+            metrics: { metodos: [], clientes_nuevos: {day:0,week:0,month:0}, ventas_series: {labels:[], values:[]}, prepay_clients: [], cancelados_count: 0, cancelados: [], morosos: [], morosos_count: 0 },
             chartMetodos: null,
             chartClientes: null,
             metodoColors: ['#16a34a','#0ea5e9','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#84cc16'],
+            currentRequest: null,
+            lastMetodos: null,
+            lastClientes: null,
             init(){
                 this.loadMetrics(true);
-                this.loadAllCancelados();
-                setInterval(() => this.loadMetrics(false), 15000);
+                setInterval(() => this.loadMetrics(false), 120000);
             },
             money(v){ return '$' + Number(v ?? 0).toFixed(2); },
             metodoPct(monto){
@@ -300,19 +307,32 @@
                     const d = (this.monthVal ? this.monthVal+'-01' : new Date().toISOString().slice(0,7)+'-01');
                     url.searchParams.set('date', d);
                 }
-                fetch(url).then(r => r.json()).then(data => {
-                    if(!data.ok) {
+                if(this.currentRequest) this.currentRequest.abort();
+                this.currentRequest = new AbortController();
+
+                fetch(url, { signal: this.currentRequest.signal })
+                    .then(r => r.json())
+                    .then(data => {
+                        if(!data.ok) {
+                            this.loading = false;
+                            return;
+                        }
+                        this.metrics = data;
+                        if(JSON.stringify(data.metodos) !== JSON.stringify(this.lastMetodos)) {
+                            this.renderMetodos();
+                            this.lastMetodos = data.metodos;
+                        }
+                        if(JSON.stringify(data.clientes_nuevos) !== JSON.stringify(this.lastClientes)) {
+                            this.renderClientes();
+                            this.lastClientes = data.clientes_nuevos;
+                        }
                         this.loading = false;
-                        return;
-                    }
-                    this.metrics = data;
-                    this.renderMetodos();
-                    this.renderClientes();
-                    this.loading = false;
-                }).catch(err => {
-                    console.error(err);
-                    this.loading = false;
-                });
+                    }).catch(err => {
+                        if(err.name !== 'AbortError') {
+                            console.error(err);
+                        }
+                        this.loading = false;
+                    });
             },
             onPeriodChange(){
                 if(this.period==='week'){
@@ -351,13 +371,6 @@
                 if(this.period==='week'){ return !!this.weekFrom && !!this.weekTo && this.validWeek; }
                 if(this.period==='month'){ return !!this.monthVal; }
                 return true;
-            },
-            loadAllCancelados(){
-                const url = new URL('{{ route('pagos.dashboard.cancelados.all') }}', window.location.origin);
-                fetch(url).then(r => r.json()).then(data => {
-                    if(!data.ok) return;
-                    this.allCancelados = data;
-                });
             },
             renderMetodos(){
                 const labels = (this.metrics.metodos || []).map(m => m.metodo || 'N/D');

@@ -8,12 +8,13 @@ use App\Models\Factura;
 use App\Models\Inventario;
 use App\Models\PrepaySetting;
 use App\Models\Usuario;
-use App\Services\MorosidadService;
+use App\Services\PrepayDashboardService;
 use Dompdf\Dompdf;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
@@ -222,46 +223,162 @@ class DashboardController extends Controller
 
     public function prepayClientsIndex(Request $request)
     {
-        $clients = Factura::whereNull('deleted_at')
-            ->where(function ($q) {
-                $q->where('payload->prepay', 'si')
-                    ->orWhere('payload->prepay', true);
-            })
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($f) {
-                $p = $f->payload;
-                $months = (int) ($p['prepay_months'] ?? 0);
-                $from = $f->created_at ? Carbon::parse($f->created_at) : now();
-                $to = $from->copy()->addMonths($months);
-
-                return (object) [
-                    'numero' => (string) ($f->numero_servicio ?? '—'),
-                    'nombre' => (string) ($p['nombre'] ?? '—'),
-                    'desde' => $from->format('d/m/Y'),
-                    'hasta' => $to->format('d/m/Y'),
-                    'monto' => (float) $f->total,
-                    'created_at' => $f->created_at,
-                    'meses' => $months,
-                ];
-            })
-            ->unique('numero')
-            ->values();
-
-        // Manual pagination if needed, but for now we'll just show them all or use simple collection pagination
+        $q = PrepayDashboardService::parseQuery($request->query('q'));
         $perPage = 50;
-        $page = $request->get('page', 1);
-        $paginatedItems = new \Illuminate\Pagination\LengthAwarePaginator(
-            $clients->forPage($page, $perPage),
-            $clients->count(),
-            $perPage,
-            $page,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
+
+        $base = Factura::query()
+            ->whereNull('deleted_at')
+            ->where(function ($qb) {
+                $qb->where('payload->prepay', 'si')
+                    ->orWhere('payload->prepay', true);
+            });
+        if ($q && $q['type'] === 'numero') {
+            $base->where('numero_servicio', $q['value']);
+        } elseif ($q && $q['type'] === 'nombre') {
+            $driver = DB::getDriverName();
+            $needle = mb_strtolower($q['value']);
+            if ($driver === 'mysql') {
+                $base->whereRaw("LOWER(JSON_UNQUOTE(JSON_EXTRACT(payload, '$.nombre'))) LIKE ?", ['%'.$needle.'%']);
+            } else {
+                $base->whereRaw("LOWER(JSON_EXTRACT(payload, '$.nombre')) LIKE ?", ['%'.$needle.'%']);
+            }
+        }
+
+        $latest = (clone $base)
+            ->select(DB::raw('MAX(id) as id'))
+            ->groupBy('numero_servicio');
+
+        $facturasQuery = Factura::query()
+            ->joinSub($latest, 'latest', function ($join) {
+                $join->on('facturas.id', '=', 'latest.id');
+            })
+            ->select(['facturas.id', 'facturas.numero_servicio', 'facturas.total', 'facturas.payload', 'facturas.created_at']);
+
+        $driver = DB::getDriverName();
+        if ($driver === 'mysql') {
+            $vence = "DATE_ADD(facturas.created_at, INTERVAL CAST(JSON_UNQUOTE(JSON_EXTRACT(facturas.payload,'$.prepay_months')) AS UNSIGNED) MONTH)";
+            $facturasQuery->orderByRaw("({$vence} < CURDATE()) asc, {$vence} asc");
+        } else {
+            $facturasQuery->orderByDesc('facturas.created_at');
+        }
+
+        $paginatedItems = $facturasQuery->paginate($perPage)->appends($request->query());
+        $now = now();
+        $mapped = $paginatedItems->getCollection()->map(function ($f) use ($now) {
+            $p = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+            $months = (int) (($p['prepay_months'] ?? 0) ?: 0);
+            $from = $f->created_at ? Carbon::parse($f->created_at) : null;
+            $venceAt = PrepayDashboardService::venceAt($from, $months);
+            $estado = PrepayDashboardService::estadoPorVencimiento($venceAt, $now);
+
+            return (object) [
+                'numero' => (string) ($f->numero_servicio ?? '—'),
+                'nombre' => (string) (($p['nombre'] ?? '—') ?: '—'),
+                'meses' => $months,
+                'desde' => $from ? $from->format('d/m/Y') : '—',
+                'hasta' => $venceAt ? $venceAt->format('d/m/Y') : '—',
+                'vence_at' => $venceAt ? $venceAt->toDateString() : null,
+                'monto' => (float) ($f->total ?? 0),
+                'estado' => $estado['estado'],
+                'vencido' => (bool) $estado['vencido'],
+                'expira_pronto' => (bool) $estado['expira_pronto'],
+                'dias_para_vencer' => $estado['dias_para_vencer'],
+            ];
+        })->filter(fn ($r) => $r->numero !== '—' && $r->meses > 0 && $r->vence_at !== null)->values();
+
+        if ($driver !== 'mysql') {
+            $mapped = $mapped->sortBy(fn ($r) => [$r->vencido ? 1 : 0, $r->vence_at ?? '9999-12-31'])->values();
+        }
+
+        $paginatedItems->setCollection($mapped);
 
         return view('admin.pagos_adelantados', [
             'clients' => $paginatedItems,
         ]);
+    }
+
+    public function prepayClientsSearch(Request $request)
+    {
+        $q = PrepayDashboardService::parseQuery($request->query('q'));
+        if (! $q) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Búsqueda inválida',
+            ], 422);
+        }
+
+        $base = Factura::query()
+            ->whereNull('deleted_at')
+            ->where(function ($qb) {
+                $qb->where('payload->prepay', 'si')
+                    ->orWhere('payload->prepay', true);
+            });
+        if ($q['type'] === 'numero') {
+            $base->where('numero_servicio', $q['value']);
+        } else {
+            $driver = DB::getDriverName();
+            $needle = mb_strtolower($q['value']);
+            if ($driver === 'mysql') {
+                $base->whereRaw("LOWER(JSON_UNQUOTE(JSON_EXTRACT(payload, '$.nombre'))) LIKE ?", ['%'.$needle.'%']);
+            } else {
+                $base->whereRaw("LOWER(JSON_EXTRACT(payload, '$.nombre')) LIKE ?", ['%'.$needle.'%']);
+            }
+        }
+
+        $latest = (clone $base)
+            ->select(DB::raw('MAX(id) as id'))
+            ->groupBy('numero_servicio');
+
+        $facturasQuery = Factura::query()
+            ->joinSub($latest, 'latest', function ($join) {
+                $join->on('facturas.id', '=', 'latest.id');
+            })
+            ->select(['facturas.id', 'facturas.numero_servicio', 'facturas.total', 'facturas.payload', 'facturas.created_at']);
+
+        $driver = DB::getDriverName();
+        if ($driver === 'mysql') {
+            $vence = "DATE_ADD(facturas.created_at, INTERVAL CAST(JSON_UNQUOTE(JSON_EXTRACT(facturas.payload,'$.prepay_months')) AS UNSIGNED) MONTH)";
+            $facturasQuery->orderByRaw("({$vence} < CURDATE()) asc, {$vence} asc");
+        } else {
+            $facturasQuery->orderByDesc('facturas.created_at');
+        }
+
+        $rows = $facturasQuery->limit(50)->get();
+        if ($rows->isEmpty()) {
+            return response()->json(['ok' => true, 'data' => [], 'message' => 'Sin resultados']);
+        }
+
+        $now = now();
+        $data = $rows->map(function ($f) use ($now) {
+            $p = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+            $months = (int) (($p['prepay_months'] ?? 0) ?: 0);
+            $from = $f->created_at ? Carbon::parse($f->created_at) : null;
+            $venceAt = PrepayDashboardService::venceAt($from, $months);
+            $estado = PrepayDashboardService::estadoPorVencimiento($venceAt, $now);
+
+            return [
+                'numero' => (string) ($f->numero_servicio ?? '—'),
+                'nombre' => (string) (($p['nombre'] ?? '—') ?: '—'),
+                'meses' => $months,
+                'desde' => $from ? $from->format('d/m/Y') : '—',
+                'hasta' => $venceAt ? $venceAt->format('d/m/Y') : '—',
+                'vence_at' => $venceAt ? $venceAt->toDateString() : null,
+                'monto' => (float) ($f->total ?? 0),
+                'estado' => $estado['estado'],
+                'vencido' => (bool) $estado['vencido'],
+                'expira_pronto' => (bool) $estado['expira_pronto'],
+                'dias_para_vencer' => $estado['dias_para_vencer'],
+            ];
+        })
+            ->filter(fn ($r) => ($r['numero'] ?? '—') !== '—' && ($r['vence_at'] ?? null) !== null && (int) ($r['meses'] ?? 0) > 0)
+            ->values()
+            ->all();
+
+        if ($driver !== 'mysql') {
+            usort($data, fn ($a, $b) => [$a['vencido'] ? 1 : 0, $a['vence_at']] <=> [$b['vencido'] ? 1 : 0, $b['vence_at']]);
+        }
+
+        return response()->json(['ok' => true, 'data' => $data]);
     }
 
     public function metrics(Request $request)
@@ -348,13 +465,14 @@ class DashboardController extends Controller
             // Serie de tendencia de ventas según periodo
             $ventasSeries = $this->ventasSeries($period, $range);
 
-            // Clientes con suscripción cancelada
+            // Clientes con suscripción cancelada (total sin filtrar por período)
             $cancelNames = ['Cancelado', 'Baja', 'Eliminado', 'Inactivo'];
-            $canceladosQuery = Usuario::whereHas('estatusServicio', function ($q) use ($cancelNames) {
+            $canceladosCount = (int) Usuario::whereHas('estatusServicio', function ($q) use ($cancelNames) {
                 $q->whereIn('nombre', $cancelNames);
-            })->whereBetween('updated_at', [$range['from'], $range['to']]);
-            $canceladosCount = (int) $canceladosQuery->count();
-            $cancelados = $canceladosQuery
+            })->count();
+            $cancelados = Usuario::whereHas('estatusServicio', function ($q) use ($cancelNames) {
+                $q->whereIn('nombre', $cancelNames);
+            })
                 ->orderBy('updated_at', 'desc')
                 ->limit(10)
                 ->get(['id', 'numero_servicio', 'nombre_cliente', 'updated_at']);
@@ -386,32 +504,44 @@ class DashboardController extends Controller
             $morososPreview = array_slice($morososData['items'], 0, 8);
 
             // Clientes con pagos adelantados
-            $prepayClients = Factura::whereNull('deleted_at')
-                ->where(function ($q) {
-                    $q->where('payload->prepay', 'si')
+            $prepayBase = Factura::query()
+                ->whereNull('deleted_at')
+                ->where(function ($qb) {
+                    $qb->where('payload->prepay', 'si')
                         ->orWhere('payload->prepay', true);
-                })
-                ->orderBy('created_at', 'desc')
-                ->limit(20) // Limitar para mejorar rendimiento
-                ->get()
-                ->map(function ($f) {
-                    $p = $f->payload;
-                    $months = (int) ($p['prepay_months'] ?? 0);
-                    $from = $f->created_at ? Carbon::parse($f->created_at) : now();
-                    $to = $from->copy()->addMonths($months);
+                });
+            $prepayIds = (clone $prepayBase)
+                ->select(DB::raw('MAX(id) as id'))
+                ->groupBy('numero_servicio');
+            $prepayFacturas = Factura::whereIn('id', $prepayIds)
+                ->where('created_at', '>=', now()->subMonths(18))
+                ->get(['id', 'numero_servicio', 'total', 'payload', 'created_at']);
+            $now = now();
+            $prepayClients = $prepayFacturas->map(function ($f) use ($now) {
+                $p = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+                $months = (int) (($p['prepay_months'] ?? 0) ?: 0);
+                $from = $f->created_at ? Carbon::parse($f->created_at) : null;
+                $venceAt = PrepayDashboardService::venceAt($from, $months);
+                $estado = PrepayDashboardService::estadoPorVencimiento($venceAt, $now);
 
-                    return [
-                        'numero' => (string) ($f->numero_servicio ?? '—'),
-                        'nombre' => (string) ($p['nombre'] ?? '—'),
-                        'desde' => $from->format('d/m/Y'),
-                        'hasta' => $to->format('d/m/Y'),
-                        'monto' => (float) $f->total,
-                        'created_at' => $from->toDateTimeString(),
-                    ];
-                })
-                ->unique('numero')
+                return [
+                    'numero' => (string) ($f->numero_servicio ?? '—'),
+                    'nombre' => (string) (($p['nombre'] ?? '—') ?: '—'),
+                    'desde' => $from ? $from->format('d/m/Y') : '—',
+                    'hasta' => $venceAt ? $venceAt->format('d/m/Y') : '—',
+                    'vence_at' => $venceAt ? $venceAt->toDateString() : null,
+                    'monto' => (float) ($f->total ?? 0),
+                    'estado' => $estado['estado'],
+                    'vencido' => (bool) $estado['vencido'],
+                    'expira_pronto' => (bool) $estado['expira_pronto'],
+                    'dias_para_vencer' => $estado['dias_para_vencer'],
+                ];
+            })
+                ->filter(fn ($r) => ($r['numero'] ?? '—') !== '—' && ($r['vence_at'] ?? null) !== null && ! ($r['vencido'] ?? false))
+                ->sortBy(fn ($r) => $r['vence_at'])
                 ->values()
-                ->take(10);
+                ->take(5)
+                ->all();
 
             return [
                 'ingresos' => round($ventasTotal, 2),
@@ -487,47 +617,175 @@ class DashboardController extends Controller
     {
         $now = now();
         $periodo = $now->format('Y-m');
-        // Solo aplicar del día 8 en adelante, idempotente
         if ((int) $now->format('d') <= 7) {
             return;
         }
-        // Obtener usuarios que no tienen pago vigente del periodo
-        $pagos = Factura::whereNull('deleted_at')->where('periodo', $periodo)->pluck('numero_servicio')->filter()->unique()->all();
-        $usuarios = Usuario::whereNotIn('numero_servicio', $pagos)->get(['id', 'numero_servicio']);
-        foreach ($usuarios as $u) {
-            CargoMora::firstOrCreate(
-                ['numero_servicio' => (string) $u->numero_servicio, 'periodo' => $periodo],
-                ['usuario_id' => $u->id, 'monto' => 50.00, 'applied_at' => now()]
-            );
+
+        $cacheKey = 'monthly_surcharges_applied_'.$periodo.'_'.$now->toDateString();
+        if (cache()->has($cacheKey)) {
+            return;
         }
+
+        $pagos = Factura::whereNull('deleted_at')
+            ->where('periodo', $periodo)
+            ->pluck('numero_servicio')
+            ->filter()
+            ->unique()
+            ->all();
+        $exclude = array_fill_keys(array_map('strval', $pagos), true);
+
+        $prepayRows = Factura::whereNull('deleted_at')
+            ->whereNotNull('periodo')
+            ->where(function ($q) {
+                $q->where('payload->prepay', 'si')
+                    ->orWhere('payload->prepay', true);
+            })
+            ->get(['numero_servicio', 'periodo', 'payload']);
+        foreach ($prepayRows as $f) {
+            $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+            $months = (int) ($payload['prepay_months'] ?? 0);
+            if ($months <= 0) {
+                continue;
+            }
+            try {
+                $end = Carbon::createFromFormat('Y-m', (string) $f->periodo)->startOfMonth()->addMonths($months)->format('Y-m');
+                if ($end >= $periodo) {
+                    $exclude[(string) $f->numero_servicio] = true;
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
+        $existing = CargoMora::where('periodo', $periodo)->pluck('numero_servicio')->filter()->unique()->all();
+        $existingSet = array_fill_keys(array_map('strval', $existing), true);
+
+        $usuariosQuery = Usuario::query()->select(['id', 'numero_servicio']);
+        if (! empty($exclude)) {
+            $usuariosQuery->whereNotIn('numero_servicio', array_keys($exclude));
+        }
+        $usuarios = $usuariosQuery->get();
+
+        $nowTs = now();
+        $insert = [];
+        foreach ($usuarios as $u) {
+            $num = (string) $u->numero_servicio;
+            if ($num === '' || isset($existingSet[$num])) {
+                continue;
+            }
+            $insert[] = [
+                'usuario_id' => $u->id,
+                'numero_servicio' => $num,
+                'periodo' => $periodo,
+                'monto' => 50.00,
+                'applied_at' => $nowTs,
+                'created_at' => $nowTs,
+                'updated_at' => $nowTs,
+            ];
+        }
+        foreach (array_chunk($insert, 500) as $chunk) {
+            CargoMora::insert($chunk);
+        }
+
+        cache()->put($cacheKey, true, $now->copy()->endOfDay());
     }
 
     private function computeMorosos(string $periodo): array
     {
-        $usuarios = Usuario::with(['estado', 'estatusServicio'])->get(['id', 'numero_servicio', 'nombre_cliente', 'tarifa', 'created_at', 'updated_at']);
-        $pagados = Factura::whereNull('deleted_at')->where('periodo', $periodo)->pluck('numero_servicio')->filter()->unique()->toArray();
+        $usuarios = Usuario::query()->get(['numero_servicio', 'nombre_cliente', 'tarifa']);
+        $pagados = Factura::whereNull('deleted_at')
+            ->where('periodo', $periodo)
+            ->pluck('numero_servicio')
+            ->filter()
+            ->unique()
+            ->all();
+        $pagadosSet = array_fill_keys(array_map('strval', $pagados), true);
         $curStart = Carbon::createFromFormat('Y-m', $periodo)->startOfMonth();
         $dueDate = $curStart->copy()->day(7)->endOfDay();
         $today = now();
-        $svc = new MorosidadService;
+
+        $mora = CargoMora::where('periodo', $periodo)->pluck('monto', 'numero_servicio')->toArray();
+
+        $lastPaid = Factura::whereNull('deleted_at')
+            ->whereNotNull('periodo')
+            ->select('numero_servicio', DB::raw('MAX(periodo) as max_periodo'))
+            ->groupBy('numero_servicio')
+            ->get()
+            ->mapWithKeys(fn ($r) => [(string) ($r->numero_servicio ?? '') => (string) ($r->max_periodo ?? '')])
+            ->toArray();
+
+        $prepayRows = Factura::whereNull('deleted_at')
+            ->whereNotNull('periodo')
+            ->where(function ($q) {
+                $q->where('payload->prepay', 'si')
+                    ->orWhere('payload->prepay', true);
+            })
+            ->get(['numero_servicio', 'periodo', 'payload']);
+        $prepayEnd = [];
+        foreach ($prepayRows as $f) {
+            $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
+            $months = (int) ($payload['prepay_months'] ?? 0);
+            if ($months <= 0) {
+                continue;
+            }
+            try {
+                $end = Carbon::createFromFormat('Y-m', (string) $f->periodo)->startOfMonth()->addMonths($months)->format('Y-m');
+                $num = (string) $f->numero_servicio;
+                if ($num === '') {
+                    continue;
+                }
+                if (! isset($prepayEnd[$num]) || $end > $prepayEnd[$num]) {
+                    $prepayEnd[$num] = $end;
+                }
+            } catch (\Throwable $e) {
+            }
+        }
+
         $items = [];
         foreach ($usuarios as $u) {
             $num = (string) $u->numero_servicio;
-            if (in_array($num, $pagados, true)) {
+            if ($num === '' || isset($pagadosSet[$num])) {
                 continue; // al corriente
             }
-            $res = $svc->calcularAdeudoUsuario($num, $periodo);
-            if (! ($res['ok'] ?? false)) {
-                continue;
+            $mensualidad = (float) preg_replace('/[^\d.]/', '', (string) ($u->tarifa ?? 0));
+            if (! is_finite($mensualidad) || $mensualidad < 0) {
+                $mensualidad = 0.0;
             }
-            $pendiente = (float) ($res['pendiente'] ?? 0);
-            $mesesAdeudo = (int) ($res['meses_adeudo'] ?? 0);
+
+            $ultimoCubierto = $lastPaid[$num] ?? null;
+            $prepay = $prepayEnd[$num] ?? null;
+            if ($prepay && (! $ultimoCubierto || $prepay > $ultimoCubierto)) {
+                $ultimoCubierto = $prepay;
+            }
+
+            $mesesAdeudo = 0;
+            $desdePeriodo = $periodo;
+            if ($ultimoCubierto) {
+                try {
+                    $lp = Carbon::createFromFormat('Y-m', (string) $ultimoCubierto)->startOfMonth();
+                    if ($lp->lessThan($curStart)) {
+                        $mesesAdeudo = (int) $lp->diffInMonths($curStart);
+                        $desdePeriodo = $lp->copy()->addMonth()->format('Y-m');
+                    } else {
+                        continue;
+                    }
+                } catch (\Throwable $e) {
+                    $mesesAdeudo = 1;
+                    $desdePeriodo = $periodo;
+                }
+            } else {
+                $mesesAdeudo = 1;
+                $desdePeriodo = $periodo;
+            }
+
+            $recargoUnaVez = ($today->day >= 8 && $mesesAdeudo >= 1) ? 50.0 : 0.0;
+            if (isset($mora[$num])) {
+                $recargoUnaVez = max($recargoUnaVez, (float) $mora[$num]);
+            }
+            $pendiente = round(($mensualidad * $mesesAdeudo) + $recargoUnaVez, 2);
             if ($pendiente <= 0 || $mesesAdeudo <= 0) {
                 continue;
             }
-            $mensualidad = (float) ($res['mensualidad'] ?? 0);
-            $recargoUnaVez = (float) ($res['recargo'] ?? 0);
-            $desdePeriodo = (string) ($res['desde_periodo'] ?? $periodo);
+
             $diasRetraso = max(0, $today->diffInDays($dueDate, false) * -1);
             $items[] = [
                 'numero' => $num,
@@ -542,6 +800,8 @@ class DashboardController extends Controller
                 'moroso' => $pendiente > 0,
             ];
         }
+
+        usort($items, fn ($a, $b) => (int) $a['numero'] <=> (int) $b['numero']);
 
         return ['count' => count($items), 'items' => $items];
     }
