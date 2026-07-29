@@ -18,6 +18,14 @@ class MorosidadService
     private const ADEUDO_IMPORT_CUTOFF = '2026-06';
 
     /**
+     * Mes en que se detectó el caso de clientes sin ningún historial (sin
+     * facturas, sin adeudo manual, sin proximo_pago). A partir de este mes
+     * no se congelan en "debe 1 mes" para siempre: se les va sumando una
+     * mensualidad más por cada mes que pase sin registro de pago.
+     */
+    private const SIN_HISTORIAL_CUTOFF = '2026-07';
+
+    /**
      * Calcula el adeudo del cliente para un periodo (YYYY-MM).
      *
      * Flujo (corregido para pagos por adelantado):
@@ -125,8 +133,19 @@ class MorosidadService
                     $desdePeriodo = $periodo;
                 }
             } else {
-                $mesesAdeudo = 1;
-                $desdePeriodo = $periodo;
+                // Sin ningún dato (ni facturas, ni adeudo manual, ni proximo_pago,
+                // ni descripción): no se congela en "debe 1 mes" para siempre.
+                // Desde SIN_HISTORIAL_CUTOFF se acumula una mensualidad más por
+                // cada mes que pasa. Ej: 1003 debe 1 mes en jul-2026 (cutoff),
+                // 2 meses en ago-2026, 3 en sep-2026, etc.
+                $cutoffStart = Carbon::createFromFormat('Y-m', self::SIN_HISTORIAL_CUTOFF)->startOfMonth();
+                if ($curStart->greaterThanOrEqualTo($cutoffStart)) {
+                    $mesesAdeudo = $cutoffStart->diffInMonths($curStart) + 1;
+                    $desdePeriodo = self::SIN_HISTORIAL_CUTOFF;
+                } else {
+                    $mesesAdeudo = 1;
+                    $desdePeriodo = $periodo;
+                }
             }
         }
 
@@ -173,6 +192,20 @@ class MorosidadService
                 // sin inventar meses intermedios (la descripción solo indica el mes inicial).
                 // montoManual ya está NETO de pagos al adeudo (marcarComoPagado lo reduce).
                 $primerMesVivo = Carbon::createFromFormat('Y-m', self::ADEUDO_IMPORT_CUTOFF)->startOfMonth()->addMonth();
+
+                // Si el cliente tiene proximo_pago posterior al cutoff, ese mes ya estaba
+                // cubierto (proxPagoCovers) mientras el periodo consultado era anterior a él.
+                // Al llegar/pasar ese mes hay que arrancar a contar "meses vivos" desde ahí,
+                // no desde el cutoff fijo, o se cuenta ese mes dos veces (una por proximo_pago,
+                // otra por la mensualidad extra) rompiendo la regla "mes actual + mensualidad".
+                if (!empty($usuario->proximo_pago) && preg_match('/^\d{4}-\d{2}$/', (string) $usuario->proximo_pago)) {
+                    try {
+                        $proxPagoStart = Carbon::createFromFormat('Y-m', $usuario->proximo_pago)->startOfMonth();
+                        if ($proxPagoStart->greaterThan($primerMesVivo)) {
+                            $primerMesVivo = $proxPagoStart;
+                        }
+                    } catch (\Throwable $e) {}
+                }
 
                 $extraMonths = 0;
                 if ($primerMesVivo->lessThanOrEqualTo($curStart)) {
