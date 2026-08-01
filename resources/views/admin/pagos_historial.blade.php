@@ -49,12 +49,13 @@
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Usuario</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Cobró</th>
                                     <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Método</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Adeudo</th>
                                     <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                                 @foreach ($rows as $r)
-                                    <tr class="{{ $r->deleted_at ? 'bg-rose-50/80 dark:bg-rose-900/20' : '' }}">
+                                    <tr class="{{ $r->deleted_at ? 'bg-rose-50/80 dark:bg-rose-900/20' : ($r->adeudo_modificado ? 'bg-yellow-100 dark:bg-yellow-900/30' : '') }}">
                                         <td class="px-4 py-2 whitespace-nowrap text-sm font-mono">{{ str_pad((string)$r->reference_number, 8, '0', STR_PAD_LEFT) }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm">{{ optional($r->created_at)->format('d/m/Y H:i') }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm">${{ number_format((float)$r->total, 2) }}</td>
@@ -84,6 +85,16 @@
                                         <td class="px-4 py-2 whitespace-nowrap text-sm">{{ $r->user_name ?? '—' }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm">{{ $r->cobro ?? '—' }}</td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm">{{ $r->metodo ?? '—' }}</td>
+                                        <td class="px-4 py-2 whitespace-nowrap text-sm">
+                                            @if($r->adeudo_modificado)
+                                                <span class="inline-flex items-center px-2 py-1 rounded text-xs bg-yellow-500 text-white"
+                                                    title="Este pago redujo un adeudo registrado: de ${{ number_format($r->adeudo_previo, 2) }}{{ $r->adeudo_descripcion_previa ? ' ('.$r->adeudo_descripcion_previa.')' : '' }}">
+                                                    Modificó adeudo
+                                                </span>
+                                            @else
+                                                <span class="text-xs text-gray-400">—</span>
+                                            @endif
+                                        </td>
                                         <td class="px-4 py-2 whitespace-nowrap text-sm text-right">
                                             @if(!$r->deleted_at)
                                                 <!-- <a href="{{ route('admin.pagos.index') }}?folio={{ $r->reference_number }}&readonly=1" class="btn btn-info btn-sm">Re-imprimir</a> -->
