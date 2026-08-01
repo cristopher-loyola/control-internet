@@ -20,6 +20,17 @@ use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    /**
+     * Parsea un periodo "YYYY-MM" al primer día de ese mes.
+     * OJO: Carbon::createFromFormat('Y-m', ...) sin día toma el día actual
+     * como default, y se desborda al mes siguiente si hoy es un día que no
+     * existe en el mes destino (ej. día 31 en un mes de 30 días).
+     */
+    private function periodoStart(string $periodo): Carbon
+    {
+        return Carbon::createFromFormat('Y-m-d', $periodo . '-01')->startOfMonth();
+    }
+
     public function corteView()
     {
         return view('admin.corte');
@@ -878,7 +889,7 @@ class DashboardController extends Controller
                 continue;
             }
             try {
-                $end = Carbon::createFromFormat('Y-m', (string) $f->periodo)->startOfMonth()->addMonths($months)->format('Y-m');
+                $end = $this->periodoStart((string) $f->periodo)->addMonths($months)->format('Y-m');
                 if ($end >= $periodo) {
                     $exclude[(string) $f->numero_servicio] = true;
                 }
@@ -939,7 +950,7 @@ class DashboardController extends Controller
                 $pagadosPeriodoActual[(string)$numKey] = (float)$sums[$periodo];
             }
         }
-        $curStart = Carbon::createFromFormat('Y-m', $periodo)->startOfMonth();
+        $curStart = $this->periodoStart($periodo);
         $prevStart = $curStart->copy()->subMonth(); // tope para excluir mes actual del cálculo
         $dueDate = $curStart->copy()->day(7)->endOfDay();
         $today = now();
@@ -962,7 +973,7 @@ class DashboardController extends Controller
                 continue;
             }
             try {
-                $end = Carbon::createFromFormat('Y-m', (string) $f->periodo)->startOfMonth()->addMonths($months)->format('Y-m');
+                $end = $this->periodoStart((string) $f->periodo)->addMonths($months)->format('Y-m');
                 $num = (string) $f->numero_servicio;
                 if ($num === '') {
                     continue;
@@ -1008,7 +1019,7 @@ class DashboardController extends Controller
             // Si el admin configuró un próximo pago, derivar el último cubierto como el mes anterior
             if (! empty($u->proximo_pago) && preg_match('/^\d{4}-\d{2}$/', $u->proximo_pago)) {
                 try {
-                    $ppCubierto = Carbon::createFromFormat('Y-m', $u->proximo_pago)->subMonth()->format('Y-m');
+                    $ppCubierto = $this->periodoStart($u->proximo_pago)->subMonth()->format('Y-m');
                     if (! $ultimoCubierto || $ppCubierto > $ultimoCubierto) {
                         $ultimoCubierto = $ppCubierto;
                     }
@@ -1020,7 +1031,7 @@ class DashboardController extends Controller
             $desdePeriodo = $prevStart->format('Y-m');
             if ($ultimoCubierto) {
                 try {
-                    $lp = Carbon::createFromFormat('Y-m', (string) $ultimoCubierto)->startOfMonth();
+                    $lp = $this->periodoStart((string) $ultimoCubierto);
                     if ($lp->lessThan($prevStart)) {
                         $mesesAdeudo = (int) $lp->diffInMonths($prevStart);
                         $desdePeriodo = $lp->copy()->addMonth()->format('Y-m');
@@ -1113,7 +1124,7 @@ class DashboardController extends Controller
             $fileBase = 'resumen-semanal-'.$from->toDateString().'_a_'.$to->toDateString();
         } else {
             $request->validate(['month' => ['required', 'date_format:Y-m']]);
-            $month = Carbon::createFromFormat('Y-m', $request->query('month'));
+            $month = $this->periodoStart($request->query('month'));
             $range = ['from' => $month->copy()->startOfMonth(), 'to' => $month->copy()->endOfMonth()];
             $title = 'Resumen del mes '.$month->locale('es')->translatedFormat('F Y');
             $fileBase = 'resumen-mensual-'.$month->format('Y-m');

@@ -26,6 +26,18 @@ class MorosidadService
     private const SIN_HISTORIAL_CUTOFF = '2026-07';
 
     /**
+     * Parsea un periodo "YYYY-MM" al primer día de ese mes.
+     * OJO: Carbon::createFromFormat('Y-m', ...) sin día toma el día actual
+     * como default (ej. 31), y si el mes destino tiene menos días (ej. junio,
+     * 30 días) el resultado se DESBORDA al mes siguiente. Por eso siempre hay
+     * que fijar el día explícitamente a 1.
+     */
+    private function periodoStart(string $periodo): Carbon
+    {
+        return Carbon::createFromFormat('Y-m-d', $periodo . '-01')->startOfMonth();
+    }
+
+    /**
      * Calcula el adeudo del cliente para un periodo (YYYY-MM).
      *
      * Flujo (corregido para pagos por adelantado):
@@ -48,7 +60,7 @@ class MorosidadService
             return ['ok' => false, 'message' => 'Usuario no encontrado'];
         }
         $periodo = $periodo ?: now()->format('Y-m');
-        $curStart = Carbon::createFromFormat('Y-m', $periodo)->startOfMonth();
+        $curStart = $this->periodoStart($periodo);
         $today = now();
 
         // Determinar si es el primer periodo de cobro (hasta la fecha de vencimiento del primer pago)
@@ -79,8 +91,8 @@ class MorosidadService
         // proximo_pago = "2026-08" significa que julio ya está cubierto → último cubierto = "2026-07".
         if (!empty($usuario->proximo_pago) && preg_match('/^\d{4}-\d{2}$/', (string) $usuario->proximo_pago)) {
             try {
-                $ppLastCovered = Carbon::createFromFormat('Y-m', $usuario->proximo_pago)
-                    ->startOfMonth()->subMonth()->format('Y-m');
+                $ppLastCovered = $this->periodoStart($usuario->proximo_pago)
+                    ->subMonth()->format('Y-m');
                 $ultimoPeriodoCubierto = $this->maxPeriodo($ultimoPeriodoCubierto, $ppLastCovered);
             } catch (\Throwable $e) {}
         }
@@ -88,7 +100,7 @@ class MorosidadService
         $mesesAdeudo = 0;
         $desdePeriodo = $periodo;
         if ($ultimoPeriodoCubierto) {
-            $lp = Carbon::createFromFormat('Y-m', $ultimoPeriodoCubierto)->startOfMonth();
+            $lp = $this->periodoStart($ultimoPeriodoCubierto);
             if ($lp->lessThan($curStart)) {
                 $mesesAdeudo = $lp->diffInMonths($curStart);
                 $desdePeriodo = $lp->copy()->addMonth()->format('Y-m');
@@ -98,7 +110,7 @@ class MorosidadService
             if (!empty($usuario->proximo_pago) && preg_match('/^\d{4}-\d{2}$/', $usuario->proximo_pago)) {
                 // proximo_pago indica el primer período impago; el mes anterior fue el último cubierto.
                 try {
-                    $proxPago = Carbon::createFromFormat('Y-m', $usuario->proximo_pago)->startOfMonth();
+                    $proxPago = $this->periodoStart($usuario->proximo_pago);
                     $lp = $proxPago->copy()->subMonth();
                     if ($lp->lessThan($curStart)) {
                         $mesesAdeudo = $lp->diffInMonths($curStart);
@@ -116,7 +128,7 @@ class MorosidadService
                 $parsedPeriodo = $this->parsePeriodoFromDescripcion((string) $usuario->adeudo_descripcion);
                 if ($parsedPeriodo) {
                     try {
-                        $descStart = Carbon::createFromFormat('Y-m', $parsedPeriodo)->startOfMonth();
+                        $descStart = $this->periodoStart($parsedPeriodo);
                         if ($descStart->lessThanOrEqualTo($curStart)) {
                             $desdePeriodo = $parsedPeriodo;
                             $mesesAdeudo = $descStart->diffInMonths($curStart->copy()->addMonth());
@@ -138,7 +150,7 @@ class MorosidadService
                 // Desde SIN_HISTORIAL_CUTOFF se acumula una mensualidad más por
                 // cada mes que pasa. Ej: 1003 debe 1 mes en jul-2026 (cutoff),
                 // 2 meses en ago-2026, 3 en sep-2026, etc.
-                $cutoffStart = Carbon::createFromFormat('Y-m', self::SIN_HISTORIAL_CUTOFF)->startOfMonth();
+                $cutoffStart = $this->periodoStart(self::SIN_HISTORIAL_CUTOFF);
                 if ($curStart->greaterThanOrEqualTo($cutoffStart)) {
                     $mesesAdeudo = $cutoffStart->diffInMonths($curStart) + 1;
                     $desdePeriodo = self::SIN_HISTORIAL_CUTOFF;
@@ -161,7 +173,7 @@ class MorosidadService
         $base = max(0.0, $mensualidad * max(0, $mesesAdeudo));
         $pagadoParcial = 0.0;
         try {
-            $from = Carbon::createFromFormat('Y-m', $desdePeriodo)->startOfMonth();
+            $from = $this->periodoStart($desdePeriodo);
             $to = $curStart->copy()->endOfMonth();
             $pagadoParcial = (float) Factura::whereNull('deleted_at')
                 ->where('numero_servicio', $numero)
@@ -191,7 +203,7 @@ class MorosidadService
                 // los pagos hechos en esos meses. Así la deuda crece mes a mes sin congelarse y
                 // sin inventar meses intermedios (la descripción solo indica el mes inicial).
                 // montoManual ya está NETO de pagos al adeudo (marcarComoPagado lo reduce).
-                $primerMesVivo = Carbon::createFromFormat('Y-m', self::ADEUDO_IMPORT_CUTOFF)->startOfMonth()->addMonth();
+                $primerMesVivo = $this->periodoStart(self::ADEUDO_IMPORT_CUTOFF)->addMonth();
 
                 // Si el cliente tiene proximo_pago posterior al cutoff, ese mes ya estaba
                 // cubierto (proxPagoCovers) mientras el periodo consultado era anterior a él.
@@ -200,7 +212,7 @@ class MorosidadService
                 // otra por la mensualidad extra) rompiendo la regla "mes actual + mensualidad".
                 if (!empty($usuario->proximo_pago) && preg_match('/^\d{4}-\d{2}$/', (string) $usuario->proximo_pago)) {
                     try {
-                        $proxPagoStart = Carbon::createFromFormat('Y-m', $usuario->proximo_pago)->startOfMonth();
+                        $proxPagoStart = $this->periodoStart($usuario->proximo_pago);
                         if ($proxPagoStart->greaterThan($primerMesVivo)) {
                             $primerMesVivo = $proxPagoStart;
                         }
@@ -243,7 +255,7 @@ class MorosidadService
             && strcmp($usuario->proximo_pago, $periodo) > 0
         );
 
-        $desdeMes = $usuario->adeudo_descripcion ?: Carbon::createFromFormat('Y-m', $desdePeriodo)->locale('es')->translatedFormat('F Y');
+        $desdeMes = $usuario->adeudo_descripcion ?: $this->periodoStart($desdePeriodo)->locale('es')->translatedFormat('F Y');
         $hastaMes = $curStart->locale('es')->translatedFormat('F Y');
 
         $listaMeses = [];
@@ -254,7 +266,7 @@ class MorosidadService
         
         // Si NO tiene adeudo manual o además tiene adeudos por meses, los incluimos
         if ($mesesAdeudo > 0) {
-            $temp = Carbon::createFromFormat('Y-m', $desdePeriodo)->startOfMonth();
+            $temp = $this->periodoStart($desdePeriodo);
             for ($i = 0; $i < $mesesAdeudo; $i++) {
                 if ($temp->format('Y-m') !== $periodo) {
                     $listaMeses[] = $temp->locale('es')->translatedFormat('F Y');
@@ -342,7 +354,7 @@ class MorosidadService
                 continue;
             }
             try {
-                $end = Carbon::createFromFormat('Y-m', (string) $f->periodo)->startOfMonth()->addMonths($monthsEffective)->format('Y-m');
+                $end = $this->periodoStart((string) $f->periodo)->addMonths($monthsEffective)->format('Y-m');
                 $max = $this->maxPeriodo($max, $end);
             } catch (\Throwable $e) {
                 continue;
@@ -527,10 +539,10 @@ class MorosidadService
             return $a;
         }
         try {
-            $ca = Carbon::createFromFormat('Y-m', $a)->startOfMonth();
-            $cb = Carbon::createFromFormat('Y-m', $b)->startOfMonth();
-
-            return $cb->greaterThan($ca) ? $b : $a;
+            // Comparación lexicográfica: el formato "YYYY-MM" ordena igual que
+            // fechas reales, y evita el desborde de Carbon::createFromFormat('Y-m', ...)
+            // (ver periodoStart()).
+            return strcmp($b, $a) > 0 ? $b : $a;
         } catch (\Throwable $e) {
             return $a ?: $b;
         }

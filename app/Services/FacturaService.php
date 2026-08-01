@@ -685,7 +685,10 @@ class FacturaService
         if ($esPrepay && !empty($factura->periodo) && !empty($payload['prepay_months'])) {
             try {
                 $months = (int)$payload['prepay_months'];
-                $ultimoCubierto = Carbon::createFromFormat('Y-m', $factura->periodo)
+                // OJO: no usar Carbon::createFromFormat('Y-m', ...) sin día — se
+                // desborda al mes siguiente si hoy es un día que no existe en el
+                // mes destino (ej. 31 en un mes de 30 días).
+                $ultimoCubierto = Carbon::createFromFormat('Y-m-d', $factura->periodo . '-01')
                     ->startOfMonth()
                     ->addMonths($months)
                     ->format('Y-m');
