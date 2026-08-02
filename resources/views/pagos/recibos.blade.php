@@ -439,6 +439,7 @@
                                 </div>
                             </div>
                             <div class="receipt-grid">
+                                <div x-show="pagadoMesActual || alCorriente || (adeudo !== null && adeudo.meses <= 0 && adeudo.pendiente <= 0)">Estatus</div><div x-show="pagadoMesActual || alCorriente || (adeudo !== null && adeudo.meses <= 0 && adeudo.pendiente <= 0)">Pagado</div>
                                 <div>Nombre</div><div x-text="datos.nombre || '—'"></div>
                                 <div>Mes</div><div x-text="mesEnCursoCompleto()"></div>
                                 <div>Mensualidad de Internet</div><div x-text="moneda(datos.mensualidad)"></div>
@@ -479,6 +480,7 @@
                                 </div>
                             </div>
                             <div class="receipt-grid" :class="form.prepay === 'si' ? 'prepay-active' : ''">
+                                <div x-show="pagadoMesActual || alCorriente || (adeudo !== null && adeudo.meses <= 0 && adeudo.pendiente <= 0)">Estatus</div><div x-show="pagadoMesActual || alCorriente || (adeudo !== null && adeudo.meses <= 0 && adeudo.pendiente <= 0)">Pagado</div>
                                 <div>Nombre</div><div x-text="datos.nombre || '—'"></div>
                                 <div>Mes</div><div x-text="mesEnCursoCompleto()"></div>
                                 <div>Mensualidad de Internet</div><div x-text="moneda(datos.mensualidad)"></div>
