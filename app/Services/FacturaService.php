@@ -563,18 +563,28 @@ class FacturaService
             'estatus_servicio_id' => $usuario->estatus_servicio_id,
             'adeudo_monto' => $usuario->adeudo_monto,
             'adeudo_descripcion' => $usuario->adeudo_descripcion,
+            'proximo_pago' => $usuario->proximo_pago,
         ];
+
+        // Sin esto, calcularAdeudoUsuario no sabe que estos meses están en
+        // pausa y sigue acumulando adeudo apenas pasan, aunque el estatus
+        // diga "Baja temporal".
+        $payload = is_array($factura->payload) ? $factura->payload : (is_string($factura->payload) ? @json_decode($factura->payload, true) : []);
+        $months = (int) ($payload['baja_temporal_months'] ?? 0);
+        $proximoPago = $months > 0 ? now()->addMonths($months)->format('Y-m') : $usuario->proximo_pago;
 
         $usuario->update([
             'estatus_servicio_id' => $baja->id,
             'adeudo_monto' => 0,
             'adeudo_descripcion' => null,
+            'proximo_pago' => $proximoPago,
         ]);
 
         $this->logAuditoria('usuario_baja_temporal', 'usuarios', $usuario->id, $prev, [
             'estatus_servicio_id' => $baja->id,
             'adeudo_monto' => 0,
             'adeudo_descripcion' => null,
+            'proximo_pago' => $proximoPago,
         ]);
     }
 

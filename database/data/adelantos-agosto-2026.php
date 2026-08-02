@@ -13,6 +13,8 @@
  *
  * Excluye #3161, #3169, #6014, #6184: su nota trae "?" (incertidumbre del
  * propio registro), no se corrigen automáticamente.
+ * Excluye #6964 "Pago anual de Marzo-2027": fecha ambigua (¿inicia o termina
+ * en marzo 2027?), pendiente de confirmar con el negocio.
  *
  * Consumido por: php artisan corregir:adelantos-agosto2026
  */
@@ -20,6 +22,9 @@
 return [
     // numero_servicio => proximo_pago (primer mes YA NO cubierto)
     '1018' => '2027-01', // Adelanto hasta Diciembre 2026
+    '1118' => '2027-03', // Pago anual Marzo 2026 - Febrero 2027
+    '2028' => '2026-10', // Pago Anual: Octubre-2025 a Septiembre-2026
+    '5188' => '2027-01', // Pago hasta Diciembre-2026
     '1052' => '2026-09', // Adelanto Agosto 2026
     '2015' => '2026-09', // Adelanto julio-agosto
     '2061' => '2026-09', // Adelanto Agosto
