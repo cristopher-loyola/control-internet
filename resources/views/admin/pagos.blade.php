@@ -277,8 +277,9 @@
     </div>
     <div class="text-sm text-red-700">
         <p class="mb-1">
-            <strong>Cliente con adeudos:</strong> 
-            <span x-text="adeudo && adeudo.desde_label && (adeudo.desde_label.toLowerCase().includes('adeuda') || adeudo.desde_label.toLowerCase().includes('abril')) ? adeudo.desde_label : (adeudo ? `Adeuda desde ${adeudo.desde_label}` : '')"></span>
+            <strong>Cliente con adeudos:</strong>
+            <span x-show="manualEditEnabled" x-text="manualReason || '—'"></span>
+            <span x-show="!manualEditEnabled" x-text="adeudo && adeudo.desde_label && (adeudo.desde_label.toLowerCase().includes('adeuda') || adeudo.desde_label.toLowerCase().includes('abril')) ? adeudo.desde_label : (adeudo ? `Adeuda desde ${adeudo.desde_label}` : '')"></span>
         </p>
         <p class="mb-1">
             <strong>Total a pagar incluyendo adeudos:</strong> 
