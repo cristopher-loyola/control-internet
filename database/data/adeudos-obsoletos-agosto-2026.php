@@ -32,13 +32,6 @@
  */
 
 return [
-    // Segunda tanda (misma causa, detectados aparte porque su fila del Excel
-    // no traía nota; verificado: al limpiar el adeudo quedan en $300, que es
-    // exactamente lo que dice el Excel).
-    '2164', // $300.00 - Adeuda Junio (ya tiene factura de julio pagada)
-    '2170', // $600.00 - Adeuda Junio (ya tiene factura de julio pagada)
-    '7113', // $600.00 - Adeuda Mayo, Junio (ya tiene factura de julio pagada)
-
     '1020', // $80.00 - Junio $80.00 Julio $300.00. Adeuda Junio
     '3149', // $600.00 - Adeuda Mayo, Junio
     '3160', // $300.00 - Adeuda Junio
