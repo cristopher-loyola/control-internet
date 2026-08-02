@@ -449,12 +449,12 @@
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="moneda(recargoMonto())"></div>
                                 <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
-                                <div x-show="adeudoCobro > 0">Adeudo pendiente</div><div x-show="adeudoCobro > 0" x-text="moneda(adeudoCobro)"></div>
-                                <div x-show="adeudo && Number(adeudo.meses||0) > 0">Período adeudo</div><div x-show="adeudo && Number(adeudo.meses||0) > 0" x-text="adeudoPeriodoLabel() || '—'"></div>
+                                <div class="hidden" x-show="adeudoCobro > 0">Adeudo pendiente</div><div class="hidden" x-show="adeudoCobro > 0" x-text="moneda(adeudoCobro)"></div>
+                                <div class="hidden" x-show="adeudo && Number(adeudo.meses||0) > 0">Período adeudo</div><div class="hidden" x-show="adeudo && Number(adeudo.meses||0) > 0" x-text="adeudoPeriodoLabel() || '—'"></div>
                                 <div x-show="form.prepay==='si'">Total adelanto</div><div x-show="form.prepay==='si'" x-text="moneda(totales.prepay_total || 0)"></div>
                                 <div x-show="form.prepay==='si'">Meses adelantados</div><div x-show="form.prepay==='si'" x-text="`${form.prepay_months} (hasta ${mesFinalCobertura(form.prepay_months)})` || '-'"></div>
-                                <div>Su pago anterior</div><div x-text="moneda(form.pago_anterior || 0)"></div>
-                                <div>Fecha de pago anterior</div><div x-text="pagoAnteriorFecha || '—'"></div>
+                                <div class="hidden">Su pago anterior</div><div class="hidden" x-text="moneda(form.pago_anterior || 0)"></div>
+                                <div class="hidden">Fecha de pago anterior</div><div class="hidden" x-text="pagoAnteriorFecha || '—'"></div>
                                 <div>Total a pagar en número</div><div x-text="moneda(totales.total)"></div>
                                 <div class="col-span-1">Total a pagar en letra</div><div class="col-span-1" x-text="totales.letra"></div>
                                 <div>Método de pago</div><div x-text="form.metodo || '—'"></div>
@@ -489,12 +489,12 @@
                                 <div>Recargo</div><div x-text="form.recargo === 'si' ? 'SI' : 'NO'"></div>
                                 <div>Costo de reconexión</div><div x-text="moneda(recargoMonto())"></div>
                                 <div>Pago por adelantado</div><div x-text="form.prepay==='si' ? 'SÍ' : 'NO'"></div>
-                                <div x-show="adeudoCobro > 0">Adeudo pendiente</div><div x-show="adeudoCobro > 0" x-text="moneda(adeudoCobro)"></div>
-                                <div x-show="adeudo && Number(adeudo.meses||0) > 0">Período adeudo</div><div x-show="adeudo && Number(adeudo.meses||0) > 0" x-text="adeudoPeriodoLabel() || '—'"></div>
+                                <div class="hidden" x-show="adeudoCobro > 0">Adeudo pendiente</div><div class="hidden" x-show="adeudoCobro > 0" x-text="moneda(adeudoCobro)"></div>
+                                <div class="hidden" x-show="adeudo && Number(adeudo.meses||0) > 0">Período adeudo</div><div class="hidden" x-show="adeudo && Number(adeudo.meses||0) > 0" x-text="adeudoPeriodoLabel() || '—'"></div>
                                 <div x-show="form.prepay==='si'">Total adelanto</div><div x-show="form.prepay==='si'" x-text="moneda(totales.prepay_total || 0)"></div>
                                 <div x-show="form.prepay==='si'">Meses adelantados</div><div x-show="form.prepay==='si'" x-text="`${form.prepay_months} (hasta ${mesFinalCobertura(form.prepay_months)})` || '-'"></div>
-                                <div>Su pago anterior</div><div x-text="moneda(form.pago_anterior || 0)"></div>
-                                <div>Fecha de pago anterior</div><div x-text="pagoAnteriorFecha || '—'"></div>
+                                <div class="hidden">Su pago anterior</div><div class="hidden" x-text="moneda(form.pago_anterior || 0)"></div>
+                                <div class="hidden">Fecha de pago anterior</div><div class="hidden" x-text="pagoAnteriorFecha || '—'"></div>
                                 <div>Total a pagar en número</div><div x-text="moneda(totales.total)"></div>
                                 <div class="col-span-1">Total a pagar en letra</div><div class="col-span-1" x-text="totales.letra"></div>
                                 <div>Método de pago</div><div x-text="form.metodo || '—'"></div>
