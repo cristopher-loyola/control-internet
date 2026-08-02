@@ -144,14 +144,29 @@ class MorosidadService
                     $mesesAdeudo = 1;
                     $desdePeriodo = $periodo;
                 }
+            } elseif ($esPrimerPeriodo) {
+                // Cliente nuevo que todavía no llega a la fecha de vencimiento
+                // de su primer pago: no debe nada todavía, sin importar que no
+                // tenga facturas ni historial (obvio, acaba de darse de alta).
+                $mesesAdeudo = 0;
+                $desdePeriodo = $periodo;
             } else {
                 // Sin ningún dato (ni facturas, ni adeudo manual, ni proximo_pago,
                 // ni descripción): no se congela en "debe 1 mes" para siempre.
                 // Desde SIN_HISTORIAL_CUTOFF se acumula una mensualidad más por
                 // cada mes que pasa. Ej: 1003 debe 1 mes en jul-2026 (cutoff),
                 // 2 meses en ago-2026, 3 en sep-2026, etc.
+                //
+                // OJO: esto es solo para clientes VIEJOS de los que se perdió el
+                // rastro de pagos — nunca debe aplicar a alguien dado de alta
+                // DESPUÉS del cutoff, o se le cobrarían meses de antes de que
+                // fuera cliente (ej. #5599, contratado en septiembre, no puede
+                // deber julio).
                 $cutoffStart = $this->periodoStart(self::SIN_HISTORIAL_CUTOFF);
-                if ($curStart->greaterThanOrEqualTo($cutoffStart)) {
+                $fechaContratacion = $usuario->fecha_contratacion ? Carbon::parse($usuario->fecha_contratacion) : null;
+                $esClienteAnteriorAlCutoff = ! $fechaContratacion || $fechaContratacion->lessThanOrEqualTo($cutoffStart->copy()->endOfMonth());
+
+                if ($esClienteAnteriorAlCutoff && $curStart->greaterThanOrEqualTo($cutoffStart)) {
                     $mesesAdeudo = $cutoffStart->diffInMonths($curStart) + 1;
                     $desdePeriodo = self::SIN_HISTORIAL_CUTOFF;
                 } else {
