@@ -1272,7 +1272,6 @@ class AdminController extends Controller
         $usuario = Usuario::findOrFail($id);
         $periodo = $request->input('proximo_pago');
         $monto   = $request->input('proximo_pago_monto');
-        $adeudo  = $request->input('adeudo_monto');
 
         if ($periodo && !preg_match('/^\d{4}-\d{2}$/', $periodo)) {
             return response()->json(['ok' => false, 'message' => 'Formato de periodo inválido'], 422);
@@ -1280,20 +1279,17 @@ class AdminController extends Controller
         if ($monto !== null && $monto !== '' && (!is_numeric($monto) || $monto < 0)) {
             return response()->json(['ok' => false, 'message' => 'Monto inválido'], 422);
         }
-        if ($adeudo !== null && $adeudo !== '' && (!is_numeric($adeudo) || $adeudo < 0)) {
-            return response()->json(['ok' => false, 'message' => 'Monto de próximo pago inválido'], 422);
-        }
 
+        // OJO: esta ruta NO toca adeudo_monto — ese campo es del botón naranja
+        // "Cargo extra". Aquí solo se fija el monto exacto del próximo pago.
         $usuario->proximo_pago       = $periodo ?: null;
         $usuario->proximo_pago_monto = ($monto !== null && $monto !== '') ? round((float) $monto, 2) : null;
-        $usuario->adeudo_monto       = ($adeudo !== null && $adeudo !== '') ? round((float) $adeudo, 2) : 0;
         $usuario->save();
 
         return response()->json([
             'ok'                 => true,
             'proximo_pago'       => $usuario->proximo_pago,
             'proximo_pago_monto' => $usuario->proximo_pago_monto,
-            'adeudo_monto'       => $usuario->adeudo_monto,
         ]);
     }
 

@@ -1284,13 +1284,16 @@
                     this.ppGuardando = true;
                     this.ppResultado = null;
                     const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
-                    const adeudoMonto = this.ppMontoOverride !== '' ? Number(this.ppMontoOverride) : 0;
-                    // Si se fijó un monto de pago y no hay período manual, auto-avanzar al siguiente mes
+                    // El monto que el admin escribe es el que se cobra, tal cual.
+                    // Va a proximo_pago_monto — NO a adeudo_monto, que es del
+                    // botón naranja "Cargo extra".
+                    const montoFijado = this.ppMontoOverride !== '' ? Number(this.ppMontoOverride) : null;
+                    // Si fijó monto y no eligió período, aplica al mes en curso
+                    // (es el pago que el cliente está por hacer).
                     let periodo = this.ppPeriodo || null;
-                    if (adeudoMonto > 0 && !periodo) {
+                    if (montoFijado !== null && !periodo) {
                         const hoy = new Date();
-                        const sig = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 1);
-                        periodo = sig.getFullYear() + '-' + String(sig.getMonth() + 1).padStart(2, '0');
+                        periodo = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0');
                     }
                     try {
                         const r = await fetch(this.ppCliente.url, {
@@ -1298,8 +1301,7 @@
                             headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token },
                             body: JSON.stringify({
                                 proximo_pago:       periodo,
-                                proximo_pago_monto: this.ppMonto !== '' ? Number(this.ppMonto) : null,
-                                adeudo_monto:       adeudoMonto,
+                                proximo_pago_monto: montoFijado,
                             })
                         });
                         const j = await r.json();

@@ -261,6 +261,21 @@ class MorosidadService
         // definitiva — un pago registrado (con o sin recargo) siempre liquida
         // el periodo, nunca debe quedar un residuo automático.
 
+        // Monto fijado a mano con el botón "Modificar siguiente pago": manda
+        // sobre cualquier cálculo. Si el admin escribe $10 para ese mes, se
+        // cobran $10 — sin sumarle mensualidad, recargo ni adeudos. Solo
+        // aplica al mes exacto que se marcó en proximo_pago.
+        $montoFijado = (float) ($usuario->proximo_pago_monto ?? 0);
+        if ($montoFijado > 0
+            && !empty($usuario->proximo_pago)
+            && (string) $usuario->proximo_pago === $periodo
+        ) {
+            $pendiente = round($montoFijado, 2);
+            $recargo = 0.0;
+            $mesesAdeudo = 1;
+            $desdePeriodo = $periodo;
+        }
+
         // Detectar si el cliente está cubierto este mes sin deuda (pagó por transferencia/adelanto).
         // Solo se requiere proximo_pago en el futuro; la descripción puede ser vacía.
         $cubiertoEsteMes = (
