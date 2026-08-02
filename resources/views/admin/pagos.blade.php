@@ -1630,8 +1630,12 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                             this.totales.prepay_total = Math.round((base * (1 - percent/100)) * 100) / 100;
                         }
                     }
+                    // El mes actual ya viene incluido como el primer mes de "prepay_total"
+                    // (empieza a contar desde hoy), así que no se debe sumar aparte lo que
+                    // ya se debe de este mes — solo la deuda de meses ANTERIORES al actual,
+                    // si la hay (ej. debía junio y julio, y ahora adelanta agosto+septiembre).
                     const adeudoPendiente = Number(this.adeudoCobro || (this.adeudo && this.adeudo.pendiente ? Number(this.adeudo.pendiente) : 0) || 0);
-                    const adeudoBase = this.adeudo ? Math.max(0, adeudoPendiente - recargoSrv) : adeudoPendiente;
+                    const adeudoBase = this.adeudo ? Math.max(0, adeudoPendiente - recargoSrv - mensualidad) : Math.max(0, adeudoPendiente - mensualidad);
                     total = Math.round((adeudoBase + this.totales.prepay_total + rec) * 100) / 100;
                 } else if (this.alCorriente) {
                     total = 0;
