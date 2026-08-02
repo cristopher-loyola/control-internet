@@ -71,7 +71,7 @@ class FacturaService
                 'referencia' => $factura->reference_number,
                 'id' => $factura->id,
             ];
-        });
+        }, 3); // reintenta hasta 3 veces si hay deadlock (varios cobradores registrando pagos al mismo tiempo)
     }
 
     /**

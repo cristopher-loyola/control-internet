@@ -1091,6 +1091,16 @@
                 if(!this.ref || !this.ref.id){
                     await this.emitirFactura();
                 }
+                // Red de seguridad: si por una falla de red la búsqueda no
+                // llenó el nombre a tiempo, se intenta una vez más antes de
+                // imprimir para no sacar el ticket con "Nombre —".
+                if(!this.datos.nombre && this.form.numero){
+                    try{
+                        const r = await fetch('{{ route('chivato.recibos.lookup') }}?numero='+encodeURIComponent(this.form.numero));
+                        const j = await r.json();
+                        if(j?.ok && j.data?.nombre_cliente){ this.datos.nombre = j.data.nombre_cliente; }
+                    }catch(_){}
+                }
                 const logo = '{{ asset('images/logo.png') }}';
                 const banner = '{{ asset('images/reportes.png') }}';
                 const cuenta = '{{ asset('images/cuenta.png') }}';
