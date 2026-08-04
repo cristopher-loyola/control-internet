@@ -367,7 +367,9 @@ class MorosidadService
             return [
                 'ok' => true,
                 'numero' => $numero,
-                'mensualidad' => round($primerPago, 2),
+                // Siempre la tarifa del alta: el monto del primer pago va
+                // aparte en primer_pago_monto, no sustituye a la mensualidad.
+                'mensualidad' => round($tarifa, 2),
                 'es_primer_periodo' => true,
                 'meses_adeudo' => 0,
                 'lista_meses' => [],
@@ -425,7 +427,8 @@ class MorosidadService
         return [
             'ok' => true,
             'numero' => $numero,
-            'mensualidad' => round($periodo === $primerPagoPeriodo ? $primerPago : $tarifa, 2),
+            // Siempre la tarifa del alta (ver nota arriba).
+            'mensualidad' => round($tarifa, 2),
             'es_primer_periodo' => $periodo === $primerPagoPeriodo,
             'meses_adeudo' => $mesesAdeudo,
             'lista_meses' => $listaMeses,
