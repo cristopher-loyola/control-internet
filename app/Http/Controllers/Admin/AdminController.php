@@ -676,7 +676,26 @@ class AdminController extends Controller
                 'metodo_pago' => 'Deposito a cuenta',
                 'metodo'      => 'Deposito a cuenta',
             ];
-            if ($periodo && preg_match('/^\d{4}-\d{2}$/', $periodo)) {
+
+            $mesActual = now()->format('Y-m');
+            $esPeriodoValido = $periodo && preg_match('/^\d{4}-\d{2}$/', $periodo);
+
+            if ($esPeriodoValido && $periodo > $mesActual) {
+                // Periodo futuro: es un pago adelantado. Se registra como tal
+                // para que cubra TODOS los meses de aquí hasta ese mes (no solo
+                // ese mes suelto, que dejaría huecos cobrándose en medio) y para
+                // que el cliente aparezca en la lista de pagos por adelantado.
+                $inicio = \Illuminate\Support\Carbon::createFromFormat('Y-m-d', $mesActual.'-01');
+                $fin    = \Illuminate\Support\Carbon::createFromFormat('Y-m-d', $periodo.'-01');
+                $meses  = (int) $inicio->diffInMonths($fin);
+
+                $payload['periodo_override'] = $mesActual;
+                $payload['prepay']           = 'si';
+                $payload['prepay_months']    = $meses;
+                $payload['prepay_total']     = $monto;
+                $payload['label']            = ($nota ?: 'Deposito a cuenta')
+                    . ' (adelanto hasta ' . $fin->locale('es')->translatedFormat('F Y') . ')';
+            } elseif ($esPeriodoValido) {
                 $payload['periodo_override'] = $periodo;
             }
 
