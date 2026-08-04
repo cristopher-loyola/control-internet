@@ -485,6 +485,11 @@ class FacturaService
             $factura->payload = $payload;
             $factura->created_by = optional($datos['request']->user())->id;
             $factura->fingerprint = $fingerprint;
+            // Mes contable distinto al de captura (ej. transferencias del mes
+            // pasado capturadas los primeros días de este). Null = usar created_at.
+            if (! empty($payload['fecha_contable'])) {
+                $factura->fecha_contable = $payload['fecha_contable'];
+            }
             $factura->save();
 
             return $factura;

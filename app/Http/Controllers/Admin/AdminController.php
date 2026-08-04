@@ -661,6 +661,21 @@ class AdminController extends Controller
         $pagos = $request->input('pagos', []);
         $resultados = [];
 
+        // Mes contable del lote: en qué resumen/corte entra este dinero.
+        // Las transferencias del mes se capturan los primeros días del mes
+        // siguiente (cuando sale el estado de cuenta), pero pertenecen al mes
+        // anterior. Si no se manda, se usa la fecha de captura de siempre.
+        $mesContable = trim((string) $request->input('mes_contable', ''));
+        $fechaContable = null;
+        if ($mesContable !== '' && preg_match('/^\d{4}-\d{2}$/', $mesContable)) {
+            $finDeMes = \Illuminate\Support\Carbon::createFromFormat('Y-m-d', $mesContable.'-01')->endOfMonth();
+            // Solo tiene sentido para meses distintos al actual; si es el mes
+            // en curso se deja null y manda la fecha real de captura.
+            if ($mesContable !== now()->format('Y-m')) {
+                $fechaContable = $finDeMes->format('Y-m-d H:i:s');
+            }
+        }
+
         foreach ($pagos as $pago) {
             $numero  = trim($pago['numero_servicio'] ?? '');
             $monto   = (float) ($pago['monto'] ?? 0);
@@ -676,6 +691,9 @@ class AdminController extends Controller
                 'metodo_pago' => 'Deposito a cuenta',
                 'metodo'      => 'Deposito a cuenta',
             ];
+            if ($fechaContable) {
+                $payload['fecha_contable'] = $fechaContable;
+            }
 
             $mesActual = now()->format('Y-m');
             $esPeriodoValido = $periodo && preg_match('/^\d{4}-\d{2}$/', $periodo);

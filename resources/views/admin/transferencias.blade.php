@@ -192,10 +192,26 @@
             </div>
 
             {{-- Footer total + acción --}}
-            <div class="mt-4 bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 flex items-center justify-between">
+            <div class="mt-4 bg-white rounded-2xl border border-gray-100 shadow-sm px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
                 <div>
                     <p class="text-xs text-gray-400 uppercase tracking-wide font-medium">Total a registrar</p>
                     <p class="text-2xl font-bold text-gray-800 mt-0.5" x-text="'$' + formatMonto(totalCola())"></p>
+                </div>
+
+                {{-- Mes contable del lote: en qué resumen/corte entra este dinero --}}
+                <div class="min-w-[210px]">
+                    <label class="block text-xs text-gray-400 uppercase tracking-wide font-medium mb-1">
+                        Cuenta en el resumen de
+                    </label>
+                    <select x-model="mesContable"
+                        class="w-full rounded-xl border-gray-200 text-sm font-semibold text-gray-700 focus:border-emerald-400 focus:ring-0">
+                        <template x-for="op in opcionesMesContable" :key="op.valor">
+                            <option :value="op.valor" x-text="op.etiqueta"></option>
+                        </template>
+                    </select>
+                    <p class="text-[11px] text-gray-400 mt-1" x-text="mesContable === mesActual()
+                        ? 'Entra en el mes en curso'
+                        : 'Se reporta en ese mes, no en el actual'"></p>
                 </div>
                 <button
                     type="button"
@@ -410,7 +426,33 @@
             colaRegistrada: false,
             toast: { show: false, msg: '', ok: true, _timer: null },
 
-            init() {},
+            // Mes contable: en qué resumen/corte entra el dinero de este lote.
+            // Arranca en el mes anterior, que es el caso normal (las
+            // transferencias del mes se capturan al inicio del siguiente).
+            mesContable: '',
+            opcionesMesContable: [],
+
+            init() {
+                const hoy = new Date();
+                const opciones = [];
+                // mes anterior, mes en curso y los 2 previos, por si hay rezago
+                for (let i = 3; i >= 0; i--) {
+                    const d = new Date(hoy.getFullYear(), hoy.getMonth() - i, 1);
+                    const valor = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+                    let etiqueta = d.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+                    etiqueta = etiqueta.charAt(0).toUpperCase() + etiqueta.slice(1);
+                    if (i === 0) etiqueta += ' (mes en curso)';
+                    opciones.push({ valor, etiqueta });
+                }
+                this.opcionesMesContable = opciones;
+                const anterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+                this.mesContable = anterior.getFullYear() + '-' + String(anterior.getMonth() + 1).padStart(2, '0');
+            },
+
+            mesActual() {
+                const h = new Date();
+                return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0');
+            },
 
             mostrarToast(msg, ok = true) {
                 clearTimeout(this.toast._timer);
@@ -503,7 +545,7 @@
                             'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
                         },
-                        body: JSON.stringify({ pagos }),
+                        body: JSON.stringify({ pagos, mes_contable: this.mesContable }),
                     });
                     const data = await r.json();
 

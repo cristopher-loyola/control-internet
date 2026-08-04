@@ -557,7 +557,7 @@ class DashboardController extends Controller
             // Optimización: una sola consulta para ventas totales y métodos
             $ventasData = Factura::query()
                 ->whereNull('deleted_at')
-                ->whereBetween('created_at', [$range['from'], $range['to']])
+                ->whereBetween(DB::raw(Factura::FECHA_REPORTE_SQL), [$range['from'], $range['to']])
                 ->whereHas('cajero', function ($q) {
                     $q->whereNotIn('role', ['pozo_hondo', 'rosalito', 'chivato']);
                 })
@@ -815,7 +815,7 @@ class DashboardController extends Controller
         $from = $date->copy()->startOfDay();
         $to = $date->copy()->endOfDay();
         $ventas = Factura::whereNull('deleted_at')
-            ->whereBetween('created_at', [$from, $to])
+            ->whereBetween(DB::raw(Factura::FECHA_REPORTE_SQL), [$from, $to])
             ->whereHas('cajero', function ($q) {
                 $q->whereNotIn('role', ['pozo_hondo', 'rosalito', 'chivato']);
             })
@@ -1131,7 +1131,7 @@ class DashboardController extends Controller
         }
 
         $ventas = Factura::whereNull('deleted_at')
-            ->whereBetween('created_at', [$range['from'], $range['to']])
+            ->whereBetween(DB::raw(Factura::FECHA_REPORTE_SQL), [$range['from'], $range['to']])
             ->whereHas('cajero', function ($q) {
                 $q->whereNotIn('role', ['pozo_hondo', 'rosalito', 'chivato']);
             })
@@ -1342,7 +1342,7 @@ class DashboardController extends Controller
     private function ventasSeries(string $period, array $range): array
     {
         $ventas = Factura::whereNull('deleted_at')
-            ->whereBetween('created_at', [$range['from'], $range['to']])
+            ->whereBetween(DB::raw(Factura::FECHA_REPORTE_SQL), [$range['from'], $range['to']])
             ->whereHas('cajero', function ($q) {
                 $q->whereNotIn('role', ['pozo_hondo', 'rosalito', 'chivato']);
             })
