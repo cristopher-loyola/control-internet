@@ -498,8 +498,9 @@
             manualReasonSaved: '',
             datos:{ nombre:'', mensualidad:0 },
             totales:{ total:0, letra:'', prepay_total:0 },
-            adeudo:null,
+            adeudo: null,
             adeudoCobro: 0,
+            adeudoListaMeses: [],
             saldoDespues: null,
             pagadoMesActual: false,
             prepayActivo: false,
@@ -555,16 +556,46 @@
                 return s.length > 40 ? (s.slice(0, 40) + '…') : s;
             },
             otroLabel(){
-                let base = 'No';
-                if (this.form.otro === 'cancelacion') base = 'Cancelación de servicio';
+                if (this.readOnlyMode && this.savedOtroLabel) return this.savedOtroLabel;
+                
+                let partes = [];
+                
+                if (this.form.otro === 'cancelacion') partes.push('Cancelación de servicio');
                 if (this.form.otro === 'baja_temporal') {
                     const m = Number(this.form.baja_temporal_months || 1);
-                    base = `Baja temporal (${m} ${m === 1 ? 'mes' : 'meses'})`;
+                    partes.push(`Baja temporal (${m} ${m === 1 ? 'mes' : 'meses'})`);
                 }
+
+                // Agregar meses adeudados si existen
+                if (this.adeudoListaMeses && this.adeudoListaMeses.length > 0) {
+                    const groups = {};
+                    this.adeudoListaMeses.forEach(m => {
+                        const p = String(m).split(' ');
+                        if (p.length >= 2 && !isNaN(p[p.length - 1])) {
+                            const y = p.pop();
+                            const name = p.join(' ');
+                            if (!groups[y]) groups[y] = [];
+                            groups[y].push(name);
+                        } else {
+                            if (!groups['extra']) groups['extra'] = [];
+                            groups['extra'].push(m);
+                        }
+                    });
+                    let fmt = [];
+                    Object.keys(groups).forEach(y => {
+                        if (y === 'extra') {
+                            fmt.push(groups[y].join(', '));
+                        } else {
+                            fmt.push(groups[y].join(', ') + ' ' + y);
+                        }
+                    });
+                    partes.push(`Adeudos: ${fmt.join(', ')}`);
+                }
+
                 const motivo = this.manualReasonForPrint();
-                if (!motivo) return base;
-                if (base === 'No') return motivo;
-                return `${base} - ${motivo}`;
+                if (motivo) partes.push(motivo);
+
+                return partes.length > 0 ? partes.join(' - ') : 'No';
             },
             mesEnCurso(){ return new Date().toLocaleDateString('es-MX',{month:'long'}).charAt(0).toUpperCase() + new Date().toLocaleDateString('es-MX',{month:'long'}).slice(1) },
             mesEnCursoCompleto(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleDateString('es-MX',{month:'long'})+' de '+d.getFullYear() },
@@ -840,18 +871,20 @@
                                 meses: meses,
                                 pendiente: Math.max(0, Number(m)||0),
                                 recargo: Number(j.recargo||0),
-                                pagado_parcial: Number(j.pagado_parcial||0)
+                                pagado_parcial: Number(j.pagado_parcial||0),
+                                lista_meses: j.lista_meses || []
                             };
                             if (!this.pagadoMesActual) {
                                 this.form.recargo = this.adeudo.recargo > 0 ? 'si' : 'no';
                             }
                         } else {
-                            this.adeudo = { desde_periodo:j.desde_periodo, desde_label:j.desde_mes_label||'', meses:meses, pendiente:0, recargo:Number(j.recargo||0), pagado_parcial:0 };
+                            this.adeudo = { desde_periodo:j.desde_periodo, desde_label:j.desde_mes_label||'', meses:meses, pendiente:0, recargo:Number(j.recargo||0), pagado_parcial:0, lista_meses: j.lista_meses || [] };
                         }
                         if (this.ref && this.ref.id) {
                             this.saldoDespues = Number(this.adeudo?.pendiente || 0);
                         } else {
                             this.adeudoCobro = Number(this.adeudo?.pendiente || 0);
+                            this.adeudoListaMeses = j.lista_meses || [];
                             this.saldoDespues = null;
                         }
                         this.recalcular();
@@ -1128,8 +1161,10 @@ html,body{ margin:0; padding:0 }
   <div class="line"><div class="l">Hora</div><div>${hora}</div></div>
   <div class="sep"></div>
   <div class="footer">
-    Horario de atención: Lunes a Viernes de 9:00 am a 5:00 pm, sabado y domingo 9:00 am a 3:00 pm<br>
-    Recuerda que del 1 al 7 de mes se realizan los pagos correctamente, posterior a eso se cobrarán cargos por costo de reconexión.
+Horario de atención para pagos:
+Lunes a viernes de 9:00 a.m. a 5:00 p.m.
+Sábados y domingos de 9:00 a.m. a 3:00 p.m.
+Le recordamos que los pagos deben realizarse del día 1 al 7 de cada mes. Posterior a esta fecha, se aplicará un cargo adicional de $50.00 por pago tardío
   </div>
 
   <div class="banner"><img src="${banner}" onerror="this.style.display='none'"></div>
@@ -1149,6 +1184,7 @@ html,body{ margin:0; padding:0 }
                 this.isLoading = true;
                 this.adeudo = null;
                 this.adeudoCobro = 0;
+                this.adeudoListaMeses = [];
                 this.saldoDespues = null;
                 this.pagadoMesActual = false;
                 this.pagoAnteriorFecha = '';

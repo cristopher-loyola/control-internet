@@ -104,12 +104,28 @@ class MorosidadService
         $desdeMes = $usuario->adeudo_descripcion ?: Carbon::createFromFormat('Y-m', $desdePeriodo)->locale('es')->translatedFormat('F Y');
         $hastaMes = $curStart->locale('es')->translatedFormat('F Y');
 
+        $listaMeses = [];
+        // REQUERIMIENTO: Si el usuario tiene adeudo manual (importado de Excel), priorizamos esa descripción.
+        if ($usuario->adeudo_monto > 0) {
+            $listaMeses[] = $usuario->adeudo_descripcion ?: 'Adeudo anterior';
+        } else {
+            // Si NO tiene adeudo manual, usamos la lógica de meses adeudados desde su último pago
+            if ($mesesAdeudo > 0) {
+                $temp = Carbon::createFromFormat('Y-m', $desdePeriodo)->startOfMonth();
+                for ($i = 0; $i < $mesesAdeudo; $i++) {
+                    $listaMeses[] = $temp->locale('es')->translatedFormat('F Y');
+                    $temp->addMonth();
+                }
+            }
+        }
+
         return [
             'ok' => true,
             'numero' => $numero,
             'mensualidad' => round($mensualidad, 2),
             'es_primer_periodo' => $esPrimerPeriodo,
             'meses_adeudo' => (int) $mesesAdeudo + ($usuario->adeudo_monto > 0 ? 1 : 0), // Ajuste visual si hay adeudo manual
+            'lista_meses' => $listaMeses,
             'desde_periodo' => $desdePeriodo,
             'desde_mes_label' => $desdeMes,
             'hasta_periodo' => $periodo,

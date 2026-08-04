@@ -608,8 +608,9 @@
             pagoAnteriorFecha:'',
             datos:{ nombre:'', mensualidad:0 },
             totales:{ total:0, letra:'', prepay_total:0 },
-            adeudo:null,
+            adeudo: null,
             adeudoCobro: 0,
+            adeudoListaMeses: [],
             saldoDespues: null,
             pagadoMesActual: false,
             prepayActivo: false,
@@ -654,6 +655,8 @@
             dragging:null, dragRef:null, dragStart:{x:0,y:0}, orig:{x:0,y:0},
             _moveB:null, _upB:null, _moveTouchB:null,
             resizing:false, resizeKey:null, resizeStart:{x:0,w:0}, _resizeB:null, _resizeTouchB:null,
+            readOnlyMode: false,
+            savedOtroLabel: '',
             moneda(v){ return new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'}).format(v||0) },
             hasAdeudos(){
                 const a = this.adeudo;
@@ -680,16 +683,46 @@
                 return s.length > 40 ? (s.slice(0, 40) + '…') : s;
             },
             otroLabel(){
-                let base = 'No';
-                if (this.form.otro === 'cancelacion') base = 'Cancelación de servicio';
+                if (this.readOnlyMode && this.savedOtroLabel) return this.savedOtroLabel;
+                
+                let partes = [];
+                
+                if (this.form.otro === 'cancelacion') partes.push('Cancelación de servicio');
                 if (this.form.otro === 'baja_temporal') {
                     const m = Number(this.form.baja_temporal_months || 1);
-                    base = `Baja temporal (${m} ${m === 1 ? 'mes' : 'meses'})`;
+                    partes.push(`Baja temporal (${m} ${m === 1 ? 'mes' : 'meses'})`);
                 }
+                
+                // Agregar meses adeudados si existen
+                if (this.adeudoListaMeses && this.adeudoListaMeses.length > 0) {
+                    const groups = {};
+                    this.adeudoListaMeses.forEach(m => {
+                        const p = String(m).split(' ');
+                        if (p.length >= 2 && !isNaN(p[p.length - 1])) {
+                            const y = p.pop();
+                            const name = p.join(' ');
+                            if (!groups[y]) groups[y] = [];
+                            groups[y].push(name);
+                        } else {
+                            if (!groups['extra']) groups['extra'] = [];
+                            groups['extra'].push(m);
+                        }
+                    });
+                    let fmt = [];
+                    Object.keys(groups).forEach(y => {
+                        if (y === 'extra') {
+                            fmt.push(groups[y].join(', '));
+                        } else {
+                            fmt.push(groups[y].join(', ') + ' ' + y);
+                        }
+                    });
+                    partes.push(`Adeudos: ${fmt.join(', ')}`);
+                }
+
                 const motivo = this.manualReasonForPrint();
-                if (!motivo) return base;
-                if (base === 'No') return motivo;
-                return `${base} - ${motivo}`;
+                if (motivo) partes.push(motivo);
+
+                return partes.length > 0 ? partes.join(' - ') : 'No';
             },
             mesEnCurso(){ return new Date().toLocaleDateString('es-MX',{month:'long'}).charAt(0).toUpperCase() + new Date().toLocaleDateString('es-MX',{month:'long'}).slice(1) },
             mesEnCursoCompleto(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleDateString('es-MX',{month:'long'})+' de '+d.getFullYear() },
@@ -849,10 +882,12 @@
                                 this.form.prepay_months = p.prepay_months || null;
                                 this.totales.prepay_total = Number(p.prepay_total)||0;
                                 const adeudoPendiente = Number(p.adeudo_pendiente || 0);
-                                this.adeudo = adeudoPendiente > 0 ? { pendiente: adeudoPendiente, meses: 0, desde_label: '', recargo: 0, pagado_parcial: 0 } : null;
+                                this.adeudoListaMeses = p.lista_meses || [];
+                                this.adeudo = adeudoPendiente > 0 ? { pendiente: adeudoPendiente, meses: 0, desde_label: '', recargo: 0, pagado_parcial: 0, lista_meses: this.adeudoListaMeses } : null;
                                 this.adeudoCobro = adeudoPendiente > 0 ? adeudoPendiente : 0;
                                 this.saldoDespues = null;
                                 this.appliedDiscount = Number(p.descuento || 0);
+                                this.savedOtroLabel = p.otro_label || '';
                                 this.totales.total = Number(d.total) || 0;
                                 this.totales.letra = toWords(this.totales.total);
                                 if(asTicket){
@@ -1114,19 +1149,21 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 meses: meses,
                                 pendiente: Math.max(0, Number(m)||0),
                                 recargo: Number(j.recargo||0),
-                                pagado_parcial: Number(j.pagado_parcial||0)
+                                pagado_parcial: Number(j.pagado_parcial||0),
+                                lista_meses: j.lista_meses || []
                             };
                             // Sincronizar el recargo del formulario con el del servidor si hay adeudo y no ha pagado este mes
                             if (!this.pagadoMesActual && !this.recargoManual) {
                                 this.form.recargo = this.adeudo.recargo > 0 ? 'si' : 'no';
                             }
                         } else {
-                            this.adeudo = { desde_periodo:j.desde_periodo, desde_label:j.desde_mes_label||'', meses:meses, pendiente:0, recargo:Number(j.recargo||0), pagado_parcial:0 };
+                            this.adeudo = { desde_periodo:j.desde_periodo, desde_label:j.desde_mes_label||'', meses:meses, pendiente:0, recargo:Number(j.recargo||0), pagado_parcial:0, lista_meses: j.lista_meses || [] };
                         }
                         if (this.ref && this.ref.id) {
                             this.saldoDespues = Number(this.adeudo?.pendiente || 0);
                         } else {
                             this.adeudoCobro = Number(this.adeudo?.pendiente || 0);
+                            this.adeudoListaMeses = j.lista_meses || [];
                             this.saldoDespues = null;
                         }
                         this.recalcular();
@@ -1376,6 +1413,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 prepay_months: this.form.prepay==='si'? this.form.prepay_months : null,
                                 prepay_total: this.form.prepay==='si'? this.totales.prepay_total : null,
                                 adeudo_pendiente: Number(this.adeudoCobro || 0),
+                                lista_meses: this.adeudo ? this.adeudo.lista_meses : [],
                                 pago_anterior: this.form.pago_anterior,
                                 pago_anterior_fecha: this.pagoAnteriorFecha,
                                 metodo: this.form.metodo,
@@ -1388,7 +1426,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 manual_total_reason: this.manualEditEnabled ? (String(this.manualReason || '').trim()) : null,
                                 fecha: this.fecha(),
                                 hora: this.hora(),
-                                descuento: this.appliedDiscount || 0
+                                descuento: this.appliedDiscount || 0,
+                                otro_label: this.otroLabel()
                             }
                         })
                     });
@@ -1432,6 +1471,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 prepay_months: this.form.prepay==='si'? this.form.prepay_months : null,
                                 prepay_total: this.form.prepay==='si'? this.totales.prepay_total : null,
                                 adeudo_pendiente: Number(this.adeudoCobro || 0),
+                                lista_meses: this.adeudo ? this.adeudo.lista_meses : [],
                                 pago_anterior: this.form.pago_anterior,
                                 pago_anterior_fecha: this.pagoAnteriorFecha,
                                 metodo: this.form.metodo,
@@ -1444,7 +1484,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 manual_total_reason: this.manualEditEnabled ? (String(this.manualReason || '').trim()) : null,
                                 fecha: this.fecha(),
                                 hora: this.hora(),
-                                descuento: this.appliedDiscount || 0
+                                descuento: this.appliedDiscount || 0,
+                                otro_label: this.otroLabel()
                             }
                         })
                     });
@@ -1556,8 +1597,10 @@ html,body{ margin:0; padding:0 }
   <div class="line"><div class="l">Hora</div><div>${hora}</div></div>
   <div class="sep"></div>
   <div class="footer">
-  Horario de atención en pagos: Lunes a Viernes de 9:00 am a 5:00 pm, sabado y domingo 9:00 am a 3:00 pm<br>
-  Recuerda que del 1 al 7 de mes se realizan los pagos correctamente, posterior a eso se cobrarán cargos por costo de reconexión.
+Horario de atención para pagos:
+Lunes a viernes de 9:00 a.m. a 5:00 p.m.
+Sábados y domingos de 9:00 a.m. a 3:00 p.m.
+Le recordamos que los pagos deben realizarse del día 1 al 7 de cada mes. Posterior a esta fecha, se aplicará un cargo adicional de $50.00 por pago tardío
   </div>
   <div class="banner"><img src="${banner}" onerror="this.style.display='none'"></div>
 </div>
@@ -1593,6 +1636,7 @@ html,body{ margin:0; padding:0 }
                 this.ref = { numero: null, id: null, created_at: null };
                 this.adeudo = null;
                 this.adeudoCobro = 0;
+                this.adeudoListaMeses = [];
                 this.saldoDespues = null;
                 this.pagadoMesActual = false;
                 this.pagoAnteriorFecha = '';
