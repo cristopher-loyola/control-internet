@@ -587,19 +587,26 @@ class AdminController extends Controller
     {
         $page    = max(1, (int) $request->query('page', 1));
         $perPage = 20;
+        $numero  = trim((string) $request->query('numero', ''));
 
         $query = \App\Models\Factura::whereNull('deleted_at')
             ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(payload, '$.metodo_pago')) = 'Deposito a cuenta'")
+            ->when($numero !== '', fn ($q) => $q->where('numero_servicio', $numero))
             ->orderByDesc('id');
 
         $total  = $query->count();
         $rows   = $query->offset(($page - 1) * $perPage)->limit($perPage)
-            ->get(['id', 'reference_number', 'numero_servicio', 'periodo', 'total', 'payload', 'created_at']);
+            ->get(['id', 'reference_number', 'numero_servicio', 'periodo', 'total', 'payload', 'created_at', 'fecha_contable']);
 
         $data = $rows->map(function ($f) {
             $p = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
             $u = \App\Models\Usuario::where('numero_servicio', $f->numero_servicio)
                 ->value('nombre_cliente');
+
+            // Corte en el que entró: la fecha contable si se fijó a mano,
+            // si no la de captura (que es lo que usan los reportes).
+            $fechaReporte = $f->fecha_contable ?: $f->created_at;
+
             return [
                 'id'               => $f->id,
                 'folio'            => $f->reference_number,
@@ -609,6 +616,8 @@ class AdminController extends Controller
                 'total'            => (float) $f->total,
                 'nota'             => $p['label'] ?? '',
                 'created_at'       => $f->created_at?->format('d/m/Y H:i'),
+                'corte'            => $fechaReporte?->locale('es')->isoFormat('MMMM YYYY'),
+                'corte_ajustado'   => (bool) $f->fecha_contable,
             ];
         });
 
@@ -661,20 +670,26 @@ class AdminController extends Controller
         $pagos = $request->input('pagos', []);
         $resultados = [];
 
-        // Mes contable del lote: en qué resumen/corte entra este dinero.
-        // Las transferencias del mes se capturan los primeros días del mes
-        // siguiente (cuando sale el estado de cuenta), pero pertenecen al mes
-        // anterior. Si no se manda, se usa la fecha de captura de siempre.
-        $mesContable = trim((string) $request->input('mes_contable', ''));
-        $fechaContable = null;
-        if ($mesContable !== '' && preg_match('/^\d{4}-\d{2}$/', $mesContable)) {
-            $finDeMes = \Illuminate\Support\Carbon::createFromFormat('Y-m-d', $mesContable.'-01')->endOfMonth();
-            // Solo tiene sentido para meses distintos al actual; si es el mes
-            // en curso se deja null y manda la fecha real de captura.
-            if ($mesContable !== now()->format('Y-m')) {
-                $fechaContable = $finDeMes->format('Y-m-d H:i:s');
+        // Mes contable: en qué resumen/corte entra el dinero. Las transferencias
+        // del mes se capturan los primeros días del mes siguiente (cuando sale
+        // el estado de cuenta), pero pertenecen al mes anterior.
+        // Se puede fijar para todo el lote y sobrescribir pago por pago.
+        $mesActual = now()->format('Y-m');
+        $aFechaContable = function ($mes) use ($mesActual) {
+            $mes = trim((string) $mes);
+            if ($mes === '' || ! preg_match('/^\d{4}-\d{2}$/', $mes)) {
+                return null;
             }
-        }
+            // Si es el mes en curso se deja null: manda la fecha real de captura.
+            if ($mes === $mesActual) {
+                return null;
+            }
+
+            return \Illuminate\Support\Carbon::createFromFormat('Y-m-d', $mes.'-01')
+                ->endOfMonth()->format('Y-m-d H:i:s');
+        };
+
+        $mesContableLote = $request->input('mes_contable', '');
 
         foreach ($pagos as $pago) {
             $numero  = trim($pago['numero_servicio'] ?? '');
@@ -686,6 +701,9 @@ class AdminController extends Controller
                 continue;
             }
 
+            // El pago puede traer su propio mes contable; si no, el del lote.
+            $fechaContable = $aFechaContable($pago['mes_contable'] ?? $mesContableLote);
+
             $payload = [
                 'label'       => $nota ?: 'Deposito a cuenta',
                 'metodo_pago' => 'Deposito a cuenta',
@@ -695,7 +713,6 @@ class AdminController extends Controller
                 $payload['fecha_contable'] = $fechaContable;
             }
 
-            $mesActual = now()->format('Y-m');
             $esPeriodoValido = $periodo && preg_match('/^\d{4}-\d{2}$/', $periodo);
 
             if ($esPeriodoValido && $periodo > $mesActual) {

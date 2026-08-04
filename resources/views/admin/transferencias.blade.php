@@ -12,8 +12,9 @@
          x-data="transferencias()"
          x-init="init()">
 
-        {{-- Búsqueda --}}
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mb-4">
+        {{-- Búsqueda + mes contable de la sesión --}}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:col-span-2">
             <p class="text-sm text-gray-500 mb-3">Busca el cliente que pagó por transferencia y agrégalo a la lista.</p>
             <div class="relative">
                 <input
@@ -67,6 +68,23 @@
                     </template>
                 </div>
             </div>
+        </div>
+
+        {{-- Mes contable de la sesión --}}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <p class="text-sm text-gray-500 mb-3">Estos pagos cuentan en el resumen de:</p>
+            <select x-model="mesContable"
+                class="w-full rounded-xl border-gray-200 text-sm font-semibold text-gray-700 focus:border-emerald-400 focus:ring-0 py-3">
+                <template x-for="op in opcionesMesContable" :key="op.valor">
+                    <option :value="op.valor" x-text="op.etiqueta"></option>
+                </template>
+            </select>
+            <p class="text-xs mt-2"
+               :class="mesContable === mesActual() ? 'text-gray-400' : 'text-amber-600 font-medium'"
+               x-text="mesContable === mesActual()
+                    ? 'Entran en el mes en curso.'
+                    : 'No entran en el mes en curso. Aplica a todos los de esta lista.'"></p>
+        </div>
         </div>
 
         {{-- Cola de pagos --}}
@@ -184,6 +202,7 @@
                                             />
                                         </div>
                                     </div>
+
                                 </div>
                             </div>
                         </template>
@@ -198,21 +217,6 @@
                     <p class="text-2xl font-bold text-gray-800 mt-0.5" x-text="'$' + formatMonto(totalCola())"></p>
                 </div>
 
-                {{-- Mes contable del lote: en qué resumen/corte entra este dinero --}}
-                <div class="min-w-[210px]">
-                    <label class="block text-xs text-gray-400 uppercase tracking-wide font-medium mb-1">
-                        Cuenta en el resumen de
-                    </label>
-                    <select x-model="mesContable"
-                        class="w-full rounded-xl border-gray-200 text-sm font-semibold text-gray-700 focus:border-emerald-400 focus:ring-0">
-                        <template x-for="op in opcionesMesContable" :key="op.valor">
-                            <option :value="op.valor" x-text="op.etiqueta"></option>
-                        </template>
-                    </select>
-                    <p class="text-[11px] text-gray-400 mt-1" x-text="mesContable === mesActual()
-                        ? 'Entra en el mes en curso'
-                        : 'Se reporta en ese mes, no en el actual'"></p>
-                </div>
                 <button
                     type="button"
                     @click="registrar()"
@@ -311,11 +315,34 @@
              x-data="historial()" x-init="cargar()"
              @transferencia-registrada.window="cargar()">
 
-            <div class="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
+            <div class="px-6 py-4 border-b border-gray-50 flex items-center justify-between gap-4 flex-wrap">
                 <div>
                     <h3 class="text-sm font-semibold text-gray-800">Historial de transferencias</h3>
-                    <p class="text-xs text-gray-400 mt-0.5" x-text="total + ' registros en total'"></p>
+                    <p class="text-xs text-gray-400 mt-0.5"
+                       x-text="filtroNumero
+                            ? total + ' transferencia' + (total === 1 ? '' : 's') + ' del #' + filtroNumero
+                            : total + ' registros en total'"></p>
                 </div>
+
+                {{-- Filtro por número de servicio --}}
+                <div class="relative flex-1 min-w-[200px] max-w-xs">
+                    <input
+                        type="text"
+                        inputmode="numeric"
+                        x-model="filtroNumero"
+                        @keydown.enter="buscarPorNumero()"
+                        @input.debounce.400ms="buscarPorNumero()"
+                        placeholder="Buscar por número de servicio…"
+                        class="w-full border border-gray-200 rounded-xl px-4 pr-8 py-2 text-sm focus:outline-none focus:border-gray-400"
+                    />
+                    <button x-show="filtroNumero" @click="limpiarFiltro()" type="button"
+                            class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-600 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
                 <button @click="cargar()"
                         class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-gray-800 transition-all duration-150 active:scale-95">
                     <svg class="w-3.5 h-3.5" :class="cargando && 'animate-spin'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -333,6 +360,7 @@
                             <th class="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Folio</th>
                             <th class="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Cliente</th>
                             <th class="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Período</th>
+                            <th class="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Entró al corte</th>
                             <th class="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Nota</th>
                             <th class="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Monto</th>
                             <th class="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Fecha</th>
@@ -342,7 +370,7 @@
                     <tbody class="divide-y divide-gray-50">
                         <template x-if="cargando && rows.length === 0">
                             <tr>
-                                <td colspan="7" class="px-6 py-12 text-center">
+                                <td colspan="8" class="px-6 py-12 text-center">
                                     <svg class="animate-spin w-5 h-5 text-gray-300 mx-auto" fill="none" viewBox="0 0 24 24">
                                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
@@ -352,7 +380,8 @@
                         </template>
                         <template x-if="!cargando && rows.length === 0">
                             <tr>
-                                <td colspan="7" class="px-6 py-12 text-center text-gray-300 text-sm">Sin registros</td>
+                                <td colspan="8" class="px-6 py-12 text-center text-gray-300 text-sm"
+                                    x-text="filtroNumero ? 'El #' + filtroNumero + ' no tiene transferencias registradas' : 'Sin registros'"></td>
                             </tr>
                         </template>
                         <template x-for="r in rows" :key="r.id">
@@ -368,6 +397,16 @@
                                 <td class="px-4 py-3.5">
                                     <span class="text-xs text-gray-600 bg-blue-50 border border-blue-100 rounded-full px-2.5 py-0.5"
                                           x-text="formatPeriodo(r.periodo)"></span>
+                                </td>
+                                <td class="px-4 py-3.5">
+                                    <span class="text-xs rounded-full px-2.5 py-0.5 border capitalize"
+                                          :class="r.corte_ajustado
+                                              ? 'text-amber-700 bg-amber-50 border-amber-200 font-medium'
+                                              : 'text-gray-500 bg-gray-50 border-gray-200'"
+                                          :title="r.corte_ajustado
+                                              ? 'Mes contable elegido a mano (se capturó el ' + r.created_at + ')'
+                                              : 'Corte del día en que se capturó'"
+                                          x-text="r.corte || '—'"></span>
                                 </td>
                                 <td class="px-4 py-3.5 text-xs text-gray-500 max-w-[180px] truncate" x-text="r.nota || '—'"></td>
                                 <td class="px-6 py-3.5 text-right font-semibold text-gray-800" x-text="'$' + r.total.toLocaleString('es-MX')"></td>
@@ -454,6 +493,7 @@
                 return h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0');
             },
 
+
             mostrarToast(msg, ok = true) {
                 clearTimeout(this.toast._timer);
                 this.toast.msg  = msg;
@@ -479,8 +519,8 @@
                 try {
                     const r = await fetch(`/admin/transferencias/buscar?q=${encodeURIComponent(q)}`);
                     const data = await r.json();
-                    const enCola = new Set(this.cola.map(c => c.numero_servicio));
-                    this.resultados = (data.data || []).filter(c => !enCola.has(c.numero_servicio));
+                    const enCola = new Set(this.cola.map(c => String(c.numero_servicio)));
+                    this.resultados = (data.data || []).filter(c => !enCola.has(String(c.numero_servicio)));
                 } catch(e) {
                     this.resultados = [];
                 } finally {
@@ -550,7 +590,9 @@
                     const data = await r.json();
 
                     for (const res of (data.resultados || [])) {
-                        const item = this.cola.find(c => c.numero_servicio === res.numero_servicio);
+                        // Comparar como texto: el backend regresa el número como
+                        // string y en la cola puede venir como número.
+                        const item = this.cola.find(c => String(c.numero_servicio) === String(res.numero_servicio));
                         if (!item) continue;
                         if (res.ok) {
                             item.resultado = 'ok';
@@ -569,6 +611,14 @@
                             : `${exitosos} pagos registrados correctamente`;
                         this.mostrarToast(errores > 0 ? msg + ` (${errores} con error)` : msg, errores === 0);
                         window.dispatchEvent(new CustomEvent('transferencia-registrada'));
+
+                        // Se quitan solos los que se registraron bien, para poder
+                        // capturar el siguiente sin tener que darle a la X.
+                        // Los que fallaron se quedan para corregirlos.
+                        setTimeout(() => {
+                            this.cola = this.cola.filter(c => c.resultado !== 'ok');
+                            this.colaRegistrada = false;
+                        }, 3000);
                     } else if (errores > 0) {
                         this.mostrarToast('No se pudo registrar ningún pago', false);
                     }
@@ -621,10 +671,26 @@
             lastPage: 1,
             cargando: false,
 
+            // Filtro por número de servicio
+            filtroNumero: '',
+
+            buscarPorNumero() {
+                this.page = 1;
+                this.cargar();
+            },
+
+            limpiarFiltro() {
+                this.filtroNumero = '';
+                this.page = 1;
+                this.cargar();
+            },
+
             async cargar() {
                 this.cargando = true;
                 try {
-                    const res = await fetch(`/admin/transferencias/historial?page=${this.page}`);
+                    const numero = String(this.filtroNumero || '').trim();
+                    const res = await fetch(`/admin/transferencias/historial?page=${this.page}`
+                        + (numero ? `&numero=${encodeURIComponent(numero)}` : ''));
                     const json = await res.json();
                     if (json.ok) {
                         this.rows     = json.data.map(r => ({ ...r, cancelando: false }));
