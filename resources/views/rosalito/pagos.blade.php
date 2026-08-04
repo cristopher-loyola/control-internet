@@ -568,7 +568,10 @@
                     partes.push(`Baja temporal (${m} ${m === 1 ? 'mes' : 'meses'})`);
                 }
 
-                // Agregar meses adeudados si existen
+                // lista_meses ya viene sin el mes en curso, así que si trae algo
+                // es que debe 2 meses o más. Si solo debe el mes actual queda
+                // vacía y no se imprime nada (el cliente lo leía como si
+                // siguiera debiendo después de pagar).
                 if (this.adeudoListaMeses && this.adeudoListaMeses.length > 0) {
                     const groups = {};
                     this.adeudoListaMeses.forEach(m => {
@@ -591,9 +594,7 @@
                             fmt.push(groups[y].join(', ') + ' ' + y);
                         }
                     });
-                    // No se imprime el detalle de adeudos en el recibo: el cliente
-                    // acaba de pagarlos y verlos listados lo hacía creer que seguía debiendo.
-                    // partes.push(`Adeudos: ${fmt.join(', ')}`);
+                    partes.push(`Adeudos: ${fmt.join(', ')}`);
                 }
 
                 const motivo = this.manualReasonForPrint();

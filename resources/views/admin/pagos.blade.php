@@ -1064,7 +1064,10 @@
                     partes.push(`Pago adelantado (${m} ${m === 1 ? 'mes' : 'meses'})`);
                 }
 
-                // Agregar meses adeudados solo si no hay edición manual (el motivo manual los reemplaza)
+                // lista_meses ya viene sin el mes en curso, así que si trae algo
+                // es que debe 2 meses o más. Si solo debe el mes actual queda
+                // vacía y no se imprime nada (el cliente lo leía como si
+                // siguiera debiendo después de pagar).
                 if (!this.manualEditEnabled && this.adeudoListaMeses && this.adeudoListaMeses.length > 0) {
                     const groups = {};
                     this.adeudoListaMeses.forEach(m => {
@@ -1087,9 +1090,7 @@
                             fmt.push(groups[y].join(', ') + ' ' + y);
                         }
                     });
-                    // No se imprime el detalle de adeudos en el recibo: el cliente
-                    // acaba de pagarlos y verlos listados lo hacía creer que seguía debiendo.
-                    // partes.push(`Adeudos: ${fmt.join(', ')}`);
+                    partes.push(`Adeudos: ${fmt.join(', ')}`);
                 }
 
                 const motivo = this.manualReasonForPrint();
@@ -1922,6 +1923,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                             const m = Number(this.form.prepay_months || 0);
                             partes.push(`Pago adelantado (${m} ${m === 1 ? 'mes' : 'meses'})`);
                         }
+                        // Solo si debe 2 meses o más (ver nota en otroLabel).
                         if (this.adeudoListaMeses && this.adeudoListaMeses.length > 0) {
                             const groups = {};
                             this.adeudoListaMeses.forEach(m => {
@@ -1939,8 +1941,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                             Object.keys(groups).forEach(y => {
                                 fmt.push(y === 'extra' ? groups[y].join(', ') : groups[y].join(', ') + ' ' + y);
                             });
-                            // Ver nota arriba: el detalle de adeudos no se imprime.
-                            // partes.push(`Adeudos: ${fmt.join(', ')}`);
+                            partes.push(`Adeudos: ${fmt.join(', ')}`);
                         }
                         if (partes.length > 0) this.manualReason = partes.join(' - ');
                     }
