@@ -63,9 +63,22 @@ class MorosidadService
         $curStart = $this->periodoStart($periodo);
         $today = now();
 
+        $primerPago = (float) ($usuario->primer_pago ?? 0);
+        $tarifa = (float) preg_replace('/[^\d.]/', '', (string) ($usuario->tarifa ?? 0));
+
+        // Cliente con primer pago programado a un mes concreto: se le cobra ese
+        // monto en ese mes, y su mensualidad normal a partir del siguiente. Los
+        // meses anteriores quedan cubiertos (todavía no le tocaba pagar).
+        $primerPagoPeriodo = (string) ($usuario->primer_pago_periodo ?? '');
+        if ($primerPagoPeriodo !== '' && preg_match('/^\d{4}-\d{2}$/', $primerPagoPeriodo)) {
+            return $this->adeudoConPrimerPagoProgramado(
+                $usuario, $numero, $periodo, $curStart, $today,
+                $primerPagoPeriodo, $primerPago, $tarifa
+            );
+        }
+
         // Determinar si es el primer periodo de cobro (hasta la fecha de vencimiento del primer pago)
         $esPrimerPeriodo = false;
-        $primerPago = (float) ($usuario->primer_pago ?? 0);
         $vencimientoPrimerPago = $usuario->primer_pago_vencimiento;
         if ($primerPago > 0 && $vencimientoPrimerPago) {
             // Es primer periodo si estamos antes o en la fecha de vencimiento
@@ -73,9 +86,7 @@ class MorosidadService
         }
 
         // Usar primer_pago como mensualidad si es el primer periodo
-        $mensualidad = $esPrimerPeriodo
-            ? $primerPago
-            : (float) preg_replace('/[^\d.]/', '', (string) ($usuario->tarifa ?? 0));
+        $mensualidad = $esPrimerPeriodo ? $primerPago : $tarifa;
 
         // Fecha de vencimiento: día 7 del mes de cobro
         $dueDate = $curStart->copy()->day(7)->endOfDay();
@@ -324,6 +335,114 @@ class MorosidadService
             'adeudo_manual' => (float) $usuario->adeudo_monto,
             'descripcion_manual' => $usuario->adeudo_descripcion,
             'cubierto_este_mes' => $cubiertoEsteMes,
+        ];
+    }
+
+    /**
+     * Adeudo de un cliente cuyo primer pago está programado a un mes concreto,
+     * con un monto distinto al de su mensualidad.
+     *
+     * Ej: alta en agosto, primer pago octubre $15, tarifa $500
+     *   agosto, septiembre -> $0 (aún no le tocaba pagar)
+     *   octubre            -> $15
+     *   noviembre          -> $500 (si ya pagó octubre)
+     *   diciembre          -> $1,000 (si no pagó nada desde noviembre)
+     */
+    private function adeudoConPrimerPagoProgramado(
+        Usuario $usuario,
+        string $numero,
+        string $periodo,
+        Carbon $curStart,
+        Carbon $today,
+        string $primerPagoPeriodo,
+        float $primerPago,
+        float $tarifa
+    ): array {
+        $ppStart = $this->periodoStart($primerPagoPeriodo);
+        $dueDate = $curStart->copy()->day(7)->endOfDay();
+        $hastaMes = $curStart->locale('es')->translatedFormat('F Y');
+
+        // Todavía no le toca pagar: cubierto.
+        if ($curStart->lessThan($ppStart)) {
+            return [
+                'ok' => true,
+                'numero' => $numero,
+                'mensualidad' => round($primerPago, 2),
+                'es_primer_periodo' => true,
+                'meses_adeudo' => 0,
+                'lista_meses' => [],
+                'desde_periodo' => $periodo,
+                'desde_mes_label' => $hastaMes,
+                'hasta_periodo' => $periodo,
+                'hasta_mes_label' => $hastaMes,
+                'ultimo_periodo_cubierto' => $ppStart->copy()->subMonth()->format('Y-m'),
+                'recargo' => 0.0,
+                'pagado_parcial' => 0.0,
+                'pendiente' => 0.0,
+                'vencimiento' => $ppStart->copy()->day(7)->toDateString(),
+                'adeudo_manual' => (float) $usuario->adeudo_monto,
+                'descripcion_manual' => $usuario->adeudo_descripcion,
+                'cubierto_este_mes' => true,
+                'primer_pago_periodo' => $primerPagoPeriodo,
+                'primer_pago_monto' => round($primerPago, 2),
+            ];
+        }
+
+        // Ya llegó (o pasó) el mes del primer pago. Lo esperado es: el primer
+        // pago por su mes, más la mensualidad normal por cada mes posterior.
+        $mesesDespues = (int) $ppStart->diffInMonths($curStart);
+        $esperado = $primerPago + ($tarifa * $mesesDespues);
+
+        $pagado = (float) Factura::whereNull('deleted_at')
+            ->where('numero_servicio', $numero)
+            ->whereBetween('periodo', [$primerPagoPeriodo, $periodo])
+            ->sum('total');
+
+        $recargo = ($today->day >= 8) ? 50.0 : 0.0;
+        $moraRow = CargoMora::where('periodo', $periodo)->where('numero_servicio', $numero)->first();
+        if ($moraRow) {
+            $recargo = max($recargo, (float) $moraRow->monto);
+        }
+        // Sin saldo por cobrar no hay recargo que aplicar.
+        if ($pagado >= $esperado - 0.01) {
+            $recargo = 0.0;
+        }
+
+        $pendiente = round(max(0.0, ($esperado + $recargo) - $pagado), 2);
+        $mesesAdeudo = $pendiente > 0.01 ? ($mesesDespues + 1) : 0;
+
+        $listaMeses = [];
+        if ($pendiente > 0.01) {
+            $temp = $ppStart->copy();
+            for ($i = 0; $i <= $mesesDespues; $i++) {
+                if ($temp->format('Y-m') !== $periodo) {
+                    $listaMeses[] = $temp->locale('es')->translatedFormat('F Y');
+                }
+                $temp->addMonth();
+            }
+        }
+
+        return [
+            'ok' => true,
+            'numero' => $numero,
+            'mensualidad' => round($periodo === $primerPagoPeriodo ? $primerPago : $tarifa, 2),
+            'es_primer_periodo' => $periodo === $primerPagoPeriodo,
+            'meses_adeudo' => $mesesAdeudo,
+            'lista_meses' => $listaMeses,
+            'desde_periodo' => $primerPagoPeriodo,
+            'desde_mes_label' => $ppStart->locale('es')->translatedFormat('F Y'),
+            'hasta_periodo' => $periodo,
+            'hasta_mes_label' => $hastaMes,
+            'ultimo_periodo_cubierto' => $ppStart->copy()->subMonth()->format('Y-m'),
+            'recargo' => round($recargo, 2),
+            'pagado_parcial' => round($pagado, 2),
+            'pendiente' => $pendiente,
+            'vencimiento' => $dueDate->toDateString(),
+            'adeudo_manual' => (float) $usuario->adeudo_monto,
+            'descripcion_manual' => $usuario->adeudo_descripcion,
+            'cubierto_este_mes' => $pendiente <= 0.01,
+            'primer_pago_periodo' => $primerPagoPeriodo,
+            'primer_pago_monto' => round($primerPago, 2),
         ];
     }
 

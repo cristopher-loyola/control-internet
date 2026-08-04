@@ -34,6 +34,7 @@ class Usuario extends Model
         'servicio_id',
         'fecha_contratacion',
         'primer_pago',
+        'primer_pago_periodo',
         'primer_pago_vencimiento',
         'numero_servicio_anterior',
         'cortador_id',

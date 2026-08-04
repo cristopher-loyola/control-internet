@@ -1064,6 +1064,7 @@ class AdminController extends Controller
                 'dispositivo' => ['nullable', 'string', 'in:permanencia voluntaria,como dato'],
                 'tarifa' => ['nullable', 'numeric', 'min:0'],
                 'primer_pago' => ['nullable', 'numeric', 'min:0'],
+                'primer_pago_periodo' => ['nullable', 'string', 'regex:/^\d{4}-\d{2}$/'],
             ],
             [
                 'required' => 'El campo :attribute es obligatorio.',
@@ -1083,7 +1084,8 @@ class AdminController extends Controller
                 'megas' => 'megas',
                 'tarifa' => 'paquete',
                 'dispositivo' => 'dispositivo',
-                'primer_pago' => 'primer pago',
+                'primer_pago' => 'monto del primer pago',
+                'primer_pago_periodo' => 'mes del primer pago',
             ]
         )->validateWithBag('clienteCreate');
 
@@ -1117,6 +1119,17 @@ class AdminController extends Controller
             }
         }
 
+        // Mes del primer pago. Si el alta no lo especifica, se mantiene el
+        // comportamiento anterior: el mes siguiente al alta.
+        $primerPagoPeriodo = null;
+        $primerPagoInicio  = null;
+        if ($request->filled('primer_pago')) {
+            $primerPagoPeriodo = $request->filled('primer_pago_periodo')
+                ? $request->input('primer_pago_periodo')
+                : now()->addMonth()->format('Y-m');
+            $primerPagoInicio = \Illuminate\Support\Carbon::createFromFormat('Y-m-d', $primerPagoPeriodo.'-01');
+        }
+
         Usuario::create([
             'numero_servicio' => $request->numero_servicio,
             'nombre_cliente' => $request->nombre_cliente,
@@ -1133,8 +1146,11 @@ class AdminController extends Controller
             'megas' => $megasAsignados ?? $request->megas ?? null,
             'tarifa' => $request->tarifa ?? null,
             'primer_pago' => $request->primer_pago ?? null,
-            'primer_pago_vencimiento' => $request->primer_pago ? now()->addMonth()->startOfMonth()->addDays(6)->format('Y-m-d') : null,
-            'fecha_contratacion' => $request->primer_pago ? now()->addMonth()->startOfMonth()->format('Y-m-d') : null,
+            // Mes en que le toca su primer pago. Si no se indica, se asume el
+            // mes siguiente al alta (comportamiento de siempre).
+            'primer_pago_periodo' => $primerPagoPeriodo,
+            'primer_pago_vencimiento' => $primerPagoInicio?->copy()->day(7)->format('Y-m-d'),
+            'fecha_contratacion' => $primerPagoInicio?->format('Y-m-d'),
         ]);
 
         // Snapshot historial (creación)

@@ -355,11 +355,23 @@
                     <x-text-input id="megas" name="megas" type="number" class="mt-1 block w-full" :value="old('megas')" x-ref="createMegas" x-bind:readonly="createMegasReadonly" />
                     <x-input-error :messages="$errors->clienteCreate->get('megas')" class="mt-2" />
                 </div>
-                <div class="sm:col-span-2" x-show="isNuevoCliente">
-                    <x-input-label for="primer_pago" value="Primer pago ($)" />
-                    <x-text-input id="primer_pago" name="primer_pago" type="number" step="0.01" min="0" class="mt-1 block w-full" :value="old('primer_pago')" placeholder="Ingresa la cantidad del primer pago" />
-                    <p class="mt-1 text-xs text-gray-500">El primer pago vence el día 7 del mes siguiente. Si no paga a tiempo, se agregará recargo de $50.</p>
+                <div x-show="isNuevoCliente">
+                    <x-input-label for="primer_pago_periodo" value="Mes del primer pago" />
+                    <x-text-input id="primer_pago_periodo" name="primer_pago_periodo" type="month" class="mt-1 block w-full" :value="old('primer_pago_periodo', now()->format('Y-m'))" />
+                    <p class="mt-1 text-xs text-gray-500">Los meses anteriores quedan cubiertos.</p>
+                    <x-input-error :messages="$errors->clienteCreate->get('primer_pago_periodo')" class="mt-2" />
+                </div>
+                <div x-show="isNuevoCliente">
+                    <x-input-label for="primer_pago" value="Monto del primer pago ($)" />
+                    <x-text-input id="primer_pago" name="primer_pago" type="number" step="0.01" min="0" class="mt-1 block w-full" :value="old('primer_pago')" placeholder="Ej. 15" />
+                    <p class="mt-1 text-xs text-gray-500">Solo ese mes. Después se cobra la mensualidad normal.</p>
                     <x-input-error :messages="$errors->clienteCreate->get('primer_pago')" class="mt-2" />
+                </div>
+                <div class="sm:col-span-2" x-show="isNuevoCliente">
+                    <p class="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+                        Vence el día 7 de ese mes. Si no paga a tiempo, se agrega recargo de $50.
+                        El <strong>costo de paquete</strong> es su mensualidad normal y no cambia.
+                    </p>
                 </div>
             </div>
 
