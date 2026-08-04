@@ -511,8 +511,8 @@
                         </div>
                     </div>
                 </div>
-                <!-- Columna Derecha: Sidebar de Morosos -->
-                <div class="lg:col-span-1 not-print mt-4 lg:mt-0">
+                <!-- Columna Derecha: Sidebar de Morosos (oculto) -->
+                <div class="lg:col-span-1 not-print mt-4 lg:mt-0 hidden">
                     <!-- Morosos -->
                     <div class="bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-900 shadow-xl sm:rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden" aria-label="Lista de deudas históricas">
                         <!-- Header -->
