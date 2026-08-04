@@ -312,13 +312,32 @@
         <h3 class="text-lg font-semibold text-green-800">Información de Pagos</h3>
     </div>
     <div class="text-sm text-green-700">
-        <p>
-            <strong>Cliente con pagos en regla:</strong>
-            <span x-show="!alCorriente">Sus pagos están al corriente</span>
-            <span x-show="alCorriente && descripcionManual" x-text="descripcionManual"></span>
-            <span x-show="alCorriente && !descripcionManual">Cubierto este mes</span>
-        </p>
-        <p x-show="alCorriente" class="mt-1 font-semibold text-green-900">Total a pagar este mes: $0.00</p>
+        {{-- Cliente nuevo con primer pago programado a un mes futuro --}}
+        <template x-if="esPrimerPagoPendiente()">
+            <div>
+                <p>
+                    <strong>Cliente nuevo:</strong>
+                    su primer pago es hasta <strong x-text="primerPagoMesLabel()"></strong>.
+                </p>
+                <p class="mt-1 font-semibold text-green-900">
+                    Total a pagar este mes: $0.00
+                    <span class="font-normal" x-show="primerPagoMonto > 0"
+                          x-text="'· Primer pago: $' + Number(primerPagoMonto).toFixed(2)"></span>
+                </p>
+            </div>
+        </template>
+
+        <template x-if="!esPrimerPagoPendiente()">
+            <div>
+                <p>
+                    <strong>Cliente con pagos en regla:</strong>
+                    <span x-show="!alCorriente">Sus pagos están al corriente</span>
+                    <span x-show="alCorriente && descripcionManual" x-text="descripcionManual"></span>
+                    <span x-show="alCorriente && !descripcionManual">Cubierto este mes</span>
+                </p>
+                <p x-show="alCorriente" class="mt-1 font-semibold text-green-900">Total a pagar este mes: $0.00</p>
+            </div>
+        </template>
     </div>
 </div>
 
@@ -921,6 +940,8 @@
             saldoDespues: null,
             pagadoMesActual: false,
             alCorriente: false,
+            primerPagoPeriodo: '',
+            primerPagoMonto: 0,
             descripcionManual: '',
             pagarMesSiguiente: false,
             periodoOverride: null,
@@ -1066,7 +1087,9 @@
                             fmt.push(groups[y].join(', ') + ' ' + y);
                         }
                     });
-                    partes.push(`Adeudos: ${fmt.join(', ')}`);
+                    // No se imprime el detalle de adeudos en el recibo: el cliente
+                    // acaba de pagarlos y verlos listados lo hacía creer que seguía debiendo.
+                    // partes.push(`Adeudos: ${fmt.join(', ')}`);
                 }
 
                 const motivo = this.manualReasonForPrint();
@@ -1091,6 +1114,22 @@
             mesEnCursoCompleto(){
                 const d = this._fechaMesBase();
                 return d.toLocaleDateString('es-MX',{month:'long'})+' de '+d.getFullYear();
+            },
+
+            // Cliente nuevo cuyo primer pago está programado a un mes futuro:
+            // todavía no le toca pagar nada.
+            esPrimerPagoPendiente(){
+                if (!this.primerPagoPeriodo) return false;
+                const h = new Date();
+                const mesActual = h.getFullYear()+'-'+String(h.getMonth()+1).padStart(2,'0');
+                return this.primerPagoPeriodo > mesActual;
+            },
+            primerPagoMesLabel(){
+                if (!this.primerPagoPeriodo) return '';
+                const [y,m] = this.primerPagoPeriodo.split('-').map(Number);
+                const d = new Date(y, m-1, 1);
+                const s = d.toLocaleDateString('es-MX',{month:'long'})+' de '+y;
+                return s.charAt(0).toUpperCase()+s.slice(1);
             },
             fecha(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'}) },
             hora(){ const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date(); return d.toLocaleTimeString('es-MX') },
@@ -1701,6 +1740,9 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                         const meses = j.meses_adeudo||0;
                         this.descripcionManual = j.descripcion_manual || '';
                         this.alCorriente = !!(j.cubierto_este_mes);
+                        // Cliente nuevo con primer pago programado a un mes futuro
+                        this.primerPagoPeriodo = j.primer_pago_periodo || '';
+                        this.primerPagoMonto   = Number(j.primer_pago_monto || 0);
                         if(isFinite(m) && m>0){
                             this.adeudo = {
                                 desde_periodo: j.desde_periodo,
@@ -1897,7 +1939,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                             Object.keys(groups).forEach(y => {
                                 fmt.push(y === 'extra' ? groups[y].join(', ') : groups[y].join(', ') + ' ' + y);
                             });
-                            partes.push(`Adeudos: ${fmt.join(', ')}`);
+                            // Ver nota arriba: el detalle de adeudos no se imprime.
+                            // partes.push(`Adeudos: ${fmt.join(', ')}`);
                         }
                         if (partes.length > 0) this.manualReason = partes.join(' - ');
                     }
@@ -2271,25 +2314,15 @@ Le recordamos que los pagos deben realizarse del día 1 al 7 de cada mes. Poster
                     if(!j.ok){ this.error = j.message || 'No encontrado'; this.datos={nombre:'',mensualidad:0}; this.recalcular(); return }
                     this.datos.nombre = j.data.nombre_cliente || '';
                     
-                    // Detectar si es el primer periodo de cobro (hasta la fecha de vencimiento del primer pago)
-                    const primerPago = Number(j.data.primer_pago) || 0;
-                    const vencimientoPrimerPago = j.data.primer_pago_vencimiento;
-                    let esPrimerPeriodo = false;
-                    if (primerPago > 0 && vencimientoPrimerPago) {
-                        const now = new Date();
-                        const vencimiento = new Date(vencimientoPrimerPago);
-                        // Es primer periodo si estamos antes o en la fecha de vencimiento
-                        esPrimerPeriodo = now <= vencimiento;
-                    }
+
                     
-                    if (esPrimerPeriodo && primerPago > 0) {
-                        this.datos.mensualidad = primerPago;
-                    } else {
-                        const rawTarifa = j.data.tarifa ?? '';
-                        const numTarifa = Number(String(rawTarifa).replace(/[^\d.]/g, '')) || 0;
-                        const pkg = Number(String(j.data.paquete ?? '').replace(/[^\d]/g,'')) || 0;
-                        this.datos.mensualidad = numTarifa || pkg || 0;
-                    }
+                    // "Mensualidad de Internet" es SIEMPRE la tarifa del alta.
+                    // El primer pago es un monto aparte que solo aplica a su mes;
+                    // el servidor ya lo refleja en el total a cobrar.
+                    const rawTarifa = j.data.tarifa ?? '';
+                    const numTarifa = Number(String(rawTarifa).replace(/[^\d.]/g, '')) || 0;
+                    const pkg = Number(String(j.data.paquete ?? '').replace(/[^\d]/g,'')) || 0;
+                    this.datos.mensualidad = numTarifa || pkg || 0;
                     this.recalcular();
                     await this.fetchPagoAnterior();
                     await this.fetchPrepayStatus();

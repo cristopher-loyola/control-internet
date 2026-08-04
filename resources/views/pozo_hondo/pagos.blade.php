@@ -589,7 +589,9 @@
                             fmt.push(groups[y].join(', ') + ' ' + y);
                         }
                     });
-                    partes.push(`Adeudos: ${fmt.join(', ')}`);
+                    // No se imprime el detalle de adeudos en el recibo: el cliente
+                    // acaba de pagarlos y verlos listados lo hacía creer que seguía debiendo.
+                    // partes.push(`Adeudos: ${fmt.join(', ')}`);
                 }
 
                 const motivo = this.manualReasonForPrint();
@@ -1232,25 +1234,15 @@ Le recordamos que los pagos deben realizarse del día 1 al 7 de cada mes. Poster
                     }
                     this.datos.nombre = j.data.nombre_cliente || '';
                     
-                    // Detectar si es el primer periodo de cobro (hasta la fecha de vencimiento del primer pago)
-                    const primerPago = Number(j.data.primer_pago) || 0;
-                    const vencimientoPrimerPago = j.data.primer_pago_vencimiento;
-                    let esPrimerPeriodo = false;
-                    if (primerPago > 0 && vencimientoPrimerPago) {
-                        const now = new Date();
-                        const vencimiento = new Date(vencimientoPrimerPago);
-                        // Es primer periodo si estamos antes o en la fecha de vencimiento
-                        esPrimerPeriodo = now <= vencimiento;
-                    }
+
                     
-                    if (esPrimerPeriodo && primerPago > 0) {
-                        this.datos.mensualidad = primerPago;
-                    } else {
-                        const rawTarifa = j.data.tarifa ?? '';
-                        const numTarifa = Number(String(rawTarifa).replace(/[^\d.]/g, '')) || 0;
-                        const pkg = Number(String(j.data.paquete ?? '').replace(/[^\d]/g,'')) || 0;
-                        this.datos.mensualidad = numTarifa || pkg || 0;
-                    }
+                    // "Mensualidad de Internet" es SIEMPRE la tarifa del alta.
+                    // El primer pago es un monto aparte que solo aplica a su mes;
+                    // el servidor ya lo refleja en el total a cobrar.
+                    const rawTarifa = j.data.tarifa ?? '';
+                    const numTarifa = Number(String(rawTarifa).replace(/[^\d.]/g, '')) || 0;
+                    const pkg = Number(String(j.data.paquete ?? '').replace(/[^\d]/g,'')) || 0;
+                    this.datos.mensualidad = numTarifa || pkg || 0;
 
                     this.recalcular();
                     await this.fetchPagoAnterior();
