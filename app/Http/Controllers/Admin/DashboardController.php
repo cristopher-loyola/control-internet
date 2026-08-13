@@ -1137,8 +1137,56 @@ class DashboardController extends Controller
             })
             ->get();
 
+        // Cobros de las zonas, aparte de la sucursal principal. Van en bloques
+        // separados para que no se mezclen con la caja de oficina.
+        $zonasDef = [
+            'rosalito'   => ['nombre' => 'ROSALITO',    'color' => '#2563eb'],
+            'pozo_hondo' => ['nombre' => 'POZO HONDO',  'color' => '#7c3aed'],
+            'chivato'    => ['nombre' => 'CHIVATO',     'color' => '#ea580c'],
+        ];
+        $ventasZona = Factura::whereNull('deleted_at')
+            ->whereBetween(DB::raw(Factura::FECHA_REPORTE_SQL), [$range['from'], $range['to']])
+            ->whereHas('cajero', function ($q) use ($zonasDef) {
+                $q->whereIn('role', array_keys($zonasDef));
+            })
+            ->with('cajero')
+            ->get();
+
+        $zonas = [];
+        foreach ($zonasDef as $rol => $def) {
+            $delZona = $ventasZona->filter(fn ($v) => optional($v->cajero)->role === $rol);
+            $filas = [];
+            $suma = 0.0;
+            foreach ($delZona as $v) {
+                $p = is_array($v->payload) ? $v->payload : (is_string($v->payload) ? @json_decode($v->payload, true) : []);
+                // Comisiones que se queda el cobrador de zona: $50 por reconexión y
+                // $10 por cada recibo cobrado. Salen en el ticket pero no entran al
+                // corte ni al dinero entregado, así que tampoco deben sumar aquí
+                // (mismo criterio que el "TOTAL A ENTREGAR" del corte de zona).
+                $comisionReconexion = (($p['recargo'] ?? null) === 'si') ? 50 : 0;
+                $comisionRecibo = 10;
+                $monto = round((float) $v->total - $comisionReconexion - $comisionRecibo, 2);
+                $suma += $monto;
+                $filas[] = [
+                    optional($v->created_at)->format('Y-m-d H:i'),
+                    number_format($monto, 2, '.', ''),
+                    $p['nombre'] ?? '',
+                    (string) $v->numero_servicio,
+                ];
+            }
+            $zonas[$rol] = [
+                'nombre' => $def['nombre'],
+                'color'  => $def['color'],
+                'rows'   => $filas,
+                'total'  => $suma,
+                'count'  => count($filas),
+            ];
+        }
+        $totalZonas = array_sum(array_column($zonas, 'total'));
+
         $rows = [];
-        $totalSum = 0.0;
+        $totalSum = 0.0;       // todos los métodos (para porcentajes y total general)
+        $totalEfectivo = 0.0;  // solo efectivo (lo que se lista en el bloque de Rayón)
         $metodosData = [];
         foreach ($ventas as $v) {
             $p = is_array($v->payload) ? $v->payload : (is_string($v->payload) ? @json_decode($v->payload, true) : []);
@@ -1149,7 +1197,13 @@ class DashboardController extends Controller
             }
             $monto = round((float) $v->total, 2);
             $totalSum += $monto;
-            $rows[] = ['Venta', optional($v->created_at)->format('Y-m-d H:i'), number_format($monto, 2, '.', ''), $nombre, (string) $v->numero_servicio];
+            // El detalle de Rayón lista SOLO efectivo, para que su total cuadre
+            // contra la caja física. Tarjeta y depósito siguen contándose en el
+            // desglose por método y en el total general.
+            if ($metodo === 'Efectivo') {
+                $totalEfectivo += $monto;
+                $rows[] = ['Venta', optional($v->created_at)->format('Y-m-d H:i'), number_format($monto, 2, '.', ''), $nombre, (string) $v->numero_servicio];
+            }
 
             if (! isset($metodosData[$metodo])) {
                 $metodosData[$metodo] = ['cantidad' => 0, 'monto' => 0.0];
@@ -1177,17 +1231,17 @@ class DashboardController extends Controller
                 'Content-Type' => 'text/csv; charset=UTF-8',
                 'Content-Disposition' => 'attachment; filename="'.$fileBase.'.csv"',
             ];
-            $callback = function () use ($rows, $title, $totalSum, $metodosRows) {
+            $callback = function () use ($rows, $title, $totalSum, $totalEfectivo, $metodosRows, $zonas, $totalZonas) {
                 echo "\xEF\xBB\xBF";
                 $out = fopen('php://output', 'w');
                 fputcsv($out, [$title]);
                 fputcsv($out, []);
-                fputcsv($out, ['DETALLE DE VENTAS']);
+                fputcsv($out, ['RAYÓN (efectivo)']);
                 fputcsv($out, ['Tipo', 'Fecha', 'Monto', 'Nombre', 'Detalle']);
                 foreach ($rows as $r) {
                     fputcsv($out, $r);
                 }
-                fputcsv($out, ['', '', number_format($totalSum, 2, '.', ''), 'TOTAL', '']);
+                fputcsv($out, ['', '', number_format($totalEfectivo, 2, '.', ''), 'TOTAL EFECTIVO', '']);
 
                 if (! empty($metodosRows)) {
                     fputcsv($out, []);
@@ -1197,6 +1251,25 @@ class DashboardController extends Controller
                         fputcsv($out, $mr);
                     }
                 }
+
+                // Un bloque por zona, separado de la sucursal principal
+                foreach ($zonas as $z) {
+                    fputcsv($out, []);
+                    fputcsv($out, [$z['nombre']]);
+                    fputcsv($out, ['Fecha', 'Monto', 'Nombre', 'Detalle']);
+                    foreach ($z['rows'] as $r) {
+                        fputcsv($out, $r);
+                    }
+                    fputcsv($out, ['TOTAL', number_format($z['total'], 2, '.', ''), $z['count'].' cobros', '']);
+                }
+
+                fputcsv($out, []);
+                fputcsv($out, ['TOTAL GENERAL']);
+                fputcsv($out, ['Rayón (efectivo)', number_format($totalEfectivo, 2, '.', '')]);
+                foreach ($zonas as $z) {
+                    fputcsv($out, [$z['nombre'], number_format($z['total'], 2, '.', '')]);
+                }
+                fputcsv($out, ['TOTAL', number_format($totalEfectivo + $totalZonas, 2, '.', '')]);
 
                 fclose($out);
             };
@@ -1209,7 +1282,7 @@ class DashboardController extends Controller
                 'Content-Disposition' => 'attachment; filename="'.$fileBase.'.xls"',
                 'Cache-Control' => 'max-age=0',
             ];
-            $callback = function () use ($rows, $title, $totalSum, $metodosRows) {
+            $callback = function () use ($rows, $title, $totalSum, $totalEfectivo, $metodosRows, $zonas, $totalZonas) {
                 echo "\xEF\xBB\xBF";
                 echo '<html><head><meta charset="utf-8"><style>
                 table{ border-collapse:collapse; margin-bottom: 20px; }
@@ -1219,6 +1292,7 @@ class DashboardController extends Controller
                 .total-row{ background:#0f766e; color:#fff; font-weight:bold; }
                 .wrapper{ border-collapse:separate; border:none; margin-bottom:0; }
                 .wrapper td{ border:1px solid #000; padding:0 20px 0 0; vertical-align:top; }
+                .granL{ background:#111827; color:#fff; font-weight:bold; }
                 </style></head><body>';
                 echo '<h3>'.htmlspecialchars($title).'</h3>';
 
@@ -1228,7 +1302,7 @@ class DashboardController extends Controller
                 // Primera tabla: Detalle de ventas (izquierda)
                 echo '<table>';
                 echo '<thead>';
-                echo '<tr><th colspan="5" class="hdr">DETALLE DE VENTAS</th></tr>';
+                echo '<tr><th colspan="5" class="hdr">RAYÓN (efectivo)</th></tr>';
                 echo '<tr>';
                 echo '<th class="hdr">Tipo</th><th class="hdr">Fecha</th><th class="hdr">Monto</th><th class="hdr">Nombre</th><th class="hdr">Detalle</th>';
                 echo '</tr>';
@@ -1244,9 +1318,9 @@ class DashboardController extends Controller
                     echo '</tr>';
                 }
                 echo '<tr class="total-row">';
-                echo '<td colspan="2">TOTAL</td>';
-                echo '<td class="money">'.htmlspecialchars(number_format($totalSum, 2, '.', '')).'</td>';
-                echo '<td colspan="2"></td>';
+                echo '<td colspan="2">TOTAL EFECTIVO</td>';
+                echo '<td class="money">'.htmlspecialchars(number_format($totalEfectivo, 2, '.', '')).'</td>';
+                echo '<td colspan="2">'.count($rows).' cobros</td>';
                 echo '</tr>';
                 echo '</tbody>';
                 echo '</table>';
@@ -1273,6 +1347,50 @@ class DashboardController extends Controller
                     }
                     echo '</tbody>';
                     echo '</table>';
+
+                    // Resumen general: principal + zonas
+                    echo '<table>';
+                    echo '<tr><th colspan="2" class="hdr">TOTAL GENERAL</th></tr>';
+                    echo '<tr><td>Rayón (efectivo)</td><td class="money">'.htmlspecialchars(number_format($totalEfectivo, 2, '.', '')).'</td></tr>';
+                    foreach ($zonas as $z) {
+                        echo '<tr><td>'.htmlspecialchars($z['nombre']).'</td>';
+                        echo '<td class="money">'.htmlspecialchars(number_format($z['total'], 2, '.', '')).'</td></tr>';
+                    }
+                    echo '<tr class="granL"><td>TOTAL</td>';
+                    echo '<td class="money">'.htmlspecialchars(number_format($totalEfectivo + $totalZonas, 2, '.', '')).'</td></tr>';
+                    echo '</table>';
+                }
+
+                // Un bloque por zona, cada uno con su color
+                foreach ($zonas as $z) {
+                    echo '</td><td>';
+                    echo '<table>';
+                    echo '<thead>';
+                    echo '<tr><th colspan="4" style="background:'.$z['color'].';color:#fff;font-weight:bold;text-align:center">'
+                        .htmlspecialchars($z['nombre']).'</th></tr>';
+                    echo '<tr>';
+                    foreach (['Fecha', 'Monto', 'Nombre', 'Detalle'] as $h) {
+                        echo '<th style="background:'.$z['color'].';color:#fff;font-weight:bold;text-align:center">'.$h.'</th>';
+                    }
+                    echo '</tr>';
+                    echo '</thead><tbody>';
+                    foreach ($z['rows'] as $r) {
+                        echo '<tr>';
+                        echo '<td>'.htmlspecialchars($r[0]).'</td>';
+                        echo '<td class="money">'.htmlspecialchars($r[1]).'</td>';
+                        echo '<td>'.htmlspecialchars($r[2]).'</td>';
+                        echo '<td>'.htmlspecialchars($r[3]).'</td>';
+                        echo '</tr>';
+                    }
+                    if (empty($z['rows'])) {
+                        echo '<tr><td colspan="4" style="text-align:center">Sin cobros en el periodo</td></tr>';
+                    }
+                    echo '<tr style="background:'.$z['color'].';color:#fff;font-weight:bold">';
+                    echo '<td>TOTAL</td>';
+                    echo '<td class="money">'.htmlspecialchars(number_format($z['total'], 2, '.', '')).'</td>';
+                    echo '<td colspan="2">'.htmlspecialchars($z['count']).' cobros</td>';
+                    echo '</tr>';
+                    echo '</tbody></table>';
                 }
 
                 echo '</td></tr></table>';
@@ -1312,6 +1430,32 @@ class DashboardController extends Controller
             }
             $html .= '</tbody></table>';
         }
+
+        // Un bloque por zona, cada uno con su color
+        foreach ($zonas as $z) {
+            $html .= '<br><h4 style="color:'.$z['color'].'">'.htmlspecialchars($z['nombre']).'</h4>';
+            $html .= '<table><thead><tr>';
+            foreach (['Fecha', 'Monto', 'Nombre', 'Detalle'] as $h) {
+                $html .= '<th style="background:'.$z['color'].'">'.$h.'</th>';
+            }
+            $html .= '</tr></thead><tbody>';
+            foreach ($z['rows'] as $r) {
+                $html .= '<tr><td>'.htmlspecialchars($r[0]).'</td><td class="money">$'.htmlspecialchars($r[1]).'</td><td>'.htmlspecialchars($r[2]).'</td><td>'.htmlspecialchars($r[3]).'</td></tr>';
+            }
+            if (empty($z['rows'])) {
+                $html .= '<tr><td colspan="4" style="text-align:center">Sin cobros en el periodo</td></tr>';
+            }
+            $html .= '</tbody><tfoot><tr><td>TOTAL</td><td class="money">$'.htmlspecialchars(number_format($z['total'], 2, '.', '')).'</td>';
+            $html .= '<td colspan="2">'.htmlspecialchars($z['count']).' cobros</td></tr></tfoot></table>';
+        }
+
+        $html .= '<br><h4>TOTAL GENERAL</h4>';
+        $html .= '<table><tbody>';
+        $html .= '<tr><td>Rayón (efectivo)</td><td class="money">$'.htmlspecialchars(number_format($totalEfectivo, 2, '.', '')).'</td></tr>';
+        foreach ($zonas as $z) {
+            $html .= '<tr><td>'.htmlspecialchars($z['nombre']).'</td><td class="money">$'.htmlspecialchars(number_format($z['total'], 2, '.', '')).'</td></tr>';
+        }
+        $html .= '</tbody><tfoot><tr><td>TOTAL</td><td class="money">$'.htmlspecialchars(number_format($totalEfectivo + $totalZonas, 2, '.', '')).'</td></tr></tfoot></table>';
 
         $html .= '</body></html>';
 
