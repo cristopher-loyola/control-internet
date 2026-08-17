@@ -90,10 +90,17 @@
                                  :class="selected === {{ $c->id }} ? 'ring-2 ring-indigo-400 bg-indigo-50 dark:bg-gray-700/40' : 'bg-white dark:bg-gray-800'"
                                  class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm cursor-pointer">
                                 <div class="flex items-center justify-between mb-2">
-                                    <span class="inline-flex items-center gap-2 font-semibold text-sm">
-                                        <span class="inline-block w-2 h-2 rounded-full {{ !is_null($c->fecha_contratacion) ? 'bg-emerald-600' : 'bg-gray-300' }}"></span>
-                                        {{ $c->nombre_cliente }}
-                                    </span>
+                                    <div>
+                                        <span class="inline-flex items-center gap-2 font-semibold text-sm">
+                                            <span class="inline-block w-2 h-2 rounded-full {{ !is_null($c->fecha_contratacion) ? 'bg-emerald-600' : 'bg-gray-300' }}"></span>
+                                            {{ $c->nombre_cliente }}
+                                        </span>
+                                        <div class="mt-1">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold {{ $c->pago_al_corriente ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                                {{ $c->pago_label }}
+                                            </span>
+                                        </div>
+                                    </div>
                                     <span class="text-xs font-medium text-gray-500">#{{ $c->numero_servicio }}</span>
                                 </div>
                                 <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600 dark:text-gray-300 mb-3">
@@ -140,11 +147,16 @@
                                 @forelse ($clientes as $c)
                                     <tr x-on:click="selectRow(@js(['id' => $c->id, 'numero_servicio' => $c->numero_servicio, 'nombre_cliente' => $c->nombre_cliente, 'domicilio' => $c->domicilio, 'comunidad' => $c->comunidad, 'telefono' => $c->telefono, 'uso' => $c->uso, 'tecnologia' => $c->tecnologia, 'dispositivo' => $c->dispositivo, 'megas' => $c->megas, 'tarifa' => $c->tarifa, 'estado_id' => $c->estado_id, 'estatus_servicio_id' => $c->estatus_servicio_id]))" :class="selected === {{ $c->id }} ? 'bg-indigo-50 dark:bg-gray-700/40' : ''" class="cursor-pointer hover:bg-gray-50">
                                         <td class="h-10 px-4 py-2 whitespace-nowrap text-sm">{{ $c->numero_servicio }}</td>
-                                        <td class="h-10 px-4 py-2 whitespace-nowrap text-sm">
+                                        <td class="h-10 px-4 py-2 text-sm">
                                             <span class="inline-flex items-center gap-2">
                                                 <span class="inline-block w-2 h-2 rounded-full {{ !is_null($c->fecha_contratacion) ? 'bg-emerald-600' : 'bg-gray-300' }}"></span>
                                                 <span>{{ $c->nombre_cliente }}</span>
                                             </span>
+                                            <div class="mt-1">
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold {{ $c->pago_al_corriente ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                                    {{ $c->pago_label }}
+                                                </span>
+                                            </div>
                                         </td>
                                         <td class="h-10 px-4 py-2 whitespace-nowrap text-sm">{{ $c->domicilio ?? '—' }}</td>
                                         <td class="h-10 px-4 py-2 whitespace-nowrap text-sm">{{ $c->telefono ?? '—' }}</td>

@@ -99,11 +99,11 @@ class TecnicoController extends Controller
         return response('Técnico destroy '.$id);
     }
 
-    public function clientes(Request $request)
+    public function clientes(Request $request, MorosidadService $morosidadService)
     {
         $q = trim((string) $request->query('q', ''));
         $tec = trim((string) $request->query('tec', ''));
-        
+
         $clientes = Usuario::with(['estado', 'estatusServicio'])
             ->when($q !== '', function ($query) use ($q) {
                 $query->where(function ($sub) use ($q) {
@@ -120,6 +120,19 @@ class TecnicoController extends Controller
             })
             ->orderBy('numero_servicio', 'asc')
             ->paginate(50);
+
+        foreach ($clientes as $c) {
+            $adeudo = $morosidadService->calcularAdeudoUsuario((string) $c->numero_servicio);
+            $mesesAdeudo = (int) ($adeudo['meses_adeudo'] ?? 0);
+            $pendiente = (float) ($adeudo['pendiente'] ?? 0);
+            $alCorriente = $pendiente <= 0.01;
+
+            $c->pago_al_corriente = $alCorriente;
+            $c->pago_label = $alCorriente
+                ? 'Al corriente'
+                : ('Debe ' . max(1, $mesesAdeudo) . ' ' . (max(1, $mesesAdeudo) === 1 ? 'mes' : 'meses') . ' · $' . number_format($pendiente, 2));
+        }
+
         return view('tecnico.clientes.index', compact('clientes'));
     }
 
