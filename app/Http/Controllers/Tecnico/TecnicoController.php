@@ -79,14 +79,7 @@ class TecnicoController extends Controller
 
     public function index()
     {
-        $q = trim('');
-        $tec = trim('');
-        
-        $clientes = Usuario::with(['estado', 'estatusServicio'])
-            ->orderBy('numero_servicio', 'asc')
-            ->paginate(50);
-            
-        return view('tecnico.clientes.index', compact('clientes'));
+        return redirect()->route('tecnico.clientes.index');
     }
 
     public function create()
