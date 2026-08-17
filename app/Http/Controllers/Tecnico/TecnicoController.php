@@ -186,6 +186,9 @@ class TecnicoController extends Controller
             'nombre_cliente' => ['required', 'string'],
             'domicilio' => ['nullable', 'string'],
             'telefono' => ['nullable', 'string'],
+            'zona' => ['nullable', 'string'],
+            'ip' => ['nullable', 'string'],
+            'mac' => ['nullable', 'string'],
             'uso' => ['nullable', 'string'],
             'tecnologia' => ['nullable', 'string'],
             'dispositivo' => ['nullable', 'string'],
@@ -214,6 +217,10 @@ class TecnicoController extends Controller
         $cliente->nombre_cliente = $request->input('nombre_cliente');
         $cliente->domicilio = $request->input('domicilio');
         $cliente->telefono = $request->input('telefono');
+        $cliente->zona = $request->input('zona');
+        $cliente->ip = $request->input('ip');
+        $macClean = strtoupper(preg_replace('/[^0-9A-Fa-f]/', '', (string) $request->input('mac', '')));
+        $cliente->mac = $macClean !== '' ? implode(':', str_split(substr($macClean, 0, 12), 2)) : null;
         $cliente->uso = $request->input('uso');
         $cliente->tecnologia = $request->input('tecnologia');
         $cliente->dispositivo = $request->input('dispositivo');

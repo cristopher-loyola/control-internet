@@ -160,6 +160,10 @@
                     } else if (['2', '3'].includes(estatus)) {
                         estadoSelect.value = '2';
                     }
+                },
+                formatMac(el) {
+                    const clean = el.value.replace(/[^0-9a-fA-F]/g, '').slice(0, 12);
+                    el.value = clean.match(/.{1,2}/g)?.join(':') || clean;
                 }
               }"
         >
@@ -189,6 +193,18 @@
                 <div>
                     <x-input-label for="edit_telefono" value="Número Telefónico" />
                     <x-text-input id="edit_telefono" name="telefono" type="text" class="mt-1 block w-full" value="{{ $cliente->telefono }}" />
+                </div>
+                <div>
+                    <x-input-label for="edit_zona" value="Zona" />
+                    <x-text-input id="edit_zona" name="zona" type="text" class="mt-1 block w-full" value="{{ $cliente->zona }}" />
+                </div>
+                <div>
+                    <x-input-label for="edit_ip" value="IP" />
+                    <x-text-input id="edit_ip" name="ip" type="text" class="mt-1 block w-full" value="{{ $cliente->ip }}" />
+                </div>
+                <div>
+                    <x-input-label for="edit_mac" value="MAC" />
+                    <x-text-input id="edit_mac" name="mac" type="text" class="mt-1 block w-full" maxlength="17" placeholder="AA:BB:CC:DD:EE:FF" value="{{ $cliente->mac }}" x-on:input="formatMac($event.target)" />
                 </div>
                 <div>
                     <x-input-label for="edit_uso" value="Uso" />
