@@ -67,15 +67,44 @@
                             .max-w-none .flex.justify-between.items-center.mb-4 .flex.gap-3 > * { flex: 1 1 calc(50% - 0.375rem); min-width: 140px; }
                             .max-w-none .btn { font-size: 0.875rem; padding: 0.5rem 0.75rem; }
                             .max-w-none .btn-sm { font-size: 0.8125rem; padding: 0.5rem 0.75rem; }
-                            .max-w-none .overflow-x-auto { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-                            .max-w-none table { font-size: 0.75rem; }
-                            .max-w-none th, .max-w-none td { padding: 0.375rem 0.5rem; white-space: nowrap; }
-                            .max-w-none .h-10 { height: 2.25rem; }
                             .max-w-none .p-6 { padding: 0.75rem; }
                         }
                     </style>
 
-                    <div class="overflow-x-auto">
+                    {{-- Tarjetas: solo móvil --}}
+                    <div class="sm:hidden space-y-3" x-show="!isLoading">
+                        @forelse ($clientes as $c)
+                            <div x-on:click="selectRow(@js(['id' => $c->id, 'numero_servicio' => $c->numero_servicio, 'nombre_cliente' => $c->nombre_cliente, 'domicilio' => $c->domicilio, 'comunidad' => $c->comunidad, 'telefono' => $c->telefono, 'uso' => $c->uso, 'tecnologia' => $c->tecnologia, 'dispositivo' => $c->dispositivo, 'megas' => $c->megas, 'tarifa' => $c->tarifa, 'estado_id' => $c->estado_id, 'estatus_servicio_id' => $c->estatus_servicio_id]))"
+                                 :class="selected === {{ $c->id }} ? 'ring-2 ring-indigo-400 bg-indigo-50 dark:bg-gray-700/40' : 'bg-white dark:bg-gray-800'"
+                                 class="rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm cursor-pointer">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="inline-flex items-center gap-2 font-semibold text-sm">
+                                        <span class="inline-block w-2 h-2 rounded-full {{ !is_null($c->fecha_contratacion) ? 'bg-emerald-600' : 'bg-gray-300' }}"></span>
+                                        {{ $c->nombre_cliente }}
+                                    </span>
+                                    <span class="text-xs font-medium text-gray-500">#{{ $c->numero_servicio }}</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-gray-600 dark:text-gray-300 mb-3">
+                                    <div><span class="text-gray-400">Tel:</span> {{ $c->telefono ?? '—' }}</div>
+                                    <div><span class="text-gray-400">Tec:</span> {{ $c->tecnologia ? strtoupper($c->tecnologia) : '—' }}</div>
+                                    <div><span class="text-gray-400">Megas:</span> {{ $c->megas ?? '—' }}</div>
+                                    <div><span class="text-gray-400">Paquete:</span> {{ $c->tarifa ? '$' . number_format((float) $c->tarifa, 2) : '—' }}</div>
+                                    <div class="col-span-2"><span class="text-gray-400">Dirección:</span> {{ $c->domicilio ?? '—' }}</div>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-xs">
+                                        {{ optional($c->estatusServicio)->nombre ?? '—' }}/{{ optional($c->estado)->nombre ?? '—' }}
+                                    </span>
+                                    <a href="{{ route('tecnico.clientes.show', $c->id) }}" class="btn btn-warning btn-sm" x-on:click.stop>Ver</a>
+                                </div>
+                            </div>
+                        @empty
+                            <div class="text-center text-sm text-gray-500 py-6">No hay clientes.</div>
+                        @endforelse
+                    </div>
+
+                    {{-- Tabla: tablet/desktop --}}
+                    <div class="hidden sm:block overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-700/40">
                                 <tr>

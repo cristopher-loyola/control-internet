@@ -36,8 +36,62 @@
                     </div>
                 </div>
 
-                <!-- Tabla de Cortes -->
-                <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                <!-- Tarjetas de Cortes: solo móvil -->
+                <div class="sm:hidden space-y-3">
+                    @foreach ($usuarios as $u)
+                    <div class="fila-corte rounded-lg border border-gray-200 dark:border-gray-700 p-4"
+                        data-pagado="{{ $u->pagado_mes ? '1' : '0' }}"
+                        :class="soloPorCortar && $el.dataset.pagado === '1' ? 'hidden' : ''"
+                        style="{{ $u->pagado_mes ? 'background-color: #00ff00 !important; color: #000 !important;' : '' }}">
+                        <div class="flex items-center justify-between mb-2">
+                            <div>
+                                <div class="font-bold text-sm">{{ $u->numero_servicio }}</div>
+                                <div class="text-xs opacity-70">{{ $u->nombre_cliente }}</div>
+                            </div>
+                            <div class="text-xs opacity-70">{{ $u->zona ?? '-' }}</div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-xs mb-3">
+                            <div>
+                                <span class="opacity-60">IP:</span>
+                                @if($u->ip)
+                                    <a href="http://{{ $u->ip }}" target="_blank" class="text-indigo-600 hover:underline dark:text-indigo-400">{{ $u->ip }}</a>
+                                @else
+                                    -
+                                @endif
+                            </div>
+                            <div><span class="opacity-60">MAC:</span> {{ $u->mac ?? '-' }}</div>
+                        </div>
+                        <div class="grid grid-cols-1 gap-2">
+                            <div>
+                                <label class="block text-[10px] uppercase opacity-60 mb-1">¿Quién cortó?</label>
+                                <select @change="updateUser({{ $u->id }}, $event.target.value, 'cortador_id')"
+                                    class="form-select text-xs rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 w-full"
+                                    {{ $u->pagado_mes ? 'disabled' : '' }}>
+                                    <option value="">Selecciona...</option>
+                                    @foreach ($cortadores as $c)
+                                    <option value="{{ $c->id }}" {{ $u->cortador_id == $c->id ? 'selected' : '' }}>{{ $c->nombre }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] uppercase opacity-60 mb-1">Estado</label>
+                                <select @change="updateUser({{ $u->id }}, $event.target.value, 'estado_corte')"
+                                    class="form-select text-xs rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 w-full"
+                                    {{ $u->pagado_mes ? 'disabled' : '' }}>
+                                    <option value="">Selecciona...</option>
+                                    <option value="Cortado" {{ $u->estado_corte === 'Cortado' ? 'selected' : '' }}>Cortado</option>
+                                    <option value="Offline" {{ $u->estado_corte === 'Offline' ? 'selected' : '' }}>Offline</option>
+                                    <option value="Ya cortado" {{ $u->estado_corte === 'Ya cortado' ? 'selected' : '' }}>Ya cortado</option>
+                                    <option value="NO_ESTABA" {{ $u->estado_corte === 'NO_ESTABA' ? 'selected' : '' }}>NO_ESTABA</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+
+                <!-- Tabla de Cortes: tablet/desktop -->
+                <div class="hidden sm:block overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                         <thead class="bg-gray-50 dark:bg-gray-900">
                             <tr>
@@ -274,11 +328,6 @@
             /* Botones de acción */
             .max-w-7xl .flex.gap-2 { flex-wrap: wrap; }
             .max-w-7xl .flex.gap-2 > * { flex: 1 1 100%; }
-            /* Tabla */
-            .max-w-7xl .overflow-x-auto { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-            .max-w-7xl table { font-size: 0.75rem; }
-            .max-w-7xl th, .max-w-7xl td { padding: 0.5rem 0.375rem; white-space: nowrap; }
-            .max-w-7xl .form-select { font-size: 0.75rem; min-width: 80px; }
             /* Modal */
             .max-w-7xl .max-w-xs { max-width: 90vw; }
         }
