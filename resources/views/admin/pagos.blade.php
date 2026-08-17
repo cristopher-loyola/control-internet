@@ -1979,9 +1979,13 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                         return;
                     }
                     if (!this.ref || !this.ref.id) {
-                        await this.emitirFactura();
+                        const ok = await this.emitirFactura();
+                        if (!ok) {
+                            alert(this.error || 'No se pudo guardar el pago. Intenta de nuevo.');
+                            return;
+                        }
                     }
-                    
+
                     if (this.printType === 'ticket') {
                         await this.printThermal();
                     } else {
@@ -2042,8 +2046,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
             },
             async emitirFactura(){
                 try{
-                    if (this.ref && this.ref.id) return;
-                    if(this.prepayActivo && !this.ref?.id){ this.error = 'Pago adelantado vigente. No se puede generar un nuevo pago.'; return; }
+                    if (this.ref && this.ref.id) return true;
+                    if(this.prepayActivo && !this.ref?.id){ this.error = 'Pago adelantado vigente. No se puede generar un nuevo pago.'; return false; }
                     const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
                     const r = await fetch('{{ route('admin.pagos.facturas.store') }}', {
                         method:'POST',
@@ -2094,10 +2098,32 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                         await this.fetchPagoAnterior();
                         await this.fetchAdeudo();
                         await this.fetchPrepayStatus();
+
+                        // Segunda verificación: confirmar con el servidor que la
+                        // factura realmente quedó guardada antes de imprimir.
+                        try{
+                            const vr = await fetch('{{ route('admin.pagos.facturas.show', ['id'=>'__ID__']) }}'.replace('__ID__', j.id), { headers:{'Accept':'application/json'} });
+                            const vj = await vr.json();
+                            if(!vr.ok || !vj?.ok){
+                                this.error = 'El pago no se pudo confirmar. No se imprimirá el ticket, intenta de nuevo.';
+                                this.ref = { numero: null, id: null, created_at: null };
+                                return false;
+                            }
+                        }catch(_){
+                            this.error = 'No se pudo confirmar el pago. Intenta de nuevo.';
+                            this.ref = { numero: null, id: null, created_at: null };
+                            return false;
+                        }
+
+                        return true;
                     }else{
-                        if(j?.message){ this.error = j.message; }
+                        this.error = j?.message || 'No se pudo guardar el pago. Intenta de nuevo.';
+                        return false;
                     }
-                }catch(_){}
+                }catch(_){
+                    this.error = 'No se pudo guardar el pago. Revisa tu conexión e intenta de nuevo.';
+                    return false;
+                }
             },
             async prepareAndPrint(){
                 if (this.ref && this.ref.id) {
@@ -2154,9 +2180,15 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                         this.ref.id = j.id;
                         this.ref.created_at = new Date().toISOString();
                     }else{
-                        if(j?.message){ this.error = j.message; }
+                        this.error = j?.message || 'No se pudo guardar el pago. Intenta de nuevo.';
+                        alert(this.error);
+                        return;
                     }
-                }catch(_){}
+                }catch(_){
+                    this.error = 'No se pudo guardar el pago. Revisa tu conexión e intenta de nuevo.';
+                    alert(this.error);
+                    return;
+                }
                 await this.doPrintOnce();
             },
             async fetchPrepayStatus(){
@@ -2180,7 +2212,11 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
             },
             async printThermal(){
                 if(!this.ref || !this.ref.id){
-                    await this.emitirFactura();
+                    const ok = await this.emitirFactura();
+                    if(!ok){
+                        alert(this.error || 'No se pudo guardar el pago. Intenta de nuevo.');
+                        return;
+                    }
                 }
                 const w = window.open('', '_blank', 'width=400,height=700');
                 if(!w) return;

@@ -22,6 +22,7 @@ Route::middleware(['auth', 'role:rosalito'])
         Route::get('/recibos/prepay-status', [RosalitoController::class, 'recibosPrepayStatus'])->name('recibos.prepay.status');
         Route::get('/recibos/layout', [RosalitoController::class, 'recibosLayoutGet'])->name('recibos.layout.get');
         Route::post('/recibos/facturas', [RosalitoController::class, 'recibosFacturaStore'])->name('recibos.facturas.store');
+        Route::get('/recibos/facturas/{id}/verificar', [RosalitoController::class, 'verificarFactura'])->name('recibos.facturas.verificar');
 
         // Routes for Corte de Caja
         Route::post('/corte/iniciar', [RosalitoController::class, 'iniciarCorte'])->name('corte.iniciar');

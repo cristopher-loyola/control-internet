@@ -858,6 +858,28 @@ class PozoHondoController extends Controller
     }
 
     /**
+     * Confirma que una factura recién emitida realmente quedó guardada y
+     * aparece en el corte activo del cobrador, antes de imprimir el ticket.
+     */
+    public function verificarFactura(Request $request, $id)
+    {
+        $user = $request->user();
+        $zona = 'pozo_hondo';
+
+        $corte = CorteCaja::obtenerActivo($zona, $user->id);
+        if (! $corte) {
+            return response()->json(['ok' => true, 'existe' => false]);
+        }
+
+        $existe = Factura::where('id', $id)
+            ->where('corte_caja_id', $corte->id)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        return response()->json(['ok' => true, 'existe' => $existe]);
+    }
+
+    /**
      * Exportar pagos del corte activo a Excel
      */
     public function exportarCorteExcel(Request $request)

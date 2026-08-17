@@ -1017,7 +1017,11 @@
                         return;
                     }
                     if (!this.ref || !this.ref.id) {
-                        await this.emitirFactura();
+                        const ok = await this.emitirFactura();
+                        if (!ok) {
+                            alert(this.error || 'No se pudo guardar el pago. Intenta de nuevo.');
+                            return;
+                        }
                     }
 
                     if (this.printType === 'ticket') {
@@ -1080,8 +1084,31 @@
                         this.ref.id = j.id;
                         this.ref.created_at = new Date().toISOString();
                         await this.fetchPagoAnterior();
+
+                        // Segunda verificación: confirmar con el servidor que el pago
+                        // realmente quedó guardado en el corte activo antes de imprimir.
+                        try{
+                            const vr = await fetch('{{ url('chivato/recibos/facturas') }}/'+j.id+'/verificar');
+                            const vj = await vr.json();
+                            if(!vr.ok || !vj?.ok || !vj?.existe){
+                                this.error = 'El pago no se pudo confirmar en el corte. No se imprimirá el ticket, intenta de nuevo.';
+                                this.ref = { numero: null, id: null, created_at: null };
+                                return false;
+                            }
+                        }catch(_){
+                            this.error = 'No se pudo confirmar el pago en el corte. Intenta de nuevo.';
+                            this.ref = { numero: null, id: null, created_at: null };
+                            return false;
+                        }
+
+                        return true;
                     }
-                }catch(_){}
+                    this.error = j?.message || 'No se pudo guardar el pago. Intenta de nuevo.';
+                    return false;
+                }catch(_){
+                    this.error = 'No se pudo guardar el pago. Revisa tu conexión e intenta de nuevo.';
+                    return false;
+                }
             },
             async printThermal(){
                 // Abrir ventana ANTES de cualquier operación async (evita bloqueo de popup en móvil)
@@ -1092,7 +1119,12 @@
                 }
                 try {
                 if(!this.ref || !this.ref.id){
-                    await this.emitirFactura();
+                    const ok = await this.emitirFactura();
+                    if(!ok){
+                        w.close();
+                        alert(this.error || 'No se pudo guardar el pago. Intenta de nuevo.');
+                        return;
+                    }
                 }
                 // Red de seguridad: si por una falla de red la búsqueda no
                 // llenó el nombre a tiempo, se intenta una vez más antes de

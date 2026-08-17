@@ -22,6 +22,7 @@ Route::middleware(['auth', 'role:chivato'])
         Route::get('/recibos/prepay-status', [ChivatoController::class, 'recibosPrepayStatus'])->name('recibos.prepay.status');
         Route::get('/recibos/layout', [ChivatoController::class, 'recibosLayoutGet'])->name('recibos.layout.get');
         Route::post('/recibos/facturas', [ChivatoController::class, 'recibosFacturaStore'])->name('recibos.facturas.store');
+        Route::get('/recibos/facturas/{id}/verificar', [ChivatoController::class, 'verificarFactura'])->name('recibos.facturas.verificar');
         Route::post('/recibos/ticket-pdf', [ChivatoController::class, 'ticketPdf'])->name('recibos.ticket-pdf');
     });
 

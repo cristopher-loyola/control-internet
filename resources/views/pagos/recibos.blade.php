@@ -1617,9 +1617,13 @@
                         return;
                     }
                     if (!this.ref || !this.ref.id) {
-                        await this.emitirFactura();
+                        const ok = await this.emitirFactura();
+                        if (!ok) {
+                            alert(this.error || 'No se pudo guardar el pago. Intenta de nuevo.');
+                            return;
+                        }
                     }
-                    
+
                     if (this.printType === 'ticket') {
                         await this.printThermal();
                     } else {
@@ -1677,7 +1681,7 @@
             },
             async emitirFactura(){
                 try{
-                    if (this.ref && this.ref.id) return;
+                    if (this.ref && this.ref.id) return true;
                     const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
                     const r = await fetch('{{ route('pagos.recibos.facturas.store') }}', {
                         method:'POST',
@@ -1726,8 +1730,31 @@
                         this.ref.id = j.id;
                         this.ref.created_at = new Date().toISOString();
                         await this.fetchPagoAnterior();
+
+                        // Segunda verificación: confirmar con el servidor que la
+                        // factura realmente quedó guardada antes de imprimir.
+                        try{
+                            const vr = await fetch('{{ route('pagos.recibos.facturas.show', ['id'=>'__ID__']) }}'.replace('__ID__', j.id), { headers:{'Accept':'application/json'} });
+                            const vj = await vr.json();
+                            if(!vr.ok || !vj?.ok){
+                                this.error = 'El pago no se pudo confirmar. No se imprimirá el ticket, intenta de nuevo.';
+                                this.ref = { numero: null, id: null, created_at: null };
+                                return false;
+                            }
+                        }catch(_){
+                            this.error = 'No se pudo confirmar el pago. Intenta de nuevo.';
+                            this.ref = { numero: null, id: null, created_at: null };
+                            return false;
+                        }
+
+                        return true;
                     }
-                }catch(_){}
+                    this.error = j?.message || 'No se pudo guardar el pago. Intenta de nuevo.';
+                    return false;
+                }catch(_){
+                    this.error = 'No se pudo guardar el pago. Revisa tu conexión e intenta de nuevo.';
+                    return false;
+                }
             },
             async prepareAndPrint(){
                 // Asegura plantilla más reciente antes de imprimir
@@ -1785,14 +1812,24 @@
                         this.ref.id = j.id;
                         this.ref.created_at = new Date().toISOString();
                     }else{
-                        if(j?.message){ this.error = j.message; }
+                        this.error = j?.message || 'No se pudo guardar el pago. Intenta de nuevo.';
+                        alert(this.error);
+                        return;
                     }
-                }catch(_){}
+                }catch(_){
+                    this.error = 'No se pudo guardar el pago. Revisa tu conexión e intenta de nuevo.';
+                    alert(this.error);
+                    return;
+                }
                 await this.doPrintOnce();
             },
             async printThermal(){
                 if(!this.ref || !this.ref.id){
-                    await this.emitirFactura();
+                    const ok = await this.emitirFactura();
+                    if(!ok){
+                        alert(this.error || 'No se pudo guardar el pago. Intenta de nuevo.');
+                        return;
+                    }
                 }
                 const w = window.open('', '_blank', 'width=400,height=700');
                 if(!w) return;
