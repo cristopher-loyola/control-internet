@@ -13,6 +13,26 @@ use Dompdf\Options;
 
 class TecnicoController extends Controller
 {
+    /**
+     * Igual que "Cliente con adeudos: Adeuda desde {mes}" en los tickets de pago:
+     * usa desde_mes_label (prioriza adeudo_descripcion real) en vez de contar
+     * meses_adeudo, que solo cuenta meses extra desde el corte de importación y
+     * subestima la deuda real en clientes con adeudo manual importado de Excel.
+     */
+    private function pagoLabel(array $adeudo): string
+    {
+        $pendiente = (float) ($adeudo['pendiente'] ?? 0);
+        if ($pendiente <= 0.01) {
+            return 'Al corriente';
+        }
+        $desdeLabel = trim((string) ($adeudo['desde_mes_label'] ?? ''));
+        $desdeTexto = $desdeLabel === ''
+            ? 'Adeudo'
+            : (stripos($desdeLabel, 'adeuda') === false ? "Adeuda desde {$desdeLabel}" : $desdeLabel);
+
+        return $desdeTexto . ' · $' . number_format($pendiente, 2);
+    }
+
     private function debeSerCortado($usuario, $adeudo, $mesActual, $diaDelMes, MorosidadService $morosidadService): bool
     {
         // First check original logic
@@ -123,14 +143,8 @@ class TecnicoController extends Controller
 
         foreach ($clientes as $c) {
             $adeudo = $morosidadService->calcularAdeudoUsuario((string) $c->numero_servicio);
-            $mesesAdeudo = (int) ($adeudo['meses_adeudo'] ?? 0);
-            $pendiente = (float) ($adeudo['pendiente'] ?? 0);
-            $alCorriente = $pendiente <= 0.01;
-
-            $c->pago_al_corriente = $alCorriente;
-            $c->pago_label = $alCorriente
-                ? 'Al corriente'
-                : ('Debe ' . max(1, $mesesAdeudo) . ' ' . (max(1, $mesesAdeudo) === 1 ? 'mes' : 'meses') . ' · $' . number_format($pendiente, 2));
+            $c->pago_al_corriente = ((float) ($adeudo['pendiente'] ?? 0)) <= 0.01;
+            $c->pago_label = $this->pagoLabel($adeudo);
         }
 
         return view('tecnico.clientes.index', compact('clientes'));

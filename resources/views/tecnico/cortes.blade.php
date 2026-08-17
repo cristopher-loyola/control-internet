@@ -47,6 +47,9 @@
                             <div>
                                 <div class="font-bold text-sm">{{ $u->numero_servicio }}</div>
                                 <div class="text-xs opacity-70">{{ $u->nombre_cliente }}</div>
+                                <span class="inline-flex items-center px-2 py-0.5 mt-1 rounded-full text-[11px] font-semibold {{ $u->pago_al_corriente ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                    {{ $u->pago_label }}
+                                </span>
                             </div>
                             <div class="text-xs opacity-70">{{ $u->zona ?? '-' }}</div>
                         </div>
@@ -109,9 +112,12 @@
                                 data-pagado="{{ $u->pagado_mes ? '1' : '0' }}"
                                 :class="soloPorCortar && $el.dataset.pagado === '1' ? 'hidden' : ''"
                                 style="{{ $u->pagado_mes ? 'background-color: #00ff00 !important; color: #000 !important;' : '' }}">
-                                <td class="px-4 py-3 whitespace-nowrap">
+                                <td class="px-4 py-3">
                                     <div class="font-bold">{{ $u->numero_servicio }}</div>
                                     <div class="text-xs opacity-70">{{ $u->nombre_cliente }}</div>
+                                    <span class="inline-flex items-center px-2 py-0.5 mt-1 rounded-full text-[11px] font-semibold {{ $u->pago_al_corriente ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                        {{ $u->pago_label }}
+                                    </span>
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-sm">{{ $u->zona ?? '-' }}</td>
                                 <td class="px-4 py-3 whitespace-nowrap text-sm">

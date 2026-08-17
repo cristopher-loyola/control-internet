@@ -19,6 +19,26 @@ class CortesController extends Controller
         return $morosidadService->debeSerCortado($usuario, $adeudo, $mesActual, $diaDelMes);
     }
 
+    /**
+     * Igual que "Cliente con adeudos: Adeuda desde {mes}" en los tickets de pago:
+     * usa desde_mes_label (prioriza adeudo_descripcion real) en vez de contar
+     * meses_adeudo, que solo cuenta meses extra desde el corte de importación y
+     * subestima la deuda real en clientes con adeudo manual importado de Excel.
+     */
+    private function pagoLabel(array $adeudo): string
+    {
+        $pendiente = (float) ($adeudo['pendiente'] ?? 0);
+        if ($pendiente <= 0.01) {
+            return 'Al corriente';
+        }
+        $desdeLabel = trim((string) ($adeudo['desde_mes_label'] ?? ''));
+        $desdeTexto = $desdeLabel === ''
+            ? 'Adeudo'
+            : (stripos($desdeLabel, 'adeuda') === false ? "Adeuda desde {$desdeLabel}" : $desdeLabel);
+
+        return $desdeTexto . ' · $' . number_format($pendiente, 2);
+    }
+
     public function index(Request $request, MorosidadService $morosidadService)
     {
         $q = trim((string) $request->query('q', ''));
@@ -50,6 +70,9 @@ class CortesController extends Controller
         $usuarios->getCollection()->transform(function ($usuario) use ($morosidadService, $diaDelMes, $mesActual) {
             $adeudo = $morosidadService->calcularAdeudoUsuario((string)$usuario->numero_servicio);
             $usuario->pagado_mes = !$this->debeSerCortado($usuario, $adeudo, $mesActual, $diaDelMes, $morosidadService);
+
+            $usuario->pago_al_corriente = ((float) ($adeudo['pendiente'] ?? 0)) <= 0.01;
+            $usuario->pago_label = $this->pagoLabel($adeudo);
 
             return $usuario;
         });
