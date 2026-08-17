@@ -5,7 +5,7 @@
         </h2>
     </x-slot>
 
-    <div class="py-12" x-data="{
+    <div class="py-12" id="clientes-view" x-data="{
         selected: null,
         isLoading: false,
         form: { id: null, numero_servicio: '', nombre_cliente: '', domicilio: '', comunidad: '', telefono: '', uso: '', megas: '', tecnologia: '', dispositivo: '', tarifa: '', estado_id: '', estatus_servicio_id: '' },
@@ -57,6 +57,18 @@
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-gray-100">
                     <style>.skel{position:relative;overflow:hidden;background-color:rgba(229,231,235,1);border-radius:4px}.skel::after{content:"";position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);animation:skel-shimmer 1.4s infinite}@keyframes skel-shimmer{100%{transform:translateX(100%)}}
+                        /* Targets grandes para uso vía AnyDesk (mouse impreciso/lag remoto) */
+                        #clientes-view input.form-input,
+                        #clientes-view select.form-select {
+                            min-height: 2.75rem;
+                            font-size: 0.95rem;
+                            padding-top: 0.5rem;
+                            padding-bottom: 0.5rem;
+                        }
+                        #clientes-view .btn { min-height: 2.75rem; }
+                        #clientes-view table td.h-10,
+                        #clientes-view table th.h-10 { height: auto; min-height: 3rem; padding-top: 0.85rem; padding-bottom: 0.85rem; }
+
                         @media (max-width: 640px) {
                             .max-w-none .flex.justify-between.items-center.mb-4 { flex-direction: column; gap: 0.75rem; align-items: stretch; }
                             .max-w-none .flex.justify-between.items-center.mb-4 form.flex.items-center.gap-2 { flex-direction: column; align-items: stretch; }

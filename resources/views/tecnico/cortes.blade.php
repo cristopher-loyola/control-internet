@@ -5,7 +5,7 @@
         </h2>
     </x-slot>
 
-    <div class="py-6" x-data="cortesManager()">
+    <div class="py-6" id="cortes-view" x-data="cortesManager()">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
                 
@@ -163,7 +163,7 @@
            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-xs p-2 overflow-hidden">
                 <div class="flex justify-between items-center mb-4 border-b pb-2 dark:border-gray-700">
                     <h3 class="text-lg font-bold dark:text-white uppercase tracking-wide">Gestionar Cortadores</h3>
-                    <button @click="openConfigModal = false" class="text-gray-500 hover:text-red-500 text-xl">&times;</button>
+                    <button @click="openConfigModal = false" class="text-gray-500 hover:text-red-500 text-2xl w-11 h-11 flex items-center justify-center rounded hover:bg-gray-100 dark:hover:bg-gray-700">&times;</button>
                 </div>
 
                 <div class="mb-4">
@@ -179,8 +179,8 @@
                     <template x-for="c in cortadores" :key="c.id">
                         <div class="flex justify-between items-center py-2 border-b last:border-0 dark:border-gray-700">
                             <span class="text-sm dark:text-white" x-text="c.nombre"></span>
-                            <button @click="removeCortador(c.id)" 
-                                class="text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200" 
+                            <button @click="removeCortador(c.id)"
+                                class="text-red-500 hover:text-red-700 p-3 rounded-full hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200"
                                 title="Eliminar">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -315,6 +315,19 @@
     </script>
 
     <style>
+        /* Targets grandes para uso vía AnyDesk (mouse impreciso/lag remoto) */
+        #cortes-view .btn,
+        #cortes-view select.form-select,
+        #cortes-view input.form-input {
+            min-height: 2.75rem;
+            font-size: 0.95rem;
+        }
+        #cortes-view select.form-select { padding: 0.5rem 0.75rem; min-width: 150px; }
+        #cortes-view input[type="checkbox"] { width: 1.375rem; height: 1.375rem; }
+        #cortes-view label.flex.items-center.gap-2 { padding: 0.5rem 0.75rem; }
+        #cortes-view table td, #cortes-view table th { padding-top: 1rem; padding-bottom: 1rem; }
+        #cortes-view .fila-corte a { display: inline-block; padding: 0.15rem 0; }
+
         @media (max-width: 640px) {
             .max-w-7xl { padding-left: 0.75rem; padding-right: 0.75rem; }
             .max-w-7xl .p-6 { padding: 0.75rem; }

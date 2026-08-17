@@ -5,7 +5,7 @@
         </h2>
     </x-slot>
 
-    <div class="py-6">
+    <div class="py-6" id="show-view">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-gray-100">
@@ -121,7 +121,7 @@
     </div>
 
     <x-modal name="tecnico-clientes-show-edit" :show="$errors->clienteEdit->isNotEmpty()" maxWidth="lg" focusable>
-        <form method="POST" action="{{ route('tecnico.clientes.edit') }}" class="p-6"
+        <form method="POST" action="{{ route('tecnico.clientes.edit') }}" class="p-6" id="cliente-edit-form"
               x-data="{
                 editMegasReadonly: false,
                 assignMegas(costo, tecnologia) {
@@ -256,4 +256,15 @@
             </div>
         </form>
     </x-modal>
+
+    <style>
+        /* Targets grandes para uso vía AnyDesk (mouse impreciso/lag remoto) */
+        #show-view .btn { min-height: 2.75rem; }
+        #cliente-edit-form select.form-select,
+        #cliente-edit-form input:not([type="hidden"]),
+        #cliente-edit-form button {
+            min-height: 2.75rem;
+            font-size: 0.95rem;
+        }
+    </style>
 </x-app-layout>

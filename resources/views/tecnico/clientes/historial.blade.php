@@ -5,7 +5,7 @@
         </h2>
     </x-slot>
 
-    <div class="py-12">
+    <div class="py-12" id="historial-view">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="mb-4 flex items-center gap-2">
                 <a href="{{ route('tecnico.clientes.index') }}" class="btn btn-secondary">← Volver a clientes</a>
@@ -86,4 +86,11 @@
             </div>
         </div>
     </div>
+
+    <style>
+        /* Targets grandes para uso vía AnyDesk (mouse impreciso/lag remoto) */
+        #historial-view .btn { min-height: 2.75rem; }
+        #historial-view table td,
+        #historial-view table th { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+    </style>
 </x-app-layout>
