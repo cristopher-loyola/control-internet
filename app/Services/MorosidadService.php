@@ -63,6 +63,10 @@ class MorosidadService
         $curStart = $this->periodoStart($periodo);
         $today = now();
 
+        if ($this->servicioCancelado($usuario)) {
+            return $this->adeudoLiquidado($usuario, $numero, $periodo, $curStart);
+        }
+
         $primerPago = (float) ($usuario->primer_pago ?? 0);
         $tarifa = (float) preg_replace('/[^\d.]/', '', (string) ($usuario->tarifa ?? 0));
 
@@ -659,6 +663,49 @@ class MorosidadService
         $adeudo = $this->calcularAdeudoUsuario((string) $numeroServicio);
 
         return $this->debeSerCortado($usuario, $adeudo, now()->format('Y-m'), now()->day);
+    }
+
+    /**
+     * Clientes con servicio cancelado no deben seguir mostrando adeudo en
+     * cobro: el monto cobrado en la cancelación liquida la cuenta.
+     */
+    private function servicioCancelado(Usuario $usuario): bool
+    {
+        if ((int) $usuario->estatus_servicio_id === 3) {
+            return true;
+        }
+
+        $nombre = strtolower(trim((string) optional($usuario->estatusServicio)->nombre));
+
+        return in_array($nombre, ['cancelado', 'baja', 'eliminado', 'inactivo'], true);
+    }
+
+    private function adeudoLiquidado(Usuario $usuario, string $numero, string $periodo, Carbon $curStart): array
+    {
+        $tarifa = (float) preg_replace('/[^\d.]/', '', (string) ($usuario->tarifa ?? 0));
+        $dueDate = $curStart->copy()->day(7)->endOfDay();
+        $desdeMes = $curStart->locale('es')->translatedFormat('F Y');
+
+        return [
+            'ok' => true,
+            'numero' => $numero,
+            'mensualidad' => round($tarifa, 2),
+            'es_primer_periodo' => false,
+            'meses_adeudo' => 0,
+            'lista_meses' => [],
+            'desde_periodo' => $periodo,
+            'desde_mes_label' => $desdeMes,
+            'hasta_periodo' => $periodo,
+            'hasta_mes_label' => $desdeMes,
+            'ultimo_periodo_cubierto' => $periodo,
+            'recargo' => 0.0,
+            'pagado_parcial' => 0.0,
+            'pendiente' => 0.0,
+            'vencimiento' => $dueDate->toDateString(),
+            'adeudo_manual' => 0.0,
+            'descripcion_manual' => null,
+            'cubierto_este_mes' => true,
+        ];
     }
 
     public function parsePeriodoFromDescripcion(string $desc): ?string

@@ -242,17 +242,26 @@ class FacturaService
      */
     private function procesarCancelacion(array $datos): array
     {
+        $cancelacionMonto = round((float) ($datos['payload']['cancelacion_monto'] ?? 0), 2);
+        $requestTotal = round((float) ($datos['request']->input('total', 0)), 2);
+        $manualValue = round((float) ($datos['payload']['manual_total_value'] ?? 0), 2);
+
+        if (! empty($datos['payload']['manual_total_enabled'])) {
+            $total = $manualValue;
+        } elseif ($cancelacionMonto > 0) {
+            $total = $cancelacionMonto;
+        } else {
+            $total = max(0, $requestTotal);
+        }
+
         $payload = array_merge($datos['payload'], [
             'otro' => 'cancelacion',
             'recargo' => 'no',
             'prepay' => 'no',
             'prepay_months' => null,
             'prepay_total' => null,
+            'cancelacion_monto' => $total,
         ]);
-
-        $total = ($payload['manual_total_enabled'] ?? false)
-            ? round((float) ($datos['payload']['manual_total_value'] ?? 0), 2)
-            : 0.0;
 
         return ['error' => false, 'total' => $total, 'payload' => $payload];
     }
@@ -535,16 +544,35 @@ class FacturaService
         $prev = [
             'estatus_servicio_id' => $usuario->estatus_servicio_id,
             'estado_id' => $usuario->estado_id,
+            'adeudo_monto' => $usuario->adeudo_monto,
+            'adeudo_descripcion' => $usuario->adeudo_descripcion,
+            'proximo_pago' => $usuario->proximo_pago,
         ];
+
+        $payload = is_array($factura->payload) ? $factura->payload : (is_string($factura->payload) ? @json_decode($factura->payload, true) : []);
+        if (! is_array($payload)) {
+            $payload = [];
+        }
+        $payload['adeudo_monto_previo'] = (float) ($usuario->adeudo_monto ?? 0);
+        $payload['adeudo_descripcion_previa'] = $usuario->adeudo_descripcion;
+        $payload['proximo_pago_previo'] = $usuario->proximo_pago;
+        $factura->payload = $payload;
+        $factura->saveQuietly();
 
         $usuario->update([
             'estatus_servicio_id' => 3, // Cancelado
             'estado_id' => 2,
+            'adeudo_monto' => 0,
+            'adeudo_descripcion' => null,
+            'proximo_pago' => now()->addMonth()->format('Y-m'),
         ]);
 
         $this->logAuditoria('usuario_cancelacion_servicio', 'usuarios', $usuario->id, $prev, [
             'estatus_servicio_id' => 3,
             'estado_id' => 2,
+            'adeudo_monto' => 0,
+            'adeudo_descripcion' => null,
+            'proximo_pago' => now()->addMonth()->format('Y-m'),
         ]);
     }
 
