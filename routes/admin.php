@@ -14,6 +14,9 @@ Route::middleware(['auth', 'role:admin,pagos,rosalito,chivato,pozo_hondo'])
         Route::get('/pagos/rosalito', [DashboardController::class, 'rosalitoPaymentsHistory'])->name('rosalito.history');
         Route::get('/pagos/chivato', [DashboardController::class, 'chivatoPaymentsHistory'])->name('chivato.history');
         Route::get('/pagos/pozo-hondo', [DashboardController::class, 'pozoHondoPaymentsHistory'])->name('pozo-hondo.history');
+        Route::get('/pagos/rosalito/cortes', [DashboardController::class, 'rosalitoCortes'])->name('rosalito.cortes');
+        Route::get('/pagos/chivato/cortes', [DashboardController::class, 'chivatoCortes'])->name('chivato.cortes');
+        Route::get('/pagos/pozo-hondo/cortes', [DashboardController::class, 'pozoHondoCortes'])->name('pozo-hondo.cortes');
     });
 
 Route::middleware(['auth', 'role:admin'])

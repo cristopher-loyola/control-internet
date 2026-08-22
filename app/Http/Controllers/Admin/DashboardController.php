@@ -779,7 +779,27 @@ class DashboardController extends Controller
 
         $pagos = $query->orderBy('f.created_at', 'desc')->paginate(50);
 
-        return view('payments.history', compact('pagos', 'location'));
+        $cortesActivos = CorteCaja::with(['user:id,name', 'facturas:id,corte_caja_id,total,payload'])
+            ->where('zona', $role)
+            ->where('estado', 'activo')
+            ->orderByDesc('fecha_inicio')
+            ->get();
+
+        // Los cortes activos aún no guardan sus totales finales; se calculan
+        // desde sus facturas para mostrar el mismo importe que verá al cerrarlo.
+        $cortesActivos->each(function (CorteCaja $corte) {
+            $corte->total_pagos_actual = $corte->facturas->count();
+            $corte->total_recaudado_actual = $corte->facturas->sum(function (Factura $factura) {
+                $payload = is_array($factura->payload)
+                    ? $factura->payload
+                    : (is_string($factura->payload) ? @json_decode($factura->payload, true) : []);
+                $recargo = (($payload['recargo'] ?? null) === 'si') ? 50 : 0;
+
+                return (float) $factura->total - $recargo;
+            });
+        });
+
+        return view('payments.history', compact('pagos', 'location', 'cortesActivos'));
     }
 
     /**
@@ -804,6 +824,48 @@ class DashboardController extends Controller
     public function pozoHondoPaymentsHistory(Request $request)
     {
         return $this->paymentsHistory($request, 'pozo-hondo');
+    }
+
+    private function cortesPorZona(string $zona, string $titulo)
+    {
+        $cortesActivos = CorteCaja::with(['user:id,name', 'facturas:id,corte_caja_id,total,payload'])
+            ->where('zona', $zona)
+            ->where('estado', 'activo')
+            ->orderByDesc('fecha_inicio')
+            ->get();
+
+        $cortesActivos->each(function (CorteCaja $corte) {
+            $corte->total_pagos_actual = $corte->facturas->count();
+            $corte->total_recaudado_actual = $corte->facturas->sum(function (Factura $factura) {
+                $payload = is_array($factura->payload) ? $factura->payload : [];
+                $recargo = (($payload['recargo'] ?? null) === 'si') ? 50 : 0;
+
+                return (float) $factura->total - $recargo;
+            });
+        });
+
+        $cortesCerrados = CorteCaja::with('user:id,name')
+            ->where('zona', $zona)
+            ->where('estado', 'cerrado')
+            ->orderByDesc('fecha_fin')
+            ->paginate(25);
+
+        return view('payments.cortes', compact('titulo', 'cortesActivos', 'cortesCerrados'));
+    }
+
+    public function rosalitoCortes()
+    {
+        return $this->cortesPorZona('rosalito', 'Rosalito');
+    }
+
+    public function chivatoCortes()
+    {
+        return $this->cortesPorZona('chivato', 'Chivato');
+    }
+
+    public function pozoHondoCortes()
+    {
+        return $this->cortesPorZona('pozo_hondo', 'Pozo Hondo');
     }
 
     public function corteCaja(Request $request)

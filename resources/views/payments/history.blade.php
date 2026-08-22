@@ -19,6 +19,44 @@
                     </div>
 
                     <!-- Formulario de búsqueda por folio y número de servicio -->
+                    <div class="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <h4 class="font-semibold text-amber-900">Corte actual</h4>
+                                <p class="text-sm text-amber-800">Información en tiempo real de los cortes activos de {{ ucfirst($location) }}.</p>
+                            </div>
+                            @php
+                                $corteRoute = match($location) {
+                                    'rosalito' => 'pagos.rosalito.cortes',
+                                    'chivato' => 'pagos.chivato.cortes',
+                                    default => 'pagos.pozo-hondo.cortes',
+                                };
+                            @endphp
+                            <a href="{{ route($corteRoute) }}" class="inline-flex justify-center px-3 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-md no-underline">
+                                Ver historial de cortes
+                            </a>
+                        </div>
+
+                        <div class="mt-4 grid grid-cols-1 gap-3 {{ $cortesActivos->count() > 1 ? 'md:grid-cols-2' : '' }}">
+                            @forelse($cortesActivos as $corte)
+                                <div class="bg-white border border-amber-100 rounded-md p-4 text-sm text-gray-700">
+                                    <div class="flex items-center justify-between gap-3">
+                                        <span class="font-semibold text-gray-900">Corte #{{ $corte->id }}</span>
+                                        <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-medium">Activo</span>
+                                    </div>
+                                    <dl class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                        <div><dt class="text-xs text-gray-500">Inicio</dt><dd class="font-medium">{{ $corte->fecha_inicio?->format('d/m/Y H:i') ?? '—' }}</dd></div>
+                                        <div><dt class="text-xs text-gray-500">Cobros</dt><dd class="font-medium">{{ $corte->total_pagos_actual }}</dd></div>
+                                        <div><dt class="text-xs text-gray-500">Recaudado</dt><dd class="font-semibold text-green-600">${{ number_format((float) $corte->total_recaudado_actual, 2) }}</dd></div>
+                                    </dl>
+                                    <p class="mt-2 text-xs text-gray-500">Cajero: {{ $corte->user?->name ?? 'Sin usuario' }}</p>
+                                </div>
+                            @empty
+                                <p class="text-sm text-gray-600">No hay un corte activo en esta sede.</p>
+                            @endforelse
+                        </div>
+                    </div>
+
                     <div class="mb-6 bg-gray-50 dark:bg-gray-700 p-6 rounded-lg">
                         <form method="GET" action="{{ \App\Helpers\RouteHelper::historyRoute($location) }}">
                             <div class="flex flex-col md:flex-row gap-4 items-end">
