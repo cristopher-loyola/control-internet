@@ -44,11 +44,13 @@
                                         <span class="font-semibold text-gray-900">Corte #{{ $corte->id }}</span>
                                         <span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-medium">Activo</span>
                                     </div>
-                                    <dl class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <dl class="mt-3 grid grid-cols-1 sm:grid-cols-4 gap-3">
                                         <div><dt class="text-xs text-gray-500">Inicio</dt><dd class="font-medium">{{ $corte->fecha_inicio?->format('d/m/Y H:i') ?? '—' }}</dd></div>
                                         <div><dt class="text-xs text-gray-500">Cobros</dt><dd class="font-medium">{{ $corte->total_pagos_actual }}</dd></div>
                                         <div><dt class="text-xs text-gray-500">Recaudado</dt><dd class="font-semibold text-green-600">${{ number_format((float) $corte->total_recaudado_actual, 2) }}</dd></div>
+                                        <div><dt class="text-xs text-gray-500">Comisión ({{ $corte->total_pagos_actual }} × $10)</dt><dd class="font-semibold text-blue-600">${{ number_format((float) $corte->comision_recibos_actual, 2) }}</dd></div>
                                     </dl>
+                                    <p class="mt-3 pt-3 border-t font-semibold text-green-700">Total a entregar: ${{ number_format((float) $corte->total_entregar_actual, 2) }}</p>
                                     <p class="mt-2 text-xs text-gray-500">Cajero: {{ $corte->user?->name ?? 'Sin usuario' }}</p>
                                 </div>
                             @empty
@@ -111,7 +113,7 @@
                                         No. servicio
                                     </th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                                        Monto
+                                        Monto para corte
                                     </th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                                         Cajero
@@ -131,7 +133,7 @@
                                             {{ $pago->numero_servicio ?? 'N/A' }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                                            ${{ number_format($pago->total, 2) }}
+                                            ${{ number_format($pago->total_corte, 2) }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                                             {{ $pago->cajero }}

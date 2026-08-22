@@ -779,6 +779,18 @@ class DashboardController extends Controller
 
         $pagos = $query->orderBy('f.created_at', 'desc')->paginate(50);
 
+        // El recargo de reconexión ($50) es comisión del cobrador de estas
+        // sedes y no forma parte del efectivo que corresponde al corte.
+        $pagos->getCollection()->transform(function ($pago) {
+            $payload = is_array($pago->payload)
+                ? $pago->payload
+                : (is_string($pago->payload) ? @json_decode($pago->payload, true) : []);
+            $recargo = (($payload['recargo'] ?? null) === 'si') ? 50 : 0;
+            $pago->total_corte = max(0, (float) $pago->total - $recargo);
+
+            return $pago;
+        });
+
         $cortesActivos = CorteCaja::with(['user:id,name', 'facturas:id,corte_caja_id,total,payload'])
             ->where('zona', $role)
             ->where('estado', 'activo')
@@ -797,6 +809,8 @@ class DashboardController extends Controller
 
                 return (float) $factura->total - $recargo;
             });
+            $corte->comision_recibos_actual = $corte->total_pagos_actual * 10;
+            $corte->total_entregar_actual = $corte->total_recaudado_actual - $corte->comision_recibos_actual;
         });
 
         return view('payments.history', compact('pagos', 'location', 'cortesActivos'));
@@ -842,6 +856,8 @@ class DashboardController extends Controller
 
                 return (float) $factura->total - $recargo;
             });
+            $corte->comision_recibos_actual = $corte->total_pagos_actual * 10;
+            $corte->total_entregar_actual = $corte->total_recaudado_actual - $corte->comision_recibos_actual;
         });
 
         $cortesCerrados = CorteCaja::with('user:id,name')
