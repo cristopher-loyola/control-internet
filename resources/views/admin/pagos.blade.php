@@ -1129,7 +1129,10 @@
                     return new Date(py, pm-1, 1);
                 }
                 const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date();
-                if(this.pagarMesSiguiente) d.setMonth(d.getMonth()+1);
+                // Fijar el día a 1 antes de sumar el mes: evita que un día 29/30/31
+                // "desborde" al mes siguiente al que no existe ese día (ej. 31-ago
+                // + 1 mes salta a octubre en vez de septiembre).
+                if(this.pagarMesSiguiente){ d.setDate(1); d.setMonth(d.getMonth()+1); }
                 return d;
             },
             mesEnCurso(){
@@ -1190,6 +1193,7 @@
             mesFinalCobertura(meses){
                 if(!meses) return '';
                 const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date();
+                d.setDate(1);
                 d.setMonth(d.getMonth() + Number(meses));
                 const mes = d.toLocaleDateString('es-MX', { month: 'long' });
                 const year = d.getFullYear();
@@ -1398,6 +1402,7 @@
                 this.loadingMorosos = true;
                 try {
                     const today = new Date();
+                    today.setDate(1);
                     today.setMonth(today.getMonth() - 1);
                     const month = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
                     
