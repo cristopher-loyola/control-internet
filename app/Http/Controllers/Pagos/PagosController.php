@@ -1429,6 +1429,7 @@ thead th{ background:#2e7d32; color:#fff; }
 
         $mesActual = now()->format('Y-m');
         $diaDelMes = now()->day;
+        $mesAnterior = now()->subMonth()->format('Y-m');
 
         $usuarios = Usuario::with('cortador')
             ->when($q !== '', function ($query) use ($q) {
@@ -1448,9 +1449,9 @@ thead th{ background:#2e7d32; color:#fff; }
             ->get();
 
         // Calcular adeudo y filtrar solo los NO verdes (por cortar)
-        $usuariosPorCortar = $usuarios->filter(function ($usuario) use ($morosidadService, $diaDelMes, $mesActual) {
+        $usuariosPorCortar = $usuarios->filter(function ($usuario) use ($morosidadService, $diaDelMes, $mesActual, $mesAnterior) {
             $adeudo = $morosidadService->calcularAdeudoUsuario((string)$usuario->numero_servicio);
-            $usuario->meses_adeudo_corte = (int) ($adeudo['meses_adeudo'] ?? 0);
+            $usuario->resaltar_adeudo_corte = ($adeudo['desde_periodo'] ?? $mesActual) < $mesAnterior;
             return $this->debeSerCortado($usuario, $adeudo, $mesActual, $diaDelMes, $morosidadService);
         });
 

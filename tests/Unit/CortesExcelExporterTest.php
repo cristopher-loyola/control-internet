@@ -12,10 +12,10 @@ class CortesExcelExporterTest extends TestCase
     public function test_resalta_solo_usuarios_con_dos_o_mas_meses_de_adeudo(): void
     {
         $unMes = new Usuario(['numero_servicio' => '1001', 'nombre_cliente' => 'Solo agosto']);
-        $unMes->meses_adeudo_corte = 1;
+        $unMes->resaltar_adeudo_corte = false;
 
         $variosMeses = new Usuario(['numero_servicio' => '1002', 'nombre_cliente' => 'Julio y agosto']);
-        $variosMeses->meses_adeudo_corte = 2;
+        $variosMeses->resaltar_adeudo_corte = true;
 
         $response = (new CortesExcelExporter)->download(new Collection([$unMes, $variosMeses]));
         ob_start();

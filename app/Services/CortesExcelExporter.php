@@ -25,7 +25,7 @@ class CortesExcelExporter
 
             echo '</tr></thead><tbody>';
             foreach ($usuarios as $usuario) {
-                $clase = ((int) ($usuario->meses_adeudo_corte ?? 0)) >= 2 ? ' class="varios-meses"' : '';
+                $clase = ($usuario->resaltar_adeudo_corte ?? false) ? ' class="varios-meses"' : '';
                 echo '<tr' . $clase . '>';
                 foreach ([
                     $usuario->numero_servicio,
