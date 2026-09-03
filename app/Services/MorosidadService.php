@@ -597,29 +597,16 @@ class MorosidadService
     }
 
     /**
-     * Determina si un usuario debe estar cortado según su adeudo, con la
-     * misma regla que usa la pantalla de Cortes: adeudo de un periodo
-     * anterior + ya pasó el día 7 del mes actual.
+     * Determina si un usuario debe estar cortado según su adeudo. Desde el
+     * inicio de un mes nuevo, un adeudo anterior entra a corte; adeudar
+     * solamente el mes actual no genera corte.
      */
     public function debeSerCortado(Usuario $usuario, array $adeudo, string $mesActual, int $diaDelMes): bool
     {
         $mesesAdeudo = $adeudo['meses_adeudo'] ?? 0;
         $desdePeriodo = $adeudo['desde_periodo'] ?? $mesActual;
 
-        $originalPagado = true;
-        if ($mesesAdeudo == 0) {
-            $originalPagado = true;
-        } elseif ($mesesAdeudo == 1 && $desdePeriodo === $mesActual) {
-            $originalPagado = true;
-        } elseif ($mesesAdeudo >= 1 && $desdePeriodo < $mesActual && $diaDelMes < 8) {
-            $originalPagado = true;
-        } elseif ($mesesAdeudo >= 1 && $desdePeriodo < $mesActual && $diaDelMes >= 8) {
-            $originalPagado = false;
-        } else {
-            $originalPagado = true;
-        }
-
-        if (! $originalPagado) {
+        if ($mesesAdeudo >= 1 && $desdePeriodo < $mesActual) {
             return true;
         }
 
