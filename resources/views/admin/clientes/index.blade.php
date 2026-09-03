@@ -245,6 +245,7 @@
                                                     tarifa: {{ (float)($c->tarifa ?? 0) }},
                                                     actualPeriodo: '{{ $c->proximo_pago ?? '' }}',
                                                     actualMonto: '{{ $c->proximo_pago_monto ?? '' }}',
+                                                    actualDescripcion: '{{ addslashes($c->adeudo_descripcion ?? '') }}',
                                                     url: '{{ route('admin.clientes.proximo-pago', $c->id) }}'
                                                 })"
                                             >
@@ -1172,6 +1173,15 @@
                                 </button>
                             </div>
                         </div>
+
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                                Descripci&oacute;n del adeudo
+                            </label>
+                            <input type="text" maxlength="255" x-model="ppDescripcion"
+                                class="form-input w-full rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm focus:border-sky-400 focus:ring-0 text-sm text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-800"
+                                placeholder="Ej. Adeuda desde septiembre">
+                        </div>
                     </div>
 
                     <!-- Resultado -->
@@ -1268,6 +1278,7 @@
                 ppDeuda: null,
                 ppDeudaLoading: false,
                 ppMontoOverride: '',
+                ppDescripcion: '',
                 ppGuardando: false,
                 ppResultado: null,
                 abrirProximoPago(data) {
@@ -1276,6 +1287,7 @@
                     this.ppMonto        = data.actualMonto !== '' ? data.actualMonto : data.tarifa;
                     this.ppDeuda        = null;
                     this.ppMontoOverride = '';
+                    this.ppDescripcion   = data.actualDescripcion || '';
                     this.ppResultado    = null;
                     this.ppGuardando    = false;
                     this.ppModal        = true;
@@ -1289,6 +1301,7 @@
                         if (j.ok) {
                             this.ppDeuda = j;
                             if (j.pendiente > 0) this.ppMontoOverride = j.pendiente;
+                            if (j.descripcion_manual) this.ppDescripcion = j.descripcion_manual;
                         }
                     })
                     .catch(() => {})
@@ -1317,6 +1330,7 @@
                             body: JSON.stringify({
                                 proximo_pago:       periodo,
                                 proximo_pago_monto: montoFijado,
+                                adeudo_descripcion: this.ppDescripcion,
                             })
                         });
                         const j = await r.json();

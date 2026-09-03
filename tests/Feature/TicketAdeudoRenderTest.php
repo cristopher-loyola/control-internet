@@ -199,6 +199,42 @@ class TicketAdeudoRenderTest extends TestCase
         \Illuminate\Support\Carbon::setTestNow();
     }
 
+    public function test_guardar_monto_personalizado_permite_editar_descripcion(): void
+    {
+        \Illuminate\Support\Carbon::setTestNow('2026-09-02 09:00:00');
+        $admin = User::factory()->create(['role' => 'admin']);
+        $usuario = Usuario::create([
+            'numero_servicio' => '8201',
+            'nombre_cliente' => 'Cliente descripcion',
+            'domicilio' => 'Domicilio de prueba',
+            'tarifa' => 400,
+            'estado_id' => 1,
+            'estatus_servicio_id' => 1,
+            'servicio_id' => 1,
+            'adeudo_monto' => 0,
+            'adeudo_descripcion' => 'Adeuda desde julio',
+        ]);
+
+        $this->actingAs($admin)->postJson(
+            route('admin.clientes.proximo-pago', ['id' => $usuario->id], absolute: false),
+            [
+                'proximo_pago' => '2026-09',
+                'proximo_pago_monto' => 1,
+                'adeudo_descripcion' => 'Ajuste autorizado de septiembre',
+            ]
+        )->assertOk()->assertJson([
+            'ok' => true,
+            'proximo_pago_monto' => 1,
+            'adeudo_descripcion' => 'Ajuste autorizado de septiembre',
+        ]);
+
+        $resultado = app(MorosidadService::class)->calcularAdeudoUsuario('8201');
+        $this->assertSame(1.0, $resultado['pendiente']);
+        $this->assertSame('Ajuste autorizado de septiembre', $resultado['desde_mes_label']);
+
+        \Illuminate\Support\Carbon::setTestNow();
+    }
+
     public function test_rosalito_pagos_view_contiene_logica_de_otros_con_meses(): void
     {
         $user = User::factory()->create(['role' => 'rosalito']);

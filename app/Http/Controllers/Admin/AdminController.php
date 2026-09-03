@@ -1339,6 +1339,10 @@ class AdminController extends Controller
 
     public function clientesProximoPago(Request $request, int $id)
     {
+        $request->validate([
+            'adeudo_descripcion' => ['nullable', 'string', 'max:255'],
+        ]);
+
         $usuario = Usuario::findOrFail($id);
         $periodo = $request->input('proximo_pago');
         $monto   = $request->input('proximo_pago_monto');
@@ -1365,6 +1369,10 @@ class AdminController extends Controller
         } else {
             $usuario->proximo_pago = $periodo ?: null;
             $usuario->proximo_pago_monto = $montoFijado;
+            if ($request->has('adeudo_descripcion')) {
+                $descripcion = trim((string) $request->input('adeudo_descripcion', ''));
+                $usuario->adeudo_descripcion = $descripcion !== '' ? $descripcion : null;
+            }
         }
         $usuario->save();
 
@@ -1372,6 +1380,7 @@ class AdminController extends Controller
             'ok'                 => true,
             'proximo_pago'       => $usuario->proximo_pago,
             'proximo_pago_monto' => $usuario->proximo_pago_monto,
+            'adeudo_descripcion' => $usuario->adeudo_descripcion,
         ]);
     }
 

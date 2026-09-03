@@ -301,7 +301,8 @@ class MorosidadService
             && strcmp($usuario->proximo_pago, $periodo) > 0
         );
 
-        $descripcionManualActiva = (float) ($usuario->adeudo_monto ?? 0) > 0
+        $descripcionManualActiva = ((float) ($usuario->adeudo_monto ?? 0) > 0
+            || ($usuario->proximo_pago_monto !== null && (string) ($usuario->proximo_pago ?? '') === $periodo))
             ? $usuario->adeudo_descripcion
             : null;
         $desdeMes = $descripcionManualActiva ?: $this->periodoStart($desdePeriodo)->locale('es')->translatedFormat('F Y');
