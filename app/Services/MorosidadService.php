@@ -138,7 +138,7 @@ class MorosidadService
                     $mesesAdeudo = 1;
                     $desdePeriodo = $periodo;
                 }
-            } elseif (!empty($usuario->adeudo_descripcion)) {
+            } elseif ((float) ($usuario->adeudo_monto ?? 0) > 0 && !empty($usuario->adeudo_descripcion)) {
                 // Intentar extraer el período de inicio desde la descripción (ej. "Adeuda mayo 2026").
                 $parsedPeriodo = $this->parsePeriodoFromDescripcion((string) $usuario->adeudo_descripcion);
                 if ($parsedPeriodo) {
@@ -300,7 +300,10 @@ class MorosidadService
             && strcmp($usuario->proximo_pago, $periodo) > 0
         );
 
-        $desdeMes = $usuario->adeudo_descripcion ?: $this->periodoStart($desdePeriodo)->locale('es')->translatedFormat('F Y');
+        $descripcionManualActiva = (float) ($usuario->adeudo_monto ?? 0) > 0
+            ? $usuario->adeudo_descripcion
+            : null;
+        $desdeMes = $descripcionManualActiva ?: $this->periodoStart($desdePeriodo)->locale('es')->translatedFormat('F Y');
         $hastaMes = $curStart->locale('es')->translatedFormat('F Y');
 
         $listaMeses = [];
@@ -337,7 +340,7 @@ class MorosidadService
             'pendiente' => $pendiente,
             'vencimiento' => $dueDate->toDateString(),
             'adeudo_manual' => (float) $usuario->adeudo_monto,
-            'descripcion_manual' => $usuario->adeudo_descripcion,
+            'descripcion_manual' => $descripcionManualActiva,
             'cubierto_este_mes' => $cubiertoEsteMes,
         ];
     }

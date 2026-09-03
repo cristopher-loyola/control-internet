@@ -92,6 +92,42 @@ class TicketAdeudoRenderTest extends TestCase
         $this->assertContains($mesEsperado, $resultado['lista_meses']);
     }
 
+    public function test_descripcion_manual_saldada_no_oculta_un_pago_real_del_mes_anterior(): void
+    {
+        \Illuminate\Support\Carbon::setTestNow('2026-09-02 09:00:00');
+
+        $usuario = Usuario::create([
+            'numero_servicio' => '7369',
+            'nombre_cliente' => 'Cliente transferencia',
+            'domicilio' => 'Domicilio de prueba',
+            'tarifa' => 400,
+            'estado_id' => 1,
+            'estatus_servicio_id' => 1,
+            'servicio_id' => 1,
+            'adeudo_monto' => 0,
+            'adeudo_descripcion' => 'Adelanto Julio',
+        ]);
+
+        Factura::create([
+            'numero_servicio' => $usuario->numero_servicio,
+            'periodo' => '2026-08',
+            'total' => 400,
+            'reference_number' => 'TRANSFER-7369',
+            'payload' => ['metodo' => 'Deposito a cuenta'],
+        ]);
+
+        $service = new MorosidadService();
+        $resultado = $service->calcularAdeudoUsuario('7369');
+
+        $this->assertSame('2026-09', $resultado['desde_periodo']);
+        $this->assertSame('septiembre 2026', $resultado['desde_mes_label']);
+        $this->assertNull($resultado['descripcion_manual']);
+        $this->assertSame([], $resultado['lista_meses']);
+        $this->assertFalse($service->debeSerCortado($usuario, $resultado, '2026-09', 2));
+
+        \Illuminate\Support\Carbon::setTestNow();
+    }
+
     public function test_rosalito_pagos_view_contiene_logica_de_otros_con_meses(): void
     {
         $user = User::factory()->create(['role' => 'rosalito']);
