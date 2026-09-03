@@ -7,6 +7,7 @@ use App\Models\Usuario;
 use App\Models\Cortador;
 use App\Models\Factura;
 use App\Services\MorosidadService;
+use App\Services\CortesExcelExporter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Dompdf\Dompdf;
@@ -287,39 +288,10 @@ class CortesController extends Controller
         // Calcular adeudo y filtrar solo los NO verdes (por cortar)
         $usuariosPorCortar = $usuarios->filter(function ($usuario) use ($morosidadService, $diaDelMes, $mesActual) {
             $adeudo = $morosidadService->calcularAdeudoUsuario((string)$usuario->numero_servicio);
+            $usuario->meses_adeudo_corte = (int) ($adeudo['meses_adeudo'] ?? 0);
             return $this->debeSerCortado($usuario, $adeudo, $mesActual, $diaDelMes, $morosidadService);
         });
 
-        $filename = 'usuarios-por-cortar-' . now()->format('Y-m-d') . '.csv';
-
-        $headers = [
-            'Content-Type' => 'text/csv; charset=utf-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-        ];
-
-        $callback = function () use ($usuariosPorCortar) {
-            $file = fopen('php://output', 'w');
-            fprintf($file, chr(0xEF) . chr(0xBB) . chr(0xBF)); // BOM para UTF-8
-
-            // Encabezados
-            fputcsv($file, ['ID', 'Nombre Cliente', 'Zona', 'IP', 'MAC', 'Cortador Asignado', 'Estado Corte']);
-
-            // Datos
-            foreach ($usuariosPorCortar as $u) {
-                fputcsv($file, [
-                    $u->numero_servicio,
-                    $u->nombre_cliente,
-                    $u->zona ?? '-',
-                    $u->ip ?? '-',
-                    $u->mac ?? '-',
-                    $u->cortador?->nombre ?? '-',
-                    $u->estado_corte ?? '-',
-                ]);
-            }
-
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
+        return app(CortesExcelExporter::class)->download($usuariosPorCortar);
     }
 }
