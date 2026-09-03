@@ -1352,8 +1352,20 @@ class AdminController extends Controller
 
         // OJO: esta ruta NO toca adeudo_monto — ese campo es del botón naranja
         // "Cargo extra". Aquí solo se fija el monto exacto del próximo pago.
-        $usuario->proximo_pago       = $periodo ?: null;
-        $usuario->proximo_pago_monto = ($monto !== null && $monto !== '') ? round((float) $monto, 2) : null;
+        $montoFijado = ($monto !== null && $monto !== '') ? round((float) $monto, 2) : null;
+
+        if ($montoFijado === 0.0 && $periodo) {
+            // Cero liquida el saldo hasta el periodo seleccionado. El cobro
+            // normal vuelve a comenzar en el mes siguiente.
+            $usuario->proximo_pago = \Illuminate\Support\Carbon::createFromFormat('Y-m-d', $periodo . '-01')
+                ->addMonth()->format('Y-m');
+            $usuario->proximo_pago_monto = null;
+            $usuario->adeudo_monto = 0;
+            $usuario->adeudo_descripcion = null;
+        } else {
+            $usuario->proximo_pago = $periodo ?: null;
+            $usuario->proximo_pago_monto = $montoFijado;
+        }
         $usuario->save();
 
         return response()->json([

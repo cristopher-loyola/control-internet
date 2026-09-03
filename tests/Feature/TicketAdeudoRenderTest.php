@@ -128,6 +128,77 @@ class TicketAdeudoRenderTest extends TestCase
         \Illuminate\Support\Carbon::setTestNow();
     }
 
+    public function test_ajuste_de_proximo_pago_respeta_cero_y_un_peso(): void
+    {
+        \Illuminate\Support\Carbon::setTestNow('2026-09-02 09:00:00');
+
+        foreach (['8100' => 0, '8101' => 1] as $numero => $montoFijado) {
+            Usuario::create([
+                'numero_servicio' => $numero,
+                'nombre_cliente' => 'Cliente ajuste ' . $numero,
+                'domicilio' => 'Domicilio de prueba',
+                'tarifa' => 400,
+                'estado_id' => 1,
+                'estatus_servicio_id' => 1,
+                'servicio_id' => 1,
+                'proximo_pago' => '2026-09',
+                'proximo_pago_monto' => $montoFijado,
+            ]);
+
+            Factura::create([
+                'numero_servicio' => $numero,
+                'periodo' => '2026-08',
+                'total' => 400,
+                'reference_number' => 'AJUSTE-' . $numero,
+                'payload' => [],
+            ]);
+        }
+
+        $service = new MorosidadService();
+        $sinAdeudo = $service->calcularAdeudoUsuario('8100');
+        $unPeso = $service->calcularAdeudoUsuario('8101');
+
+        $this->assertSame(0.0, $sinAdeudo['pendiente']);
+        $this->assertSame(0, $sinAdeudo['meses_adeudo']);
+        $this->assertSame(1.0, $unPeso['pendiente']);
+
+        \Illuminate\Support\Carbon::setTestNow();
+    }
+
+    public function test_guardar_cero_liquida_adeudo_y_programa_el_mes_siguiente(): void
+    {
+        \Illuminate\Support\Carbon::setTestNow('2026-09-02 09:00:00');
+        $admin = User::factory()->create(['role' => 'admin']);
+        $usuario = Usuario::create([
+            'numero_servicio' => '8200',
+            'nombre_cliente' => 'Cliente liquidado',
+            'domicilio' => 'Domicilio de prueba',
+            'tarifa' => 400,
+            'estado_id' => 1,
+            'estatus_servicio_id' => 1,
+            'servicio_id' => 1,
+            'adeudo_monto' => 400,
+            'adeudo_descripcion' => 'Adeudo anterior',
+        ]);
+
+        $response = $this->actingAs($admin)->postJson(
+            route('admin.clientes.proximo-pago', ['id' => $usuario->id], absolute: false),
+            ['proximo_pago' => '2026-09', 'proximo_pago_monto' => 0]
+        );
+
+        $response->assertOk()->assertJson([
+            'ok' => true,
+            'proximo_pago' => '2026-10',
+            'proximo_pago_monto' => null,
+        ]);
+        $usuario->refresh();
+        $this->assertSame(0.0, (float) $usuario->adeudo_monto);
+        $this->assertNull($usuario->adeudo_descripcion);
+        $this->assertSame(0.0, app(MorosidadService::class)->calcularAdeudoUsuario('8200')['pendiente']);
+
+        \Illuminate\Support\Carbon::setTestNow();
+    }
+
     public function test_rosalito_pagos_view_contiene_logica_de_otros_con_meses(): void
     {
         $user = User::factory()->create(['role' => 'rosalito']);

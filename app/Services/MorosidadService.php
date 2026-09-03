@@ -280,14 +280,15 @@ class MorosidadService
         // sobre cualquier cálculo. Si el admin escribe $10 para ese mes, se
         // cobran $10 — sin sumarle mensualidad, recargo ni adeudos. Solo
         // aplica al mes exacto que se marcó en proximo_pago.
+        $tieneMontoFijado = $usuario->proximo_pago_monto !== null;
         $montoFijado = (float) ($usuario->proximo_pago_monto ?? 0);
-        if ($montoFijado > 0
+        if ($tieneMontoFijado
             && !empty($usuario->proximo_pago)
             && (string) $usuario->proximo_pago === $periodo
         ) {
             $pendiente = round($montoFijado, 2);
             $recargo = 0.0;
-            $mesesAdeudo = 1;
+            $mesesAdeudo = $montoFijado > 0 ? 1 : 0;
             $desdePeriodo = $periodo;
         }
 
@@ -404,8 +405,9 @@ class MorosidadService
 
         // Un importe fijado por el botón azul siempre manda, también en
         // clientes que aún están en su primer periodo de cobro.
+        $tieneMontoFijado = $usuario->proximo_pago_monto !== null;
         $montoFijado = (float) ($usuario->proximo_pago_monto ?? 0);
-        if ($montoFijado > 0 && (string) ($usuario->proximo_pago ?? '') === $periodo) {
+        if ($tieneMontoFijado && (string) ($usuario->proximo_pago ?? '') === $periodo) {
             $esperado = $montoFijado;
         }
 
