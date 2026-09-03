@@ -91,4 +91,12 @@ class PrepayDashboardServiceTest extends TestCase
         $this->assertFalse($res['expira_pronto']);
         $this->assertSame(8, $res['dias_para_vencer']);
     }
+
+    public function test_cuatro_meses_desde_septiembre_cubren_hasta_diciembre(): void
+    {
+        $desde = Carbon::create(2026, 9, 2, 8, 0, 0, 'UTC');
+        $vence = PrepayDashboardService::venceAt($desde, 4);
+
+        $this->assertSame('2026-12-31', $vence?->toDateString());
+    }
 }

@@ -663,7 +663,7 @@
                 if(!meses) return '';
                 const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date();
                 d.setDate(1);
-                d.setMonth(d.getMonth() + Number(meses));
+                d.setMonth(d.getMonth() + Number(meses) - 1);
                 const mes = d.toLocaleDateString('es-MX', { month: 'long' });
                 const year = d.getFullYear();
                 return `${mes} de ${year}`;

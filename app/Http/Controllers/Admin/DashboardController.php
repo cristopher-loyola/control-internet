@@ -407,7 +407,7 @@ class DashboardController extends Controller
 
         $driver = DB::getDriverName();
         if ($driver === 'mysql') {
-            $vence = "DATE_ADD(facturas.created_at, INTERVAL CAST(JSON_UNQUOTE(JSON_EXTRACT(facturas.payload,'$.prepay_months')) AS UNSIGNED) MONTH)";
+            $vence = "LAST_DAY(DATE_ADD(facturas.created_at, INTERVAL (CAST(JSON_UNQUOTE(JSON_EXTRACT(facturas.payload,'$.prepay_months')) AS UNSIGNED) - 1) MONTH))";
             $facturasQuery->orderByRaw("({$vence} < CURDATE()) asc, {$vence} asc");
         } else {
             $facturasQuery->orderByDesc('facturas.created_at');
@@ -488,7 +488,7 @@ class DashboardController extends Controller
 
         $driver = DB::getDriverName();
         if ($driver === 'mysql') {
-            $vence = "DATE_ADD(facturas.created_at, INTERVAL CAST(JSON_UNQUOTE(JSON_EXTRACT(facturas.payload,'$.prepay_months')) AS UNSIGNED) MONTH)";
+            $vence = "LAST_DAY(DATE_ADD(facturas.created_at, INTERVAL (CAST(JSON_UNQUOTE(JSON_EXTRACT(facturas.payload,'$.prepay_months')) AS UNSIGNED) - 1) MONTH))";
             $facturasQuery->orderByRaw("({$vence} < CURDATE()) asc, {$vence} asc");
         } else {
             $facturasQuery->orderByDesc('facturas.created_at');
@@ -967,7 +967,7 @@ class DashboardController extends Controller
                 continue;
             }
             try {
-                $end = $this->periodoStart((string) $f->periodo)->addMonths($months)->format('Y-m');
+                $end = $this->periodoStart((string) $f->periodo)->addMonths($months - 1)->format('Y-m');
                 if ($end >= $periodo) {
                     $exclude[(string) $f->numero_servicio] = true;
                 }
@@ -1051,7 +1051,7 @@ class DashboardController extends Controller
                 continue;
             }
             try {
-                $end = $this->periodoStart((string) $f->periodo)->addMonths($months)->format('Y-m');
+                $end = $this->periodoStart((string) $f->periodo)->addMonths($months - 1)->format('Y-m');
                 $num = (string) $f->numero_servicio;
                 if ($num === '') {
                     continue;

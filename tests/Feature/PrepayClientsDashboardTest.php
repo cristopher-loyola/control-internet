@@ -70,7 +70,7 @@ class PrepayClientsDashboardTest extends TestCase
         
         // Check dates
         $from = Carbon::now()->format('d/m/Y');
-        $to = Carbon::now()->addMonths(6)->format('d/m/Y');
+        $to = Carbon::now()->startOfMonth()->addMonths(5)->endOfMonth()->format('d/m/Y');
         $this->assertEquals($from, $data['prepay_clients'][0]['desde']);
         $this->assertEquals($to, $data['prepay_clients'][0]['hasta']);
     }

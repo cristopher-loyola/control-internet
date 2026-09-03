@@ -542,7 +542,7 @@ class MorosidadService
                 continue;
             }
             try {
-                $end = $this->periodoStart((string) $f->periodo)->addMonths($monthsEffective)->format('Y-m');
+                $end = $this->periodoStart((string) $f->periodo)->addMonths($monthsEffective - 1)->format('Y-m');
                 $max = $this->maxPeriodo($max, $end);
             } catch (\Throwable $e) {
                 continue;
