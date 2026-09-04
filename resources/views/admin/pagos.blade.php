@@ -1673,8 +1673,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 const rec = this.recargoMonto();
                 let total = 0;
 
-                if (this.form.otro === 'cancelacion' && Number(this.form.cancelacion_monto) > 0) {
-                    total = Math.round(Number(this.form.cancelacion_monto) * 100) / 100;
+                if (this.form.otro === 'cancelacion') {
+                    total = Math.round(Math.max(0, Number(this.form.cancelacion_monto) || 0) * 100) / 100;
                 } else if (this.form.otro === 'baja_temporal') {
                     this.totales.prepay_total = 0;
                     const adeudoPendiente = Number(this.adeudoCobro || (this.adeudo && this.adeudo.pendiente ? Number(this.adeudo.pendiente) : 0) || 0);

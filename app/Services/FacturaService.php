@@ -243,12 +243,15 @@ class FacturaService
     private function procesarCancelacion(array $datos): array
     {
         $cancelacionMonto = round((float) ($datos['payload']['cancelacion_monto'] ?? 0), 2);
+        $tieneMontoCancelacion = array_key_exists('cancelacion_monto', $datos['payload'])
+            && $datos['payload']['cancelacion_monto'] !== null
+            && $datos['payload']['cancelacion_monto'] !== '';
         $requestTotal = round((float) ($datos['request']->input('total', 0)), 2);
         $manualValue = round((float) ($datos['payload']['manual_total_value'] ?? 0), 2);
 
         if (! empty($datos['payload']['manual_total_enabled'])) {
             $total = $manualValue;
-        } elseif ($cancelacionMonto > 0) {
+        } elseif ($tieneMontoCancelacion) {
             $total = $cancelacionMonto;
         } else {
             $total = max(0, $requestTotal);

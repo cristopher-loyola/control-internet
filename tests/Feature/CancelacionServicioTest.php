@@ -44,11 +44,14 @@ class CancelacionServicioTest extends TestCase
 
         $res = $this->actingAs($user)->postJson(route('pagos.recibos.facturas.store'), [
             'numero_servicio' => $cliente->numero_servicio,
-            'total' => 0,
+            // Simula el adeudo calculado que antes se filtraba al corte aunque
+            // el administrador hubiera escrito cero como monto de cancelacion.
+            'total' => 600,
             'payload' => [
                 'nombre' => $cliente->nombre_cliente,
                 'metodo' => 'Efectivo',
                 'otro' => 'cancelacion',
+                'cancelacion_monto' => 0,
             ],
         ]);
 
@@ -58,6 +61,10 @@ class CancelacionServicioTest extends TestCase
         $cliente->refresh();
         $this->assertSame(3, (int) $cliente->estatus_servicio_id);
         $this->assertSame(2, (int) $cliente->estado_id);
+        $this->assertDatabaseHas('facturas', [
+            'numero_servicio' => '9001',
+            'total' => 0,
+        ]);
     }
 
     public function test_admin_cancelacion_marca_usuario_como_cancelado(): void
@@ -75,11 +82,12 @@ class CancelacionServicioTest extends TestCase
 
         $res = $this->actingAs($user)->postJson(route('admin.pagos.facturas.store'), [
             'numero_servicio' => $cliente->numero_servicio,
-            'total' => 0,
+            'total' => 600,
             'payload' => [
                 'nombre' => $cliente->nombre_cliente,
                 'metodo' => 'Efectivo',
                 'otro' => 'cancelacion',
+                'cancelacion_monto' => 0,
             ],
         ]);
 
@@ -89,5 +97,9 @@ class CancelacionServicioTest extends TestCase
         $cliente->refresh();
         $this->assertSame(3, (int) $cliente->estatus_servicio_id);
         $this->assertSame(2, (int) $cliente->estado_id);
+        $this->assertDatabaseHas('facturas', [
+            'numero_servicio' => '9002',
+            'total' => 0,
+        ]);
     }
 }
