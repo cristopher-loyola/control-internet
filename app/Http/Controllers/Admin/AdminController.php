@@ -1357,8 +1357,8 @@ class AdminController extends Controller
             return response()->json(['ok' => false, 'message' => 'Monto inválido'], 422);
         }
 
-        // OJO: esta ruta NO toca adeudo_monto — ese campo es del botón naranja
-        // "Cargo extra". Aquí solo se fija el monto exacto del próximo pago.
+        // El boton azul establece el total exacto a cobrar; el naranja sigue
+        // siendo el que agrega cargos nuevos sobre ese total.
         $montoFijado = ($monto !== null && $monto !== '') ? round((float) $monto, 2) : null;
 
         // El boton azul reemplaza el adeudo que se muestra hoy. No debe

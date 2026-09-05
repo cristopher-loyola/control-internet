@@ -199,6 +199,60 @@ class TicketAdeudoRenderTest extends TestCase
         \Illuminate\Support\Carbon::setTestNow();
     }
 
+    public function test_recargo_del_primer_pago_no_reduce_la_mensualidad_siguiente(): void
+    {
+        \Illuminate\Support\Carbon::setTestNow('2026-09-04 09:00:00');
+        $usuario = Usuario::create([
+            'numero_servicio' => '4779',
+            'nombre_cliente' => 'Cliente nuevo con recargo',
+            'domicilio' => 'Domicilio de prueba',
+            'tarifa' => 300,
+            'estado_id' => 1,
+            'estatus_servicio_id' => 1,
+            'servicio_id' => 1,
+            'primer_pago' => 300,
+            'primer_pago_periodo' => '2026-08',
+            'primer_pago_vencimiento' => '2026-08-07',
+            'fecha_contratacion' => '2026-08-01',
+        ]);
+
+        Factura::create([
+            'usuario_id' => $usuario->id,
+            'numero_servicio' => '4779',
+            'periodo' => '2026-08',
+            'total' => 350,
+            'reference_number' => 'PRIMER-PAGO-CON-RECARGO',
+            'payload' => [
+                'mensualidad' => 300,
+                'recargo' => 'si',
+                'manual_total_enabled' => false,
+            ],
+        ]);
+
+        $resultado = app(MorosidadService::class)->calcularAdeudoUsuario('4779');
+
+        $this->assertSame(300.0, $resultado['mensualidad']);
+        $this->assertSame(300.0, $resultado['pagado_parcial']);
+        $this->assertSame(300.0, $resultado['pendiente']);
+        $this->assertSame('2026-09', $resultado['desde_periodo_mostrado']);
+
+        Factura::create([
+            'usuario_id' => $usuario->id,
+            'numero_servicio' => '4779',
+            'periodo' => '2026-09',
+            'total' => 300,
+            'reference_number' => 'MENSUALIDAD-SIGUIENTE-COMPLETA',
+            'payload' => ['mensualidad' => 300, 'recargo' => 'no'],
+        ]);
+
+        $liquidado = app(MorosidadService::class)->calcularAdeudoUsuario('4779');
+        $this->assertSame(600.0, $liquidado['pagado_parcial']);
+        $this->assertSame(0.0, $liquidado['pendiente']);
+        $this->assertTrue($liquidado['cubierto_este_mes']);
+
+        \Illuminate\Support\Carbon::setTestNow();
+    }
+
     public function test_boton_azul_reemplaza_ochocientos_por_cuatrocientos_sin_importar_reglas_previas(): void
     {
         \Illuminate\Support\Carbon::setTestNow('2026-09-04 09:00:00');

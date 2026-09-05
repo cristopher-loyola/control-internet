@@ -442,10 +442,23 @@ class MorosidadService
             $esperado = $montoFijado;
         }
 
-        $pagado = (float) Factura::whereNull('deleted_at')
+        $facturasPagadas = Factura::whereNull('deleted_at')
             ->where('numero_servicio', $numero)
             ->whereBetween('periodo', [$primerPagoPeriodo, $periodo])
-            ->sum('total');
+            ->get(['total', 'payload']);
+
+        // Una factura puede incluir $50 de recargo, pero ese importe solo
+        // liquida la mora de su propio mes. Nunca es un abono a mensualidades
+        // futuras. Antes se sumaba el total bruto y $350 pagados sobre un
+        // paquete de $300 dejaban el siguiente mes en $250.
+        $pagado = (float) $facturasPagadas->sum(function (Factura $factura): float {
+            $payload = is_array($factura->payload) ? $factura->payload : [];
+            $incluyeRecargo = ($payload['recargo'] ?? 'no') === 'si'
+                || ($payload['recargo'] ?? false) === true;
+            $recargoPagado = $incluyeRecargo ? 50.0 : 0.0;
+
+            return max(0.0, (float) $factura->total - $recargoPagado);
+        });
 
         $recargo = ($today->day >= 8) ? 50.0 : 0.0;
         $moraRow = CargoMora::where('periodo', $periodo)->where('numero_servicio', $numero)->first();
