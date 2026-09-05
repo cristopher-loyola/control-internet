@@ -144,7 +144,9 @@
             return {
                 openConfigModal: false,
                 nuevoNombre: '',
-                soloPorCortar: false,
+                // La pantalla de Cortes debe iniciar mostrando solamente a
+                // quienes realmente cumplen la regla de corte.
+                soloPorCortar: true,
                 cortadores: @json($cortadores),
 
                 filterRows() {

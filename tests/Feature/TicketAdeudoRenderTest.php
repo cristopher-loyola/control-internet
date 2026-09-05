@@ -234,7 +234,12 @@ class TicketAdeudoRenderTest extends TestCase
         $this->assertSame(300.0, $resultado['mensualidad']);
         $this->assertSame(300.0, $resultado['pagado_parcial']);
         $this->assertSame(300.0, $resultado['pendiente']);
+        $this->assertSame(1, $resultado['meses_adeudo']);
+        $this->assertSame('2026-09', $resultado['desde_periodo']);
         $this->assertSame('2026-09', $resultado['desde_periodo_mostrado']);
+        $this->assertFalse(
+            app(MorosidadService::class)->debeSerCortado($usuario, $resultado, '2026-09', 30)
+        );
 
         Factura::create([
             'usuario_id' => $usuario->id,
@@ -249,6 +254,44 @@ class TicketAdeudoRenderTest extends TestCase
         $this->assertSame(600.0, $liquidado['pagado_parcial']);
         $this->assertSame(0.0, $liquidado['pendiente']);
         $this->assertTrue($liquidado['cubierto_este_mes']);
+
+        \Illuminate\Support\Carbon::setTestNow();
+    }
+
+    public function test_primer_pago_incompleto_del_mes_anterior_si_permanece_en_corte(): void
+    {
+        \Illuminate\Support\Carbon::setTestNow('2026-09-04 09:00:00');
+        $usuario = Usuario::create([
+            'numero_servicio' => '1067',
+            'nombre_cliente' => 'Cliente con agosto incompleto',
+            'domicilio' => 'Domicilio de prueba',
+            'tarifa' => 300,
+            'estado_id' => 1,
+            'estatus_servicio_id' => 1,
+            'servicio_id' => 1,
+            'primer_pago' => 100,
+            'primer_pago_periodo' => '2026-08',
+            'primer_pago_vencimiento' => '2026-08-07',
+            'fecha_contratacion' => '2026-08-01',
+        ]);
+
+        Factura::create([
+            'usuario_id' => $usuario->id,
+            'numero_servicio' => '1067',
+            'periodo' => '2026-08',
+            'total' => 50,
+            'reference_number' => 'PRIMER-PAGO-INCOMPLETO',
+            'payload' => ['mensualidad' => 300, 'recargo' => 'no'],
+        ]);
+
+        $resultado = app(MorosidadService::class)->calcularAdeudoUsuario('1067');
+
+        $this->assertSame('2026-08', $resultado['desde_periodo']);
+        $this->assertSame(2, $resultado['meses_adeudo']);
+        $this->assertSame(350.0, $resultado['pendiente']);
+        $this->assertTrue(
+            app(MorosidadService::class)->debeSerCortado($usuario, $resultado, '2026-09', 4)
+        );
 
         \Illuminate\Support\Carbon::setTestNow();
     }

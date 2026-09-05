@@ -488,7 +488,7 @@ class MorosidadService
             $costoPeriodoMostrado = $tarifa;
         }
         $mesesMostrados = $pendiente > 0.01
-            ? $desdePeriodoMostrado->diffInMonths($curStart) + 1
+            ? (int) $desdePeriodoMostrado->diffInMonths($curStart) + 1
             : 0;
 
         $listaMeses = [];
@@ -511,9 +511,11 @@ class MorosidadService
             // Siempre la tarifa del alta (ver nota arriba).
             'mensualidad' => round($tarifa, 2),
             'es_primer_periodo' => $periodo === $primerPagoPeriodo,
-            'meses_adeudo' => $mesesAdeudo,
+            // Estos campos deben describir el adeudo que realmente sigue
+            // pendiente, no el mes original del primer pago ya liquidado.
+            'meses_adeudo' => $mesesMostrados,
             'lista_meses' => $listaMeses,
-            'desde_periodo' => $primerPagoPeriodo,
+            'desde_periodo' => $desdePeriodoMostrado->format('Y-m'),
             'desde_mes_label' => $desdePeriodoMostrado->locale('es')->translatedFormat('F Y'),
             // Campos exclusivos de presentaciÃ³n. No se usan para recalcular
             // el saldo ni para las reglas de corte.
@@ -521,7 +523,7 @@ class MorosidadService
             'meses_mostrados' => $mesesMostrados,
             'hasta_periodo' => $periodo,
             'hasta_mes_label' => $hastaMes,
-            'ultimo_periodo_cubierto' => $ppStart->copy()->subMonth()->format('Y-m'),
+            'ultimo_periodo_cubierto' => $desdePeriodoMostrado->copy()->subMonth()->format('Y-m'),
             'recargo' => round($recargo, 2),
             'pagado_parcial' => round($pagado, 2),
             'pendiente' => $pendiente,
