@@ -1162,12 +1162,13 @@
                             <div class="relative">
                                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xl">$</span>
                                 <input type="number" step="0.01" min="0" x-model="ppMontoOverride"
+                                    @input="ppMontoEditado = true"
                                     class="form-input pl-10 pr-4 w-full rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm focus:border-sky-400 focus:ring-0 text-2xl font-bold text-gray-800 dark:text-gray-100 py-3 bg-gray-50 dark:bg-gray-800"
                                     placeholder="0.00">
                             </div>
                             <div class="flex items-center justify-between mt-1.5">
                                 <p class="text-xs text-gray-400">El cliente verá este monto en su recibo</p>
-                                <button type="button" @click="ppMontoOverride = ppDeuda?.pendiente"
+                                <button type="button" @click="ppMontoOverride = ppDeuda?.pendiente; ppMontoEditado = true"
                                     class="text-xs text-sky-500 hover:text-sky-700 font-medium">
                                     Restablecer
                                 </button>
@@ -1200,7 +1201,8 @@
                         class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors font-medium">
                         Cancelar
                     </button>
-                    <button @click="guardarProximoPago()" :disabled="ppGuardando || ppDeudaLoading"
+                    <button type="button" @click="guardarProximoPago()" :disabled="ppGuardando || ppDeudaLoading"
+                        style="background-color: #0284c7; color: #ffffff;"
                         class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 text-white text-sm font-semibold hover:bg-sky-700 active:scale-95 transition-all shadow disabled:opacity-50">
                         <svg x-show="ppGuardando" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
@@ -1278,6 +1280,8 @@
                 ppDeuda: null,
                 ppDeudaLoading: false,
                 ppMontoOverride: '',
+                ppMontoEditado: false,
+                ppCargaId: 0,
                 ppDescripcion: '',
                 ppGuardando: false,
                 ppResultado: null,
@@ -1287,25 +1291,30 @@
                     this.ppMonto        = data.actualMonto !== '' ? data.actualMonto : data.tarifa;
                     this.ppDeuda        = null;
                     this.ppMontoOverride = '';
+                    this.ppMontoEditado = false;
                     this.ppDescripcion   = data.actualDescripcion || '';
                     this.ppResultado    = null;
                     this.ppGuardando    = false;
                     this.ppModal        = true;
                     // Cargar deuda actual
+                    const cargaId = ++this.ppCargaId;
                     this.ppDeudaLoading = true;
                     fetch(`{{ route('admin.pagos.deuda') }}?numero=${data.numero}`, {
                         headers: { 'Accept': 'application/json' }
                     })
                     .then(r => r.json())
                     .then(j => {
-                        if (j.ok) {
+                        if (cargaId === this.ppCargaId && j.ok) {
                             this.ppDeuda = j;
-                            if (j.pendiente > 0) this.ppMontoOverride = j.pendiente;
+                            this.ppPeriodo = j.hasta_periodo;
+                            if (j.pendiente > 0 && !this.ppMontoEditado) this.ppMontoOverride = j.pendiente;
                             if (j.descripcion_manual) this.ppDescripcion = j.descripcion_manual;
                         }
                     })
                     .catch(() => {})
-                    .finally(() => { this.ppDeudaLoading = false; });
+                    .finally(() => {
+                        if (cargaId === this.ppCargaId) this.ppDeudaLoading = false;
+                    });
                 },
                 async guardarProximoPago() {
                     if (this.ppGuardando) return;

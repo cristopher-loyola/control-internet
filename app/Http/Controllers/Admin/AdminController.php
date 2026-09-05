@@ -1361,6 +1361,12 @@ class AdminController extends Controller
         // "Cargo extra". Aquí solo se fija el monto exacto del próximo pago.
         $montoFijado = ($monto !== null && $monto !== '') ? round((float) $monto, 2) : null;
 
+        // El boton azul reemplaza el adeudo que se muestra hoy. No debe
+        // heredar una fecha futura guardada por importaciones o adelantos.
+        if ($montoFijado !== null) {
+            $periodo = now()->format('Y-m');
+        }
+
         if ($montoFijado === 0.0 && $periodo) {
             // Cero liquida el saldo hasta el periodo seleccionado. El cobro
             // normal vuelve a comenzar en el mes siguiente.
@@ -1372,6 +1378,11 @@ class AdminController extends Controller
         } else {
             $usuario->proximo_pago = $periodo ?: null;
             $usuario->proximo_pago_monto = $montoFijado;
+            if ($montoFijado !== null) {
+                // Es el nuevo TOTAL autorizado, no una cantidad adicional.
+                // El saldo manual viejo se elimina para que no reaparezca.
+                $usuario->adeudo_monto = 0;
+            }
             if ($request->has('adeudo_descripcion')) {
                 $descripcion = trim((string) $request->input('adeudo_descripcion', ''));
                 $usuario->adeudo_descripcion = $descripcion !== '' ? $descripcion : null;
@@ -1383,6 +1394,7 @@ class AdminController extends Controller
             'ok'                 => true,
             'proximo_pago'       => $usuario->proximo_pago,
             'proximo_pago_monto' => $usuario->proximo_pago_monto,
+            'pendiente'           => $montoFijado,
             'adeudo_descripcion' => $usuario->adeudo_descripcion,
         ]);
     }

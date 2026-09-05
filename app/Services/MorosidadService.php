@@ -63,6 +63,14 @@ class MorosidadService
         $curStart = $this->periodoStart($periodo);
         $today = now();
 
+        // El importe escrito en el boton azul es una orden explicita y tiene
+        // prioridad sobre cualquier otra regla: primer pago, mensualidades,
+        // adeudos importados, recargos y estado del servicio.
+        if ($usuario->proximo_pago_monto !== null
+            && (string) ($usuario->proximo_pago ?? '') === $periodo) {
+            return $this->adeudoFijadoPorAdministrador($usuario, $numero, $periodo, $curStart);
+        }
+
         if ($this->servicioCancelado($usuario)) {
             return $this->adeudoLiquidado($usuario, $numero, $periodo, $curStart);
         }
@@ -723,6 +731,39 @@ class MorosidadService
      * Clientes con servicio cancelado no deben seguir mostrando adeudo en
      * cobro: el monto cobrado en la cancelación liquida la cuenta.
      */
+    private function adeudoFijadoPorAdministrador(
+        Usuario $usuario,
+        string $numero,
+        string $periodo,
+        Carbon $curStart
+    ): array {
+        $tarifa = (float) preg_replace('/[^\d.]/', '', (string) ($usuario->tarifa ?? 0));
+        $monto = round(max(0.0, (float) $usuario->proximo_pago_monto), 2);
+        $descripcion = trim((string) ($usuario->adeudo_descripcion ?? ''));
+        $mesLabel = $curStart->locale('es')->translatedFormat('F Y');
+
+        return [
+            'ok' => true,
+            'numero' => $numero,
+            'mensualidad' => round($tarifa, 2),
+            'es_primer_periodo' => false,
+            'meses_adeudo' => $monto > 0 ? 1 : 0,
+            'lista_meses' => [],
+            'desde_periodo' => $periodo,
+            'desde_mes_label' => $descripcion !== '' ? $descripcion : $mesLabel,
+            'hasta_periodo' => $periodo,
+            'hasta_mes_label' => $mesLabel,
+            'ultimo_periodo_cubierto' => null,
+            'recargo' => 0.0,
+            'pagado_parcial' => 0.0,
+            'pendiente' => $monto,
+            'vencimiento' => $curStart->copy()->day(7)->endOfDay()->toDateString(),
+            'adeudo_manual' => 0.0,
+            'descripcion_manual' => $descripcion !== '' ? $descripcion : null,
+            'cubierto_este_mes' => $monto <= 0.0,
+        ];
+    }
+
     private function servicioCancelado(Usuario $usuario): bool
     {
         if ((int) $usuario->estatus_servicio_id === 3) {

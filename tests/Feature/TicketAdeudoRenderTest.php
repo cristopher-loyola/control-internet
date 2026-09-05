@@ -199,6 +199,54 @@ class TicketAdeudoRenderTest extends TestCase
         \Illuminate\Support\Carbon::setTestNow();
     }
 
+    public function test_boton_azul_reemplaza_ochocientos_por_cuatrocientos_sin_importar_reglas_previas(): void
+    {
+        \Illuminate\Support\Carbon::setTestNow('2026-09-04 09:00:00');
+        $admin = User::factory()->create(['role' => 'admin']);
+        $usuario = Usuario::create([
+            'numero_servicio' => '7044',
+            'nombre_cliente' => 'Cliente ajuste total',
+            'domicilio' => 'Domicilio de prueba',
+            'tarifa' => 400,
+            'estado_id' => 1,
+            'estatus_servicio_id' => 1,
+            'servicio_id' => 1,
+            'adeudo_monto' => 800,
+            'adeudo_descripcion' => 'Adeudo anterior',
+            'proximo_pago' => '2026-11',
+            'primer_pago' => 800,
+            'primer_pago_periodo' => '2026-09',
+        ]);
+
+        $this->actingAs($admin)->postJson(
+            route('admin.clientes.proximo-pago', ['id' => $usuario->id], absolute: false),
+            [
+                // Incluso si el navegador manda el periodo viejo, el boton
+                // debe modificar el saldo que se esta mostrando ahora.
+                'proximo_pago' => '2026-11',
+                'proximo_pago_monto' => 400,
+                'adeudo_descripcion' => 'Ajuste autorizado',
+            ]
+        )->assertOk()->assertJson([
+            'ok' => true,
+            'proximo_pago' => '2026-09',
+            'proximo_pago_monto' => 400,
+            'pendiente' => 400,
+        ]);
+
+        $usuario->refresh();
+        $this->assertSame(0.0, (float) $usuario->adeudo_monto);
+        $this->assertSame('2026-09', $usuario->proximo_pago);
+        $this->assertSame(400.0, (float) $usuario->proximo_pago_monto);
+
+        $resultado = app(MorosidadService::class)->calcularAdeudoUsuario('7044');
+        $this->assertSame(400.0, $resultado['pendiente']);
+        $this->assertSame(0.0, $resultado['adeudo_manual']);
+        $this->assertSame(0.0, $resultado['recargo']);
+
+        \Illuminate\Support\Carbon::setTestNow();
+    }
+
     public function test_guardar_monto_personalizado_permite_editar_descripcion(): void
     {
         \Illuminate\Support\Carbon::setTestNow('2026-09-02 09:00:00');
