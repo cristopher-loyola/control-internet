@@ -75,6 +75,14 @@ class MorosidadService
             return $this->adeudoLiquidado($usuario, $numero, $periodo, $curStart);
         }
 
+        // El total ajustado sigue siendo la base de la deuda al cambiar de
+        // mes. Solo se agregan las mensualidades posteriores al ajuste.
+        if ($usuario->proximo_pago_monto !== null
+            && preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', (string) $usuario->proximo_pago)
+            && (string) $usuario->proximo_pago < $periodo) {
+            return $this->adeudoFijadoPorAdministrador($usuario, $numero, $periodo, $curStart);
+        }
+
         $primerPago = (float) ($usuario->primer_pago ?? 0);
         $tarifa = (float) preg_replace('/[^\d.]/', '', (string) ($usuario->tarifa ?? 0));
 
@@ -306,22 +314,6 @@ class MorosidadService
         // definitiva — un pago registrado (con o sin recargo) siempre liquida
         // el periodo, nunca debe quedar un residuo automático.
 
-        // Monto fijado a mano con el botón "Modificar siguiente pago": manda
-        // sobre cualquier cálculo. Si el admin escribe $10 para ese mes, se
-        // cobran $10 — sin sumarle mensualidad, recargo ni adeudos. Solo
-        // aplica al mes exacto que se marcó en proximo_pago.
-        $tieneMontoFijado = $usuario->proximo_pago_monto !== null;
-        $montoFijado = (float) ($usuario->proximo_pago_monto ?? 0);
-        if ($tieneMontoFijado
-            && !empty($usuario->proximo_pago)
-            && (string) $usuario->proximo_pago === $periodo
-        ) {
-            $pendiente = round($montoFijado, 2);
-            $recargo = 0.0;
-            $mesesAdeudo = $montoFijado > 0 ? 1 : 0;
-            $desdePeriodo = $periodo;
-        }
-
         // Detectar si el cliente está cubierto este mes sin deuda (pagó por transferencia/adelanto).
         // Solo se requiere proximo_pago en el futuro; la descripción puede ser vacía.
         $cubiertoEsteMes = (
@@ -433,14 +425,6 @@ class MorosidadService
         // pago por su mes, más la mensualidad normal por cada mes posterior.
         $mesesDespues = (int) $ppStart->diffInMonths($curStart);
         $esperado = $primerPago + ($tarifa * $mesesDespues);
-
-        // Un importe fijado por el botón azul siempre manda, también en
-        // clientes que aún están en su primer periodo de cobro.
-        $tieneMontoFijado = $usuario->proximo_pago_monto !== null;
-        $montoFijado = (float) ($usuario->proximo_pago_monto ?? 0);
-        if ($tieneMontoFijado && (string) ($usuario->proximo_pago ?? '') === $periodo) {
-            $esperado = $montoFijado;
-        }
 
         $facturasPagadas = Factura::whereNull('deleted_at')
             ->where('numero_servicio', $numero)
@@ -743,8 +727,9 @@ class MorosidadService
     }
 
     /**
-     * Clientes con servicio cancelado no deben seguir mostrando adeudo en
-     * cobro: el monto cobrado en la cancelación liquida la cuenta.
+     * El importe fijado reemplaza el saldo hasta su periodo. Si no se paga,
+     * se conserva y se suma la tarifa por cada mes posterior, sin reconstruir
+     * adeudos anteriores ni agregar recargos automáticos al total ajustado.
      */
     private function adeudoFijadoPorAdministrador(
         Usuario $usuario,
@@ -754,7 +739,47 @@ class MorosidadService
     ): array {
         $tarifa = (float) preg_replace('/[^\d.]/', '', (string) ($usuario->tarifa ?? 0));
         $monto = round(max(0.0, (float) $usuario->proximo_pago_monto), 2);
+        $inicio = $this->periodoStart((string) $usuario->proximo_pago);
+        $mesesPosteriores = (int) $inicio->diffInMonths($curStart);
+
+        // Las facturas del mes del ajuste ya forman parte del saldo que el
+        // administrador reemplazó. Los pagos que lo liquidan en ese mismo
+        // mes avanzan proximo_pago desde FacturaService.
+        $pagado = 0.0;
+        if ($mesesPosteriores > 0) {
+            $pagado = (float) Factura::where('numero_servicio', $numero)
+                ->where('periodo', '>', $usuario->proximo_pago)
+                ->where('periodo', '<=', $periodo)
+                ->get(['total', 'payload'])
+                ->sum(function (Factura $factura): float {
+                    $recargo = $factura->payload['recargo'] ?? 'no';
+                    $recargoPagado = ($recargo === 'si' || $recargo === true) ? 50.0 : 0.0;
+
+                    return max(0.0, (float) $factura->total - $recargoPagado);
+                });
+        }
+        $pendiente = round(max(0.0, $monto + ($tarifa * $mesesPosteriores) - $pagado), 2);
+
+        // Aplicar los abonos al saldo más antiguo para que los meses del
+        // recibo y las reglas de corte describan únicamente lo pendiente.
+        $desde = $inicio->copy();
+        $saldoAplicado = $pagado;
+        $costoPeriodo = $monto;
+        while ($desde->lessThan($curStart) && $saldoAplicado >= $costoPeriodo - 0.01) {
+            $saldoAplicado -= $costoPeriodo;
+            $desde->addMonth();
+            $costoPeriodo = $tarifa;
+        }
+        $mesesAdeudo = $pendiente > 0.01 ? (int) $desde->diffInMonths($curStart) + 1 : 0;
+        $listaMeses = [];
+        for ($mes = $desde->copy(); $mesesAdeudo > 0 && $mes->lessThan($curStart); $mes->addMonth()) {
+            $listaMeses[] = $mes->locale('es')->translatedFormat('F Y');
+        }
+
         $descripcion = trim((string) ($usuario->adeudo_descripcion ?? ''));
+        if ($desde->greaterThan($inicio) || $pendiente <= 0.01) {
+            $descripcion = '';
+        }
         $mesLabel = $curStart->locale('es')->translatedFormat('F Y');
 
         return [
@@ -762,20 +787,20 @@ class MorosidadService
             'numero' => $numero,
             'mensualidad' => round($tarifa, 2),
             'es_primer_periodo' => false,
-            'meses_adeudo' => $monto > 0 ? 1 : 0,
-            'lista_meses' => [],
-            'desde_periodo' => $periodo,
-            'desde_mes_label' => $descripcion !== '' ? $descripcion : $mesLabel,
+            'meses_adeudo' => $mesesAdeudo,
+            'lista_meses' => $listaMeses,
+            'desde_periodo' => $desde->format('Y-m'),
+            'desde_mes_label' => $descripcion !== '' ? $descripcion : $desde->locale('es')->translatedFormat('F Y'),
             'hasta_periodo' => $periodo,
             'hasta_mes_label' => $mesLabel,
-            'ultimo_periodo_cubierto' => null,
+            'ultimo_periodo_cubierto' => $pendiente <= 0.01 ? $periodo : $desde->copy()->subMonth()->format('Y-m'),
             'recargo' => 0.0,
-            'pagado_parcial' => 0.0,
-            'pendiente' => $monto,
+            'pagado_parcial' => round($pagado, 2),
+            'pendiente' => $pendiente,
             'vencimiento' => $curStart->copy()->day(7)->endOfDay()->toDateString(),
             'adeudo_manual' => 0.0,
             'descripcion_manual' => $descripcion !== '' ? $descripcion : null,
-            'cubierto_este_mes' => $monto <= 0.0,
+            'cubierto_este_mes' => $pendiente <= 0.01,
         ];
     }
 
