@@ -144,7 +144,8 @@ class FacturaService
         $months = (int) (($p['prepay_months'] ?? 0) ?: 0);
         $venceAt = PrepayDashboardService::venceAt(
             $prepay->created_at ? Carbon::parse($prepay->created_at) : null,
-            $months
+            $months,
+            ($p['prepay_next_month'] ?? false) === true
         );
         $estado = PrepayDashboardService::estadoPorVencimiento($venceAt, now());
 
@@ -650,7 +651,7 @@ class FacturaService
         // administrador fijo para ese periodo; al registrarse, el ajuste queda cerrado.
         $ajusteLiquidado = $esAjusteProximoPago;
 
-        if ($esAjusteProximoPago) {
+        if ($esAjusteProximoPago || $esPrepay) {
             $payload['proximo_pago_previo'] = $usuario->proximo_pago;
             $payload['proximo_pago_monto_previo'] = $usuario->proximo_pago_monto;
             $payload['adeudo_monto_previo'] = $adeudoMonto;
@@ -753,9 +754,10 @@ class FacturaService
                 // mes destino (ej. 31 en un mes de 30 días).
                 $ultimoCubierto = Carbon::createFromFormat('Y-m-d', $factura->periodo . '-01')
                     ->startOfMonth()
-                    ->addMonths($months)
+                    ->addMonths($months + (($payload['prepay_next_month'] ?? false) === true ? 1 : 0))
                     ->format('Y-m');
                 $usuario->proximo_pago = $ultimoCubierto;
+                $usuario->proximo_pago_monto = null;
             } catch (\Throwable $e) {
                 // Si hay error al parsear fecha, no actualizamos proximo_pago
             }
@@ -764,19 +766,22 @@ class FacturaService
         if ($ajusteLiquidado) {
             // La factura conserva el periodo liquidado y el siguiente mes se
             // programa expresamente con la tarifa normal del cliente.
-            $usuario->proximo_pago = Carbon::createFromFormat('Y-m-d', $factura->periodo . '-01')
-                ->addMonth()->format('Y-m');
-            $usuario->proximo_pago_monto = round($mensualidad, 2);
+            if (! $esPrepay) {
+                $usuario->proximo_pago = Carbon::createFromFormat('Y-m-d', $factura->periodo . '-01')
+                    ->addMonth()->format('Y-m');
+                $usuario->proximo_pago_monto = round($mensualidad, 2);
+            }
             $usuario->adeudo_monto = 0;
             $usuario->adeudo_descripcion = null;
         }
 
         // Flush adeudo changes now so calcularAdeudoUsuario reads updated adeudo_monto (not stale DB value)
-        if ($adeudoMonto > 0 && $totalPagado > 0) {
+        if (($adeudoMonto > 0 && $totalPagado > 0) || $esPrepay || $ajusteLiquidado) {
             Usuario::where('numero_servicio', $usuario->numero_servicio)->update([
                 'adeudo_monto'       => $usuario->adeudo_monto,
                 'adeudo_descripcion' => $usuario->adeudo_descripcion,
                 'proximo_pago'       => $usuario->proximo_pago,
+                'proximo_pago_monto' => $usuario->proximo_pago_monto,
             ]);
         }
 

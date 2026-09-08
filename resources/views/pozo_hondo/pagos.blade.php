@@ -527,6 +527,7 @@
             saldoDespues: null,
             pagadoMesActual: false,
             prepayActivo: false,
+            prepayNextMonth: true,
             prepayHastaLabel: '',
             prepayConfig:{ enabled:{}, matrix:{} },
             prepayError:'',
@@ -661,7 +662,7 @@
                 if(!meses) return '';
                 const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date();
                 d.setDate(1);
-                d.setMonth(d.getMonth() + Number(meses) - 1);
+                d.setMonth(d.getMonth() + Number(meses) - (this.prepayNextMonth ? 0 : 1));
                 const mes = d.toLocaleDateString('es-MX', { month: 'long' });
                 const year = d.getFullYear();
                 return `${mes} de ${year}`;
@@ -1090,6 +1091,7 @@
                                 recargo: this.form.recargo,
                                 prepay: this.form.prepay,
                                 prepay_months: this.form.prepay==='si'? this.form.prepay_months : null,
+                                prepay_next_month: this.form.prepay==='si' ? this.prepayNextMonth : null,
                                 prepay_total: this.form.prepay==='si'? this.totales.prepay_total : null,
                                 adeudo_pendiente: Number(this.adeudoCobro || 0),
                                 pago_anterior: this.form.pago_anterior,
@@ -1267,6 +1269,7 @@ Le recordamos que los pagos deben realizarse del día 1 al 7 de cada mes. Poster
                 }
             },
             async buscar(){
+                this.prepayNextMonth = true;
                 this.error='';
                 if(!this.form.numero){ this.error='Ingresa el número de servicio'; return }
 

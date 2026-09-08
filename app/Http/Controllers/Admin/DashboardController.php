@@ -407,7 +407,7 @@ class DashboardController extends Controller
 
         $driver = DB::getDriverName();
         if ($driver === 'mysql') {
-            $vence = "LAST_DAY(DATE_ADD(facturas.created_at, INTERVAL (CAST(JSON_UNQUOTE(JSON_EXTRACT(facturas.payload,'$.prepay_months')) AS UNSIGNED) - 1) MONTH))";
+            $vence = "LAST_DAY(DATE_ADD(facturas.created_at, INTERVAL (CAST(JSON_UNQUOTE(JSON_EXTRACT(facturas.payload,'$.prepay_months')) AS UNSIGNED) - IF(JSON_UNQUOTE(JSON_EXTRACT(facturas.payload,'$.prepay_next_month')) = 'true', 0, 1)) MONTH))";
             $facturasQuery->orderByRaw("({$vence} < CURDATE()) asc, {$vence} asc");
         } else {
             $facturasQuery->orderByDesc('facturas.created_at');
@@ -419,7 +419,7 @@ class DashboardController extends Controller
             $p = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
             $months = (int) (($p['prepay_months'] ?? 0) ?: 0);
             $from = $f->created_at ? Carbon::parse($f->created_at) : null;
-            $venceAt = PrepayDashboardService::venceAt($from, $months);
+            $venceAt = PrepayDashboardService::venceAt($from, $months, ($p['prepay_next_month'] ?? false) === true);
             $estado = PrepayDashboardService::estadoPorVencimiento($venceAt, $now);
 
             return (object) [
@@ -488,7 +488,7 @@ class DashboardController extends Controller
 
         $driver = DB::getDriverName();
         if ($driver === 'mysql') {
-            $vence = "LAST_DAY(DATE_ADD(facturas.created_at, INTERVAL (CAST(JSON_UNQUOTE(JSON_EXTRACT(facturas.payload,'$.prepay_months')) AS UNSIGNED) - 1) MONTH))";
+            $vence = "LAST_DAY(DATE_ADD(facturas.created_at, INTERVAL (CAST(JSON_UNQUOTE(JSON_EXTRACT(facturas.payload,'$.prepay_months')) AS UNSIGNED) - IF(JSON_UNQUOTE(JSON_EXTRACT(facturas.payload,'$.prepay_next_month')) = 'true', 0, 1)) MONTH))";
             $facturasQuery->orderByRaw("({$vence} < CURDATE()) asc, {$vence} asc");
         } else {
             $facturasQuery->orderByDesc('facturas.created_at');
@@ -504,7 +504,7 @@ class DashboardController extends Controller
             $p = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
             $months = (int) (($p['prepay_months'] ?? 0) ?: 0);
             $from = $f->created_at ? Carbon::parse($f->created_at) : null;
-            $venceAt = PrepayDashboardService::venceAt($from, $months);
+            $venceAt = PrepayDashboardService::venceAt($from, $months, ($p['prepay_next_month'] ?? false) === true);
             $estado = PrepayDashboardService::estadoPorVencimiento($venceAt, $now);
 
             return [
@@ -687,7 +687,7 @@ class DashboardController extends Controller
                 $p = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
                 $months = (int) (($p['prepay_months'] ?? 0) ?: 0);
                 $from = $f->created_at ? Carbon::parse($f->created_at) : null;
-                $venceAt = PrepayDashboardService::venceAt($from, $months);
+                $venceAt = PrepayDashboardService::venceAt($from, $months, ($p['prepay_next_month'] ?? false) === true);
                 $estado = PrepayDashboardService::estadoPorVencimiento($venceAt, $now);
 
                 return [
@@ -967,7 +967,7 @@ class DashboardController extends Controller
                 continue;
             }
             try {
-                $end = $this->periodoStart((string) $f->periodo)->addMonths($months - 1)->format('Y-m');
+                $end = PrepayDashboardService::venceAt($this->periodoStart((string) $f->periodo), $months, ($payload['prepay_next_month'] ?? false) === true)->format('Y-m');
                 if ($end >= $periodo) {
                     $exclude[(string) $f->numero_servicio] = true;
                 }
@@ -1051,7 +1051,7 @@ class DashboardController extends Controller
                 continue;
             }
             try {
-                $end = $this->periodoStart((string) $f->periodo)->addMonths($months - 1)->format('Y-m');
+                $end = PrepayDashboardService::venceAt($this->periodoStart((string) $f->periodo), $months, ($payload['prepay_next_month'] ?? false) === true)->format('Y-m');
                 $num = (string) $f->numero_servicio;
                 if ($num === '') {
                     continue;

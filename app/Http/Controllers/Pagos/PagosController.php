@@ -458,7 +458,7 @@ class PagosController extends Controller
         $p = is_array($row->payload) ? $row->payload : (is_string($row->payload) ? @json_decode($row->payload, true) : []);
         $months = (int) (($p['prepay_months'] ?? 0) ?: 0);
         $from = $row->created_at ? \Illuminate\Support\Carbon::parse($row->created_at) : null;
-        $venceAt = PrepayDashboardService::venceAt($from, $months);
+        $venceAt = PrepayDashboardService::venceAt($from, $months, ($p['prepay_next_month'] ?? false) === true);
         $estado = PrepayDashboardService::estadoPorVencimiento($venceAt, now());
         $label = $venceAt ? $venceAt->locale('es')->translatedFormat('F Y') : null;
 

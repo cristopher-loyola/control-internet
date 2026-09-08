@@ -62,7 +62,7 @@ class PrepayDashboardService
         return ['type' => 'nombre', 'value' => $name];
     }
 
-    public static function venceAt(?Carbon $desde, int $meses): ?Carbon
+    public static function venceAt(?Carbon $desde, int $meses, bool $desdeMesSiguiente = false): ?Carbon
     {
         if (! $desde) {
             return null;
@@ -71,8 +71,9 @@ class PrepayDashboardService
             return null;
         }
 
-        // Si el pago es por $meses meses de adelanto, la fecha de vencimiento es el 1ero del mes siguiente al último cubierto
-        return $desde->copy()->startOfMonth()->addMonths($meses - 1)->endOfMonth();
+        // Los nuevos adelantos se suman al adeudo y empiezan el mes siguiente.
+        // Los recibos anteriores conservan la cobertura con la que se emitieron.
+        return $desde->copy()->startOfMonth()->addMonths($meses - ($desdeMesSiguiente ? 0 : 1))->endOfMonth();
     }
 
     public static function estadoPorVencimiento(?Carbon $venceAt, ?Carbon $now = null, int $soonDays = 7): array

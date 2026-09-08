@@ -90,7 +90,8 @@ class MorosidadService
         // monto en ese mes, y su mensualidad normal a partir del siguiente. Los
         // meses anteriores quedan cubiertos (todavía no le tocaba pagar).
         $primerPagoPeriodo = (string) ($usuario->primer_pago_periodo ?? '');
-        if ($primerPagoPeriodo !== '' && preg_match('/^\d{4}-\d{2}$/', $primerPagoPeriodo)) {
+        if ($primerPagoPeriodo !== '' && preg_match('/^\d{4}-\d{2}$/', $primerPagoPeriodo)
+            && ($this->ultimoPeriodoCubiertoPorPrepay($numero, $tarifa) ?? '') < $primerPagoPeriodo) {
             return $this->adeudoConPrimerPagoProgramado(
                 $usuario, $numero, $periodo, $curStart, $today,
                 $primerPagoPeriodo, $primerPago, $tarifa
@@ -129,7 +130,7 @@ class MorosidadService
             ->first(['periodo', 'payload']);
         $payloadUltima = $ultimaFactura && is_array($ultimaFactura->payload) ? $ultimaFactura->payload : [];
         if ($ultimaFactura && !empty($payloadUltima['ajuste_liquidado'])) {
-            $ultimoPeriodoCubierto = (string) $ultimaFactura->periodo;
+            $ultimoPeriodoCubierto = $this->maxPeriodo((string) $ultimaFactura->periodo, $ultimoPeriodoPrepay);
         }
 
         // Extender cobertura con proximo_pago aunque ya haya facturas (ej. adelanto/transferencia registrado en Excel).
@@ -222,7 +223,8 @@ class MorosidadService
         }
 
         if ($ultimaFactura && !empty($payloadUltima['ajuste_liquidado'])
-            && (string) $ultimaFactura->periodo < $periodo) {
+            && (string) $ultimaFactura->periodo < $periodo
+            && ($ultimoPeriodoPrepay ?? '') <= (string) $ultimaFactura->periodo) {
             $ultimoPeriodoCubierto = (string) $ultimaFactura->periodo;
             $desdeAjuste = $this->periodoStart($ultimoPeriodoCubierto)->addMonth();
             $desdePeriodo = $desdeAjuste->format('Y-m');
@@ -584,7 +586,11 @@ class MorosidadService
                 continue;
             }
             try {
-                $end = $this->periodoStart((string) $f->periodo)->addMonths($monthsEffective - 1)->format('Y-m');
+                $end = PrepayDashboardService::venceAt(
+                    $this->periodoStart((string) $f->periodo),
+                    $monthsEffective,
+                    ($payload['prepay_next_month'] ?? false) === true
+                )->format('Y-m');
                 $max = $this->maxPeriodo($max, $end);
             } catch (\Throwable $e) {
                 continue;

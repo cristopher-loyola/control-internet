@@ -969,6 +969,7 @@
             pagarMesSiguiente: false,
             periodoOverride: null,
             prepayActivo: false,
+            prepayNextMonth: true,
             prepayHastaLabel: '',
             prepayConfig:{ enabled:{}, matrix:{} },
             prepayError:'',
@@ -1194,7 +1195,7 @@
                 if(!meses) return '';
                 const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date();
                 d.setDate(1);
-                d.setMonth(d.getMonth() + Number(meses) - 1);
+                d.setMonth(d.getMonth() + Number(meses) - (this.prepayNextMonth ? 0 : 1));
                 const mes = d.toLocaleDateString('es-MX', { month: 'long' });
                 const year = d.getFullYear();
                 return `${mes} de ${year}`;
@@ -1467,6 +1468,7 @@
                         this.form.baja_temporal_months = p.baja_temporal_months || 1;
                                 this.form.prepay = p.prepay || 'no';
                                 this.form.prepay_months = p.prepay_months || null;
+                                this.prepayNextMonth = p.prepay_next_month === true;
                                 this.totales.prepay_total = Number(p.prepay_total)||0;
                                 const adeudoPendiente = Number(p.adeudo_pendiente || 0);
                                 this.adeudoListaMeses = p.lista_meses || [];
@@ -1700,12 +1702,9 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                             this.totales.prepay_total = Math.round((base * (1 - percent/100)) * 100) / 100;
                         }
                     }
-                    // El mes actual ya viene incluido como el primer mes de "prepay_total"
-                    // (empieza a contar desde hoy), así que no se debe sumar aparte lo que
-                    // ya se debe de este mes — solo la deuda de meses ANTERIORES al actual,
-                    // si la hay (ej. debía junio y julio, y ahora adelanta agosto+septiembre).
+                    // El adelanto cubre meses futuros y se suma a todo el adeudo pendiente.
                     const adeudoPendiente = Number(this.adeudoCobro || (this.adeudo && this.adeudo.pendiente ? Number(this.adeudo.pendiente) : 0) || 0);
-                    const adeudoBase = this.adeudo ? Math.max(0, adeudoPendiente - recargoSrv - mensualidad) : Math.max(0, adeudoPendiente - mensualidad);
+                    const adeudoBase = this.adeudo ? Math.max(0, adeudoPendiente - recargoSrv) : adeudoPendiente;
                     total = Math.round((adeudoBase + this.totales.prepay_total + rec) * 100) / 100;
                 } else if (this.alCorriente) {
                     total = 0;
@@ -2064,6 +2063,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 this.form.cancelacion_monto = Number(p.cancelacion_monto) || 0;
                                 this.form.prepay = p.prepay || 'no';
                                 this.form.prepay_months = p.prepay_months || null;
+                                this.prepayNextMonth = p.prepay_next_month === true;
                                 this.totales.prepay_total = Number(p.prepay_total)||0;
                                 const adeudoPendiente = Number(p.adeudo_pendiente || 0);
                                 this.adeudo = adeudoPendiente > 0 ? { pendiente: adeudoPendiente, meses: 0, desde_label: '', recargo: 0, pagado_parcial: 0 } : null;
@@ -2100,6 +2100,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 recargo: this.form.recargo,
                                 prepay: this.form.prepay,
                                 prepay_months: this.form.prepay==='si'? this.form.prepay_months : null,
+                                prepay_next_month: this.form.prepay==='si' ? this.prepayNextMonth : null,
                                 prepay_total: this.form.prepay==='si'? this.totales.prepay_total : null,
                                 adeudo_pendiente: Number(this.adeudoCobro || 0),
                                 lista_meses: this.adeudo ? this.adeudo.lista_meses : [],
@@ -2184,6 +2185,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 recargo: this.form.recargo,
                                 prepay: this.form.prepay,
                                 prepay_months: this.form.prepay==='si'? this.form.prepay_months : null,
+                                prepay_next_month: this.form.prepay==='si' ? this.prepayNextMonth : null,
                                 prepay_total: this.form.prepay==='si'? this.totales.prepay_total : null,
                                 adeudo_pendiente: Number(this.adeudoCobro || 0),
                                 lista_meses: this.adeudo ? this.adeudo.lista_meses : [],
@@ -2353,6 +2355,7 @@ Le recordamos que los pagos deben realizarse del día 1 al 7 de cada mes. Poster
                 w.document.close();
             },
             async buscar(){
+                this.prepayNextMonth = true;
                 this.error='';
                 if(!this.form.numero){ this.error='Ingresa el ID'; return }
                 

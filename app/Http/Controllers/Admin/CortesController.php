@@ -7,6 +7,7 @@ use App\Models\Usuario;
 use App\Models\Cortador;
 use App\Models\Factura;
 use App\Services\MorosidadService;
+use App\Services\PrepayDashboardService;
 use App\Services\CortesExcelExporter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -151,7 +152,9 @@ class CortesController extends Controller
             $p = $f->payload;
             $months = intval($p['prepay_months'] ?? 0);
             if ($months > 0) {
-                $vence = $f->created_at->copy()->addMonths($months);
+                $vence = ($p['prepay_next_month'] ?? false) === true
+                    ? PrepayDashboardService::venceAt($f->created_at, $months, true)
+                    : $f->created_at->copy()->addMonths($months);
                 if ($vence->greaterThanOrEqualTo($hoy)) {
                     $usuariosConPrepago[] = (string) $f->numero_servicio;
                 }

@@ -335,7 +335,7 @@ class RosalitoController extends Controller
         $p = is_array($row->payload) ? $row->payload : (is_string($row->payload) ? @json_decode($row->payload, true) : []);
         $months = (int) (($p['prepay_months'] ?? 0) ?: 0);
         $from = $row->created_at ? \Illuminate\Support\Carbon::parse($row->created_at) : null;
-        $venceAt = PrepayDashboardService::venceAt($from, $months);
+        $venceAt = PrepayDashboardService::venceAt($from, $months, ($p['prepay_next_month'] ?? false) === true);
         $estado = PrepayDashboardService::estadoPorVencimiento($venceAt, now());
         $label = $venceAt ? $venceAt->locale('es')->translatedFormat('F Y') : null;
 
@@ -410,7 +410,7 @@ class RosalitoController extends Controller
                     $p = is_array($prepay->payload) ? $prepay->payload : (is_string($prepay->payload) ? @json_decode($prepay->payload, true) : []);
                     $months = (int) (($p['prepay_months'] ?? 0) ?: 0);
                     $from = $prepay->created_at ? \Illuminate\Support\Carbon::parse($prepay->created_at) : null;
-                    $venceAt = PrepayDashboardService::venceAt($from, $months);
+                    $venceAt = PrepayDashboardService::venceAt($from, $months, ($p['prepay_next_month'] ?? false) === true);
                     $estado = PrepayDashboardService::estadoPorVencimiento($venceAt, now());
                     if ($venceAt && ! $estado['vencido']) {
                         return ['status' => 409, 'body' => [
