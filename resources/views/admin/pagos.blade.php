@@ -1768,7 +1768,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                     const j = await r.json();
                     if(r.ok && j?.ok){
                         const m = j.pendiente||0;
-                        const meses = j.meses_adeudo||0;
+                        const meses = (j.meses_mostrados ?? j.meses_adeudo) || 0;
                         this.descripcionManual = j.descripcion_manual || '';
                         this.alCorriente = !!(j.cubierto_este_mes);
                         // Cliente nuevo con primer pago programado a un mes futuro
@@ -1776,7 +1776,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                         this.primerPagoMonto   = Number(j.primer_pago_monto || 0);
                         if(isFinite(m) && m>0){
                             this.adeudo = {
-                                desde_periodo: j.desde_periodo,
+                                desde_periodo: j.desde_periodo_mostrado || j.desde_periodo,
                                 desde_label: j.desde_mes_label || '',
                                 meses: meses,
                                 pendiente: Math.max(0, Number(m)||0),
@@ -1788,7 +1788,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 this.form.recargo = this.adeudo.recargo > 0 ? 'si' : 'no';
                             }
                         } else {
-                            this.adeudo = { desde_periodo:j.desde_periodo, desde_label:j.desde_mes_label||'', meses:meses, pendiente:0, recargo:Number(j.recargo||0), pagado_parcial:0, lista_meses: j.lista_meses || [] };
+                            this.adeudo = { desde_periodo:j.desde_periodo_mostrado || j.desde_periodo, desde_label:j.desde_mes_label||'', meses:meses, pendiente:0, recargo:Number(j.recargo||0), pagado_parcial:0, lista_meses: j.lista_meses || [] };
                         }
                         if (this.alCorriente && !this.recargoManual) this.form.recargo = 'no';
                         if (this.ref && this.ref.id) {

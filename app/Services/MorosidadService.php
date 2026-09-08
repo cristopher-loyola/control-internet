@@ -417,10 +417,28 @@ class MorosidadService
         $pendiente = round(max(0.0, ($esperado + $recargo) - $pagado), 2);
         $mesesAdeudo = $pendiente > 0.01 ? ($mesesDespues + 1) : 0;
 
+        // Los importes se conservan tal como se calculan arriba, pero para el
+        // texto del recibo hay que ocultar los periodos que ya quedaron
+        // cubiertos. Por ejemplo: primer pago de agosto $140, pagado $140,
+        // y septiembre $300 pendiente debe mostrarse como "Adeuda desde
+        // septiembre", no desde agosto.
+        $desdePeriodoMostrado = $ppStart->copy();
+        $saldoAplicado = $pagado;
+        $costoPeriodoMostrado = $primerPago;
+        while ($desdePeriodoMostrado->lessThan($curStart)
+            && $saldoAplicado >= $costoPeriodoMostrado - 0.01) {
+            $saldoAplicado -= $costoPeriodoMostrado;
+            $desdePeriodoMostrado->addMonth();
+            $costoPeriodoMostrado = $tarifa;
+        }
+        $mesesMostrados = $pendiente > 0.01
+            ? $desdePeriodoMostrado->diffInMonths($curStart) + 1
+            : 0;
+
         $listaMeses = [];
         if ($pendiente > 0.01) {
-            $temp = $ppStart->copy();
-            for ($i = 0; $i <= $mesesDespues; $i++) {
+            $temp = $desdePeriodoMostrado->copy();
+            for ($i = 0; $i < $mesesMostrados; $i++) {
                 if ($temp->format('Y-m') !== $periodo) {
                     $listaMeses[] = $temp->locale('es')->translatedFormat('F Y');
                 }
@@ -437,7 +455,11 @@ class MorosidadService
             'meses_adeudo' => $mesesAdeudo,
             'lista_meses' => $listaMeses,
             'desde_periodo' => $primerPagoPeriodo,
-            'desde_mes_label' => $ppStart->locale('es')->translatedFormat('F Y'),
+            'desde_mes_label' => $desdePeriodoMostrado->locale('es')->translatedFormat('F Y'),
+            // Campos exclusivos de presentaciÃ³n. No se usan para recalcular
+            // el saldo ni para las reglas de corte.
+            'desde_periodo_mostrado' => $desdePeriodoMostrado->format('Y-m'),
+            'meses_mostrados' => $mesesMostrados,
             'hasta_periodo' => $periodo,
             'hasta_mes_label' => $hastaMes,
             'ultimo_periodo_cubierto' => $ppStart->copy()->subMonth()->format('Y-m'),

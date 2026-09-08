@@ -892,10 +892,10 @@
                     const j = await r.json();
                     if(r.ok && j?.ok){
                         const m = j.pendiente||0;
-                        const meses = j.meses_adeudo||0;
+                        const meses = (j.meses_mostrados ?? j.meses_adeudo) || 0;
                         if(isFinite(m) && m>0 && meses>0){
                             this.adeudo = {
-                                desde_periodo: j.desde_periodo,
+                                desde_periodo: j.desde_periodo_mostrado || j.desde_periodo,
                                 desde_label: j.desde_mes_label || '',
                                 meses: meses,
                                 pendiente: Math.max(0, Number(m)||0),
@@ -907,7 +907,7 @@
                                 this.form.recargo = this.adeudo.recargo > 0 ? 'si' : 'no';
                             }
                         } else {
-                            this.adeudo = { desde_periodo:j.desde_periodo, desde_label:j.desde_mes_label||'', meses:meses, pendiente:0, recargo:Number(j.recargo||0), pagado_parcial:0, lista_meses: j.lista_meses || [] };
+                            this.adeudo = { desde_periodo:j.desde_periodo_mostrado || j.desde_periodo, desde_label:j.desde_mes_label||'', meses:meses, pendiente:0, recargo:Number(j.recargo||0), pagado_parcial:0, lista_meses: j.lista_meses || [] };
                         }
                         if (this.ref && this.ref.id) {
                             this.saldoDespues = Number(this.adeudo?.pendiente || 0);
