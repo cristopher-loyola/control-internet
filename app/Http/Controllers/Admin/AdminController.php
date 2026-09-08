@@ -1366,16 +1366,44 @@ class AdminController extends Controller
     public function clientesCargoExtra(Request $request, int $id)
     {
         $request->validate([
-            'monto'       => ['required', 'numeric', 'min:0'],
-            'descripcion' => ['nullable', 'string', 'max:255'],
+            'monto'       => ['required', 'numeric', 'gt:0'],
+            'descripcion' => ['required', 'string', 'max:255'],
         ]);
 
         $usuario = Usuario::findOrFail($id);
-        $usuario->adeudo_monto       = round((float) $request->input('monto'), 2);
-        $usuario->adeudo_descripcion = $request->input('monto') > 0 ? ($request->input('descripcion') ?: null) : null;
+        $cargoNuevo = round((float) $request->input('monto'), 2);
+        $usuario->adeudo_monto = round((float) ($usuario->adeudo_monto ?? 0) + $cargoNuevo, 2);
+
+        // El cargo naranja se suma al total que se cobrará este mes. Si el
+        // azul ya fijó un importe, partimos de él; de lo contrario, del saldo
+        // calculado actualmente. Así $1,200 + cable $600 = $1,800 en Pagos.
+        $periodoActual = now()->format('Y-m');
+        $montoBase = ((string) ($usuario->proximo_pago ?? '') === $periodoActual
+            && (float) ($usuario->proximo_pago_monto ?? 0) > 0)
+            ? (float) $usuario->proximo_pago_monto
+            : (float) app(MorosidadService::class)->calcularAdeudoUsuario($usuario->numero_servicio)['pendiente'];
+        $usuario->proximo_pago = $periodoActual;
+        $usuario->proximo_pago_monto = round($montoBase + $cargoNuevo, 2);
+
+        // La descripción viaja en lista_meses al recibo. Conservamos las
+        // anteriores para que cada cargo siga identificado al cobrarlo.
+        $descripcionNueva = trim((string) $request->input('descripcion', ''));
+        if ($descripcionNueva !== '') {
+            $descripcionAnterior = trim((string) ($usuario->adeudo_descripcion ?? ''));
+            $usuario->adeudo_descripcion = mb_substr(
+                $descripcionAnterior !== '' ? $descripcionAnterior . ' | ' . $descripcionNueva : $descripcionNueva,
+                0,
+                255
+            );
+        }
         $usuario->save();
 
-        return response()->json(['ok' => true, 'monto' => $usuario->adeudo_monto, 'descripcion' => $usuario->adeudo_descripcion]);
+        return response()->json([
+            'ok' => true,
+            'cargo_agregado' => $cargoNuevo,
+            'monto' => $usuario->proximo_pago_monto,
+            'descripcion' => $usuario->adeudo_descripcion,
+        ]);
     }
 
     public function clientesDestroy(Request $request, int $id)

@@ -399,6 +399,13 @@ class MorosidadService
         $mesesDespues = (int) $ppStart->diffInMonths($curStart);
         $esperado = $primerPago + ($tarifa * $mesesDespues);
 
+        // Un importe fijado por el botón azul siempre manda, también en
+        // clientes que aún están en su primer periodo de cobro.
+        $montoFijado = (float) ($usuario->proximo_pago_monto ?? 0);
+        if ($montoFijado > 0 && (string) ($usuario->proximo_pago ?? '') === $periodo) {
+            $esperado = $montoFijado;
+        }
+
         $pagado = (float) Factura::whereNull('deleted_at')
             ->where('numero_servicio', $numero)
             ->whereBetween('periodo', [$primerPagoPeriodo, $periodo])
@@ -437,6 +444,9 @@ class MorosidadService
 
         $listaMeses = [];
         if ($pendiente > 0.01) {
+            if ((float) ($usuario->adeudo_monto ?? 0) > 0 && !empty($usuario->adeudo_descripcion)) {
+                $listaMeses[] = $usuario->adeudo_descripcion;
+            }
             $temp = $desdePeriodoMostrado->copy();
             for ($i = 0; $i < $mesesMostrados; $i++) {
                 if ($temp->format('Y-m') !== $periodo) {

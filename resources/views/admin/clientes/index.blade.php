@@ -1069,11 +1069,11 @@
                         <input type="number" min="0" step="0.01" x-model="ceMonto"
                             placeholder="0.00"
                             class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm shadow-sm focus:border-orange-400 focus:ring focus:ring-orange-200">
-                        <p class="text-xs text-gray-400 mt-1">Pon 0 para eliminar el cargo</p>
+                        <p class="text-xs text-gray-400 mt-1">Este importe se suma al cargo extra que ya tenga el cliente.</p>
                     </div>
                     <div>
                         <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1">Descripción</label>
-                        <input type="text" x-model="ceDescripcion" maxlength="255"
+                        <input type="text" x-model="ceDescripcion" maxlength="255" required
                             placeholder="Ej: Reconexión, material, etc."
                             class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm shadow-sm focus:border-orange-400 focus:ring focus:ring-orange-200">
                     </div>
@@ -1083,7 +1083,7 @@
                 </div>
                 <div class="px-5 pb-5 flex flex-col gap-2">
                     <button @click="guardarCargoExtra()"
-                        :disabled="ceGuardando"
+                        :disabled="ceGuardando || !ceMonto || Number(ceMonto) <= 0 || !ceDescripcion.trim()"
                         class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-white text-sm font-semibold transition-all shadow disabled:opacity-50"
                         style="background:#f97316">
                         <span x-text="ceGuardando ? 'Guardando...' : 'Guardar cargo'"></span>
@@ -1229,8 +1229,11 @@
                 ceResultado: null,
                 abrirCargoExtra(data) {
                     this.ceCliente = data;
-                    this.ceMonto = data.adeudoMonto > 0 ? data.adeudoMonto : '';
-                    this.ceDescripcion = data.adeudoDescripcion || '';
+                    // El campo es el importe NUEVO a sumar, nunca el saldo que
+                    // ya existe. Así un cargo de $100 sobre uno de $600 termina
+                    // en $700, en vez de reemplazarlo por $100.
+                    this.ceMonto = '';
+                    this.ceDescripcion = '';
                     this.ceResultado = null;
                     this.ceGuardando = false;
                     this.ceModal = true;
@@ -1248,7 +1251,7 @@
                         });
                         const j = await r.json();
                         if (r.ok && j.ok) {
-                            this.ceResultado = { ok: true, msg: j.monto > 0 ? `✓ Cargo extra $${j.monto} guardado` : '✓ Cargo eliminado' };
+                            this.ceResultado = { ok: true, msg: `✓ Cargo agregado. Total de cargos extra: $${j.monto}` };
                         } else {
                             this.ceResultado = { ok: false, msg: 'Error al guardar' };
                         }
