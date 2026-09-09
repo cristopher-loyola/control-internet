@@ -90,7 +90,13 @@ class MorosidadService
         // monto en ese mes, y su mensualidad normal a partir del siguiente. Los
         // meses anteriores quedan cubiertos (todavía no le tocaba pagar).
         $primerPagoPeriodo = (string) ($usuario->primer_pago_periodo ?? '');
+        $primerPagoReemplazado = $primerPagoPeriodo !== '' && Factura::where('numero_servicio', $numero)
+            ->where('payload->ajuste_liquidado', true)
+            ->where('periodo', '>=', $primerPagoPeriodo)
+            ->where('periodo', '<=', $periodo)
+            ->exists();
         if ($primerPagoPeriodo !== '' && preg_match('/^\d{4}-\d{2}$/', $primerPagoPeriodo)
+            && ! $primerPagoReemplazado
             && ($this->ultimoPeriodoCubiertoPorPrepay($numero, $tarifa) ?? '') < $primerPagoPeriodo) {
             return $this->adeudoConPrimerPagoProgramado(
                 $usuario, $numero, $periodo, $curStart, $today,
@@ -748,22 +754,27 @@ class MorosidadService
         $inicio = $this->periodoStart((string) $usuario->proximo_pago);
         $mesesPosteriores = (int) $inicio->diffInMonths($curStart);
 
-        // Las facturas del mes del ajuste ya forman parte del saldo que el
-        // administrador reemplazó. Los pagos que lo liquidan en ese mismo
-        // mes avanzan proximo_pago desde FacturaService.
-        $pagado = 0.0;
-        if ($mesesPosteriores > 0) {
-            $pagado = (float) Factura::where('numero_servicio', $numero)
-                ->where('periodo', '>', $usuario->proximo_pago)
-                ->where('periodo', '<=', $periodo)
-                ->get(['total', 'payload'])
-                ->sum(function (Factura $factura): float {
-                    $recargo = $factura->payload['recargo'] ?? 'no';
-                    $recargoPagado = ($recargo === 'si' || $recargo === true) ? 50.0 : 0.0;
+        // El ajuste reemplaza los pagos que ya existían, no los recibidos
+        // después. Usar el ID permite distinguirlos incluso en el mismo
+        // segundo y reconocer transferencias capturadas al mes siguiente.
+        // Los saldos antiguos no guardaban este límite: sus recibos vigentes
+        // del periodo también deben reconocerse, en lugar de ignorarlos todos.
+        $facturas = Factura::where('numero_servicio', $numero)
+            ->where('id', '>', (int) ($usuario->proximo_pago_factura_id ?? 0))
+            ->whereBetween('periodo', [$usuario->proximo_pago, $periodo])
+            ->get(['periodo', 'total', 'payload']);
+        // El pago del periodo ajustado liquida su total, incluidos cargos.
+        // Un excedente por cargos viejos/recargo no es un adelanto del mes
+        // siguiente: para eso existe el flujo explícito de pagos adelantados.
+        $pagado = min($monto, max(0.0, (float) $facturas
+            ->where('periodo', $usuario->proximo_pago)->sum('total')));
+        $pagado += (float) $facturas->where('periodo', '>', $usuario->proximo_pago)
+            ->sum(function (Factura $factura): float {
+                $recargo = $factura->payload['recargo'] ?? 'no';
+                $recargoPagado = ($recargo === 'si' || $recargo === true) ? 50.0 : 0.0;
 
-                    return max(0.0, (float) $factura->total - $recargoPagado);
-                });
-        }
+                return max(0.0, (float) $factura->total - $recargoPagado);
+            });
         $pendiente = round(max(0.0, $monto + ($tarifa * $mesesPosteriores) - $pagado), 2);
 
         // Aplicar los abonos al saldo más antiguo para que los meses del

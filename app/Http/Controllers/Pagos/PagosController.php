@@ -764,10 +764,16 @@ thead th{ background:#2e7d32; color:#fff; }
         if (is_array($payload) && array_key_exists('proximo_pago_monto_previo', $payload)) {
             $updateUsuario['proximo_pago_monto'] = $payload['proximo_pago_monto_previo'];
         }
+        if (is_array($payload) && array_key_exists('proximo_pago_factura_id_previo', $payload)) {
+            $updateUsuario['proximo_pago_factura_id'] = $payload['proximo_pago_factura_id_previo'];
+        }
 
         // Recalcular estatus del usuario tras cancelación
         if ($f->numero_servicio) {
-            if ($updateUsuario) {
+            // Un ajuste posterior ya reemplazó este recibo y sus saldos.
+            $limiteAjuste = (int) Usuario::where('numero_servicio', $f->numero_servicio)
+                ->value('proximo_pago_factura_id');
+            if ($updateUsuario && $f->id > $limiteAjuste) {
                 Usuario::where('numero_servicio', $f->numero_servicio)->update($updateUsuario);
             }
             $adeudo = $morosidadService->calcularAdeudoUsuario($f->numero_servicio, null);

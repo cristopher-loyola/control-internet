@@ -105,6 +105,9 @@ class FacturaService
 
         return [
             'periodo' => $periodo,
+            'facturaLimite' => (int) ($request->input('usuario_id')
+                ? Usuario::whereKey($request->input('usuario_id'))->value('proximo_pago_factura_id')
+                : Usuario::where('numero_servicio', $request->input('numero_servicio'))->value('proximo_pago_factura_id')),
             'numero' => $request->input('numero_servicio'),
             'usuarioId' => $request->input('usuario_id'),
             'payload' => $payload,
@@ -356,12 +359,16 @@ class FacturaService
             'manual_label' => !empty($payload['es_adeudo_manual']) ? ($payload['label'] ?? null) : null,
         ];
 
+        if ($datos['facturaLimite'] > 0) {
+            $fingerprintData['ajuste_factura_id'] = $datos['facturaLimite'];
+        }
         $fingerprint = hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
         // Buscar por fingerprint
         $existing = Factura::where('fingerprint', $fingerprint)
             ->orWhere(function ($q) use ($datos, $total, $payloadJson, $periodoFactura) {
                 $q->where('numero_servicio', $datos['numero'])
+                    ->where('id', '>', $datos['facturaLimite'])
                     ->where('periodo', $periodoFactura)
                     ->where('total', $total)
                     ->whereRaw('payload = ?', [$payloadJson]);
@@ -389,6 +396,7 @@ class FacturaService
         // Validar duplicado por periodo (solo si el periodo no es null)
         if ($periodoFactura !== null) {
             $dup = Factura::where('periodo', $periodoFactura)
+                ->where('id', '>', $datos['facturaLimite'])
                 ->where(function ($q) use ($datos) {
                     if ($datos['numero']) {
                         $q->where('numero_servicio', $datos['numero']);
@@ -484,6 +492,9 @@ class FacturaService
             'manual_label' => !empty($payload['es_adeudo_manual']) ? ($payload['label'] ?? null) : null,
         ];
 
+        if ($datos['facturaLimite'] > 0) {
+            $fingerprintData['ajuste_factura_id'] = $datos['facturaLimite'];
+        }
         $fingerprint = in_array($datos['tipo'], ['baja_temporal', 'cancelacion'])
             ? null
             : hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
@@ -647,13 +658,18 @@ class FacturaService
         $esAjusteProximoPago = $usuario->proximo_pago_monto !== null
             && !empty($factura->periodo)
             && (string) ($usuario->proximo_pago ?? '') === (string) $factura->periodo;
-        // La emision de la factura desde Pagos confirma el importe que el
-        // administrador fijo para ese periodo; al registrarse, el ajuste queda cerrado.
-        $ajusteLiquidado = $esAjusteProximoPago;
+        // Modificar total autoriza el importe final que liquida el adeudo.
+        // Una transferencia sin esa edición sí debe cubrir el saldo fijado;
+        // un abono menor no condona lo que falta.
+        $ajusteLiquidado = ($esEdicionManual && !empty($factura->periodo)) || ($esAjusteProximoPago
+            && (float) $this->morosidadService->calcularAdeudoUsuario(
+                $usuario->numero_servicio, (string) $factura->periodo
+            )['pendiente'] <= 0.01);
 
-        if ($esAjusteProximoPago || $esPrepay) {
+        if ($esAjusteProximoPago || $esPrepay || $ajusteLiquidado) {
             $payload['proximo_pago_previo'] = $usuario->proximo_pago;
             $payload['proximo_pago_monto_previo'] = $usuario->proximo_pago_monto;
+            $payload['proximo_pago_factura_id_previo'] = $usuario->proximo_pago_factura_id;
             $payload['adeudo_monto_previo'] = $adeudoMonto;
             $payload['adeudo_descripcion_previa'] = $usuario->adeudo_descripcion;
             $payload['ajuste_descripcion'] = $usuario->adeudo_descripcion;
@@ -782,6 +798,7 @@ class FacturaService
                 'adeudo_descripcion' => $usuario->adeudo_descripcion,
                 'proximo_pago'       => $usuario->proximo_pago,
                 'proximo_pago_monto' => $usuario->proximo_pago_monto,
+                'proximo_pago_factura_id' => $usuario->proximo_pago_factura_id,
             ]);
         }
 
@@ -799,6 +816,7 @@ class FacturaService
             'adeudo_descripcion' => $usuario->adeudo_descripcion,
             'proximo_pago' => $usuario->proximo_pago,
             'proximo_pago_monto' => $usuario->proximo_pago_monto,
+            'proximo_pago_factura_id' => $usuario->proximo_pago_factura_id,
         ];
 
         $usuario->update($updateData);

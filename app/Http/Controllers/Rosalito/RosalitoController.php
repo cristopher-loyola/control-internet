@@ -166,7 +166,9 @@ class RosalitoController extends Controller
         // Restaurar adeudo_monto si fue limpiado/reducido al registrar este recibo
         $payload = is_array($factura->payload) ? $factura->payload : (is_string($factura->payload) ? @json_decode($factura->payload, true) : []);
         if ($factura->numero_servicio) {
-            if (!empty($payload['adeudo_monto_previo']) && (float) $payload['adeudo_monto_previo'] > 0) {
+            $limiteAjuste = (int) Usuario::where('numero_servicio', $factura->numero_servicio)
+                ->value('proximo_pago_factura_id');
+            if ($factura->id > $limiteAjuste && !empty($payload['adeudo_monto_previo']) && (float) $payload['adeudo_monto_previo'] > 0) {
                 Usuario::where('numero_servicio', $factura->numero_servicio)->update([
                     'adeudo_monto' => (float) $payload['adeudo_monto_previo'],
                     'adeudo_descripcion' => $payload['adeudo_descripcion_previa'] ?? null,
@@ -434,6 +436,9 @@ class RosalitoController extends Controller
                 $row = (object) ['current_value' => 0];
             }
             $payload = $payloadInput;
+            $facturaLimite = (int) ($usuarioId
+                ? Usuario::whereKey($usuarioId)->value('proximo_pago_factura_id')
+                : Usuario::where('numero_servicio', $numero)->value('proximo_pago_factura_id'));
             $fingerprintData = [
                 'numero_servicio' => $request->input('numero_servicio'),
                 'periodo' => $periodo,
@@ -444,13 +449,17 @@ class RosalitoController extends Controller
                 'pago_anterior' => $payload['pago_anterior'] ?? null,
                 'metodo' => $payload['metodo'] ?? 'Efectivo',
             ];
+            if ($facturaLimite > 0) {
+                $fingerprintData['ajuste_factura_id'] = $facturaLimite;
+            }
             $fingerprint = hash('sha256', json_encode($fingerprintData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
 
             $existing = Factura::where(function ($q) use ($fingerprint) {
                 $q->where('fingerprint', $fingerprint);
             })
-                ->orWhere(function ($q) use ($request, $periodo) {
+                ->orWhere(function ($q) use ($request, $periodo, $facturaLimite) {
                     $q->where('numero_servicio', $request->input('numero_servicio'))
+                        ->where('id', '>', $facturaLimite)
                         ->where('periodo', $periodo)
                         ->where('total', $request->input('total', 0))
                         ->whereRaw('payload = ?', [json_encode($request->input('payload', []))]);
@@ -504,6 +513,7 @@ class RosalitoController extends Controller
 
             if (($numero !== null && $numero !== '') || ! empty($usuarioId)) {
                 $dup = Factura::where('periodo', $periodo)
+                    ->where('id', '>', $facturaLimite)
                     ->where(function ($q) use ($numero, $usuarioId) {
                         if ($numero !== null && $numero !== '') {
                             $q->where('numero_servicio', $numero);

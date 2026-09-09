@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
 use App\Models\Cobrador;
+use App\Models\Factura;
 use App\Models\HistorialUsuario;
 use App\Models\NumeroApartado;
 use App\Models\Usuario;
@@ -515,10 +516,16 @@ class AdminController extends Controller
         if (is_array($payload) && array_key_exists('proximo_pago_monto_previo', $payload)) {
             $updateUsuario['proximo_pago_monto'] = $payload['proximo_pago_monto_previo'];
         }
+        if (is_array($payload) && array_key_exists('proximo_pago_factura_id_previo', $payload)) {
+            $updateUsuario['proximo_pago_factura_id'] = $payload['proximo_pago_factura_id_previo'];
+        }
 
         // Recalcular estatus del usuario tras cancelación
         if ($f->numero_servicio) {
-            if ($updateUsuario) {
+            // Un ajuste posterior ya reemplazó este recibo y sus saldos.
+            $limiteAjuste = (int) Usuario::where('numero_servicio', $f->numero_servicio)
+                ->value('proximo_pago_factura_id');
+            if ($updateUsuario && $f->id > $limiteAjuste) {
                 Usuario::where('numero_servicio', $f->numero_servicio)->update($updateUsuario);
             }
             $adeudo = $morosidadService->calcularAdeudoUsuario($f->numero_servicio, null);
@@ -1388,6 +1395,9 @@ class AdminController extends Controller
                 $usuario->adeudo_descripcion = $descripcion !== '' ? $descripcion : null;
             }
         }
+        $usuario->proximo_pago_factura_id = $montoFijado !== null
+            ? (int) Factura::withTrashed()->where('numero_servicio', $usuario->numero_servicio)->max('id')
+            : null;
         $usuario->save();
 
         return response()->json([
@@ -1414,12 +1424,11 @@ class AdminController extends Controller
         // azul ya fijó un importe, partimos de él; de lo contrario, del saldo
         // calculado actualmente. Así $1,200 + cable $600 = $1,800 en Pagos.
         $periodoActual = now()->format('Y-m');
-        $montoBase = ((string) ($usuario->proximo_pago ?? '') === $periodoActual
-            && (float) ($usuario->proximo_pago_monto ?? 0) > 0)
-            ? (float) $usuario->proximo_pago_monto
-            : (float) app(MorosidadService::class)->calcularAdeudoUsuario($usuario->numero_servicio)['pendiente'];
+        $montoBase = (float) app(MorosidadService::class)->calcularAdeudoUsuario($usuario->numero_servicio)['pendiente'];
         $usuario->proximo_pago = $periodoActual;
         $usuario->proximo_pago_monto = round($montoBase + $cargoNuevo, 2);
+        $usuario->proximo_pago_factura_id = (int) Factura::withTrashed()
+            ->where('numero_servicio', $usuario->numero_servicio)->max('id');
 
         // La descripción viaja en lista_meses al recibo. Conservamos las
         // anteriores para que cada cargo siga identificado al cobrarlo.
