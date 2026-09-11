@@ -87,6 +87,33 @@ class AdelantoConAdeudoTest extends TestCase
         $this->assertSame(300.0, $this->saldoEn('2026-11-07'));
     }
 
+    public function test_transferencia_contabilizada_en_agosto_cubre_octubre_seleccionado(): void
+    {
+        $usuario = $this->cliente(['proximo_pago' => '2026-10']);
+        Factura::create([
+            'numero_servicio' => '8400', 'reference_number' => 'MENSUAL-ANTES-TRANSFERENCIA',
+            'periodo' => '2026-09', 'total' => 300, 'payload' => [],
+        ]);
+
+        $this->postJson(route('admin.transferencias.registrar'), [
+            'mes_contable' => '2026-08',
+            'pagos' => [[
+                'numero_servicio' => '8400', 'periodo' => '2026-10', 'monto' => 300,
+            ]],
+        ])->assertOk()->assertJsonPath('resultados.0.ok', true);
+
+        $factura = Factura::latest('id')->firstOrFail();
+        $this->assertSame(300.0, (float) $factura->total);
+        $this->assertSame('2026-08-31 23:59:59', $factura->payload['fecha_contable']);
+        $this->assertSame('2026-11', $usuario->refresh()->proximo_pago);
+        $this->getJson(route('admin.pagos.prepay.status', ['numero' => '8400']))
+            ->assertOk()->assertJsonPath('data.hasta_periodo', '2026-10');
+        $this->getJson(route('admin.dashboard.metrics'))
+            ->assertOk()->assertJsonPath('prepay_clients.0.vence_at', '2026-10-31');
+        $this->assertSame(0.0, $this->saldoEn('2026-10-07'));
+        $this->assertSame(300.0, $this->saldoEn('2026-11-07'));
+    }
+
     public function test_dos_meses_pendientes_mas_uno_adelantado_cubren_hasta_octubre(): void
     {
         $this->cliente(['proximo_pago' => '2026-08']);

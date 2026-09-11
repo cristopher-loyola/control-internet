@@ -737,6 +737,7 @@ class AdminController extends Controller
                 $payload['periodo_override'] = $mesActual;
                 $payload['prepay']           = 'si';
                 $payload['prepay_months']    = $meses;
+                $payload['prepay_next_month'] = true;
                 $payload['prepay_total']     = $monto;
                 $payload['label']            = ($nota ?: 'Deposito a cuenta')
                     . ' (adelanto hasta ' . $fin->locale('es')->translatedFormat('F Y') . ')';
