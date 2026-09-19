@@ -45,6 +45,7 @@ class RosalitoController extends Controller
         $zona = 'rosalito';
         $fechaInicio = $request->input('fecha_inicio');
         $fechaFin = $request->input('fecha_fin');
+        $ordenarPorServicio = $request->input('orden') === 'numero_servicio';
 
         // Buscar corte activo
         $corteActivo = CorteCaja::obtenerActivo($zona, $user->id);
@@ -74,6 +75,10 @@ class RosalitoController extends Controller
 
         $pagos = $query->orderByDesc('created_at')
             ->get(['id', 'reference_number', 'numero_servicio', 'periodo', 'total', 'payload', 'created_at', 'corte_caja_id']);
+
+        if ($ordenarPorServicio) {
+            $pagos = $pagos->sortBy('numero_servicio', SORT_NUMERIC)->values();
+        }
 
         $items = $pagos->map(function ($f) {
             $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
@@ -107,6 +112,7 @@ class RosalitoController extends Controller
             'pagos' => $items,
             'fechaInicio' => $fechaInicio,
             'fechaFin' => $fechaFin,
+            'ordenarPorServicio' => $ordenarPorServicio,
             'corteActivo' => $corteActivo,
             'totalComisionRecibo' => $totalComisionRecibo,
             'cobrador' => $user->name,
@@ -911,6 +917,10 @@ class RosalitoController extends Controller
             ->with('cajero')
             ->orderBy('created_at')
             ->get();
+
+        if ($request->input('orden') === 'numero_servicio') {
+            $facturas = $facturas->sortBy('numero_servicio', SORT_NUMERIC)->values();
+        }
 
         $headers = [
             'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
