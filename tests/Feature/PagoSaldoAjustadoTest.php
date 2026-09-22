@@ -57,6 +57,86 @@ class PagoSaldoAjustadoTest extends TestCase
         return [['admin'], ['pagos'], ['chivato'], ['pozo_hondo'], ['rosalito'], ['transferencia']];
     }
 
+    public function test_monto_fijo_conserva_descripcion_y_aplica_recargo_desde_el_dia_ocho(): void
+    {
+        $usuario = $this->cliente(['tarifa' => 500]);
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $this->postJson(route('admin.clientes.proximo-pago', $usuario->id), [
+            'proximo_pago_monto' => 1000,
+            'adeudo_descripcion' => 'Agosto',
+        ])->assertOk();
+
+        foreach ([7 => 0, 8 => 50, 21 => 50] as $dia => $recargo) {
+            $this->travelTo(now()->setDate(2026, 9, $dia));
+            $this->getJson(route('admin.pagos.deuda', ['numero' => '8500']))
+                ->assertOk()
+                ->assertJsonPath('pendiente', 1000 + $recargo)
+                ->assertJsonPath('recargo', $recargo)
+                ->assertJsonPath('desde_mes_label', 'Agosto')
+                ->assertJsonPath('descripcion_manual', 'Agosto');
+            $this->assertSame(1000.0, (float) $usuario->refresh()->proximo_pago_monto);
+        }
+    }
+
+    public static function opcionesRecargo(): array
+    {
+        return [['si', 1050.0], ['no', 1000.0]];
+    }
+
+    #[DataProvider('opcionesRecargo')]
+    public function test_pagar_monto_fijo_respeta_selector_y_conserva_descripcion_del_banner(string $recargo, float $total): void
+    {
+        $this->travelTo(now()->setDate(2026, 9, 21));
+        $usuario = $this->cliente([
+            'tarifa' => 500, 'adeudo_monto' => 0, 'adeudo_descripcion' => 'Agosto',
+            'proximo_pago' => '2026-09', 'proximo_pago_monto' => 1000,
+        ]);
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $response = $this->postJson(route('admin.pagos.facturas.store'), [
+            'numero_servicio' => '8500', 'total' => $total,
+            'payload' => [
+                'mensualidad' => 500, 'recargo' => $recargo,
+                'adeudo_pendiente' => 1050,
+                'adeudo_desde_label' => 'Agosto', 'adeudo_descripcion' => 'Agosto',
+            ],
+        ])->assertOk()->assertJsonPath('ok', true);
+
+        $this->assertSame(0.0, $this->deuda()['pendiente']);
+        $this->assertSame(0.0, $this->deuda()['recargo']);
+        $this->assertNull($usuario->refresh()->adeudo_descripcion);
+        $this->travelTo(now()->setDate(2026, 10, 8));
+        $siguienteMes = $this->deuda();
+        $this->assertSame(550.0, $siguienteMes['pendiente']);
+        $this->assertSame('octubre 2026', $siguienteMes['desde_mes_label']);
+        $this->assertNull($siguienteMes['descripcion_manual']);
+        $usuario->update(['adeudo_descripcion' => 'Nueva descripción']);
+        foreach ([
+            route('admin.pagos.facturas.show', ['id' => $response->json('id')]),
+            route('admin.pagos.facturas.by_folio', ['ref' => $response->json('referencia')]),
+        ] as $url) {
+            $this->getJson($url)->assertOk()
+                ->assertJsonPath('data.payload.recargo', $recargo)
+                ->assertJsonPath('data.payload.adeudo_desde_label', 'Agosto')
+                ->assertJsonPath('data.payload.adeudo_descripcion', 'Agosto');
+        }
+    }
+
+    public function test_cargo_extra_no_incorpora_el_recargo_a_la_base_fija(): void
+    {
+        $this->travelTo(now()->setDate(2026, 9, 21));
+        $usuario = $this->cliente([
+            'adeudo_monto' => 0, 'proximo_pago' => '2026-09', 'proximo_pago_monto' => 1000,
+        ]);
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $this->postJson(route('admin.clientes.cargo-extra', $usuario->id), [
+            'monto' => 100, 'descripcion' => 'Cable',
+        ])->assertOk();
+
+        $this->assertSame(1100.0, (float) $usuario->refresh()->proximo_pago_monto);
+        $this->assertSame(1150.0, $this->deuda()['pendiente']);
+        $this->assertSame(50.0, $this->deuda()['recargo']);
+    }
+
     #[DataProvider('canales')]
     public function test_pago_posterior_al_ajuste_liquida_sin_revivir_la_deuda_anterior(string $canal): void
     {

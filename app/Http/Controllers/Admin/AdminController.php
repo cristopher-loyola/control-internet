@@ -1425,7 +1425,8 @@ class AdminController extends Controller
         // azul ya fijó un importe, partimos de él; de lo contrario, del saldo
         // calculado actualmente. Así $1,200 + cable $600 = $1,800 en Pagos.
         $periodoActual = now()->format('Y-m');
-        $montoBase = (float) app(MorosidadService::class)->calcularAdeudoUsuario($usuario->numero_servicio)['pendiente'];
+        $adeudo = app(MorosidadService::class)->calcularAdeudoUsuario($usuario->numero_servicio);
+        $montoBase = max(0.0, (float) $adeudo['pendiente'] - (float) $adeudo['recargo']);
         $usuario->proximo_pago = $periodoActual;
         $usuario->proximo_pago_monto = round($montoBase + $cargoNuevo, 2);
         $usuario->proximo_pago_factura_id = (int) Factura::withTrashed()

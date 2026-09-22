@@ -65,7 +65,7 @@ class MorosidadService
 
         // El importe escrito en el boton azul es una orden explicita y tiene
         // prioridad sobre cualquier otra regla: primer pago, mensualidades,
-        // adeudos importados, recargos y estado del servicio.
+        // adeudos importados y estado del servicio.
         if ($usuario->proximo_pago_monto !== null
             && (string) ($usuario->proximo_pago ?? '') === $periodo) {
             return $this->adeudoFijadoPorAdministrador($usuario, $numero, $periodo, $curStart);
@@ -741,7 +741,7 @@ class MorosidadService
     /**
      * El importe fijado reemplaza el saldo hasta su periodo. Si no se paga,
      * se conserva y se suma la tarifa por cada mes posterior, sin reconstruir
-     * adeudos anteriores ni agregar recargos automáticos al total ajustado.
+     * adeudos anteriores.
      */
     private function adeudoFijadoPorAdministrador(
         Usuario $usuario,
@@ -776,6 +776,15 @@ class MorosidadService
                 return max(0.0, (float) $factura->total - $recargoPagado);
             });
         $pendiente = round(max(0.0, $monto + ($tarifa * $mesesPosteriores) - $pagado), 2);
+        $recargo = 0.0;
+        if ($pendiente > 0.01) {
+            $recargo = now()->day >= 8 ? 50.0 : 0.0;
+            $moraRow = CargoMora::where('periodo', $periodo)->where('numero_servicio', $numero)->first();
+            if ($moraRow) {
+                $recargo = max($recargo, (float) $moraRow->monto);
+            }
+            $pendiente = round($pendiente + $recargo, 2);
+        }
 
         // Aplicar los abonos al saldo más antiguo para que los meses del
         // recibo y las reglas de corte describan únicamente lo pendiente.
@@ -811,7 +820,7 @@ class MorosidadService
             'hasta_periodo' => $periodo,
             'hasta_mes_label' => $mesLabel,
             'ultimo_periodo_cubierto' => $pendiente <= 0.01 ? $periodo : $desde->copy()->subMonth()->format('Y-m'),
-            'recargo' => 0.0,
+            'recargo' => round($recargo, 2),
             'pagado_parcial' => round($pagado, 2),
             'pendiente' => $pendiente,
             'vencimiento' => $curStart->copy()->day(7)->endOfDay()->toDateString(),

@@ -1167,8 +1167,8 @@
                                     placeholder="0.00">
                             </div>
                             <div class="flex items-center justify-between mt-1.5">
-                                <p class="text-xs text-gray-400">El cliente verá este monto en su recibo</p>
-                                <button type="button" @click="ppMontoOverride = ppDeuda?.pendiente; ppMontoEditado = true"
+                                <p class="text-xs text-gray-400">Monto base; el recargo se aplica por separado en Pagos</p>
+                                <button type="button" @click="ppMontoOverride = montoBaseProximoPago(); ppMontoEditado = true"
                                     class="text-xs text-sky-500 hover:text-sky-700 font-medium">
                                     Restablecer
                                 </button>
@@ -1285,6 +1285,11 @@
                 ppDescripcion: '',
                 ppGuardando: false,
                 ppResultado: null,
+                montoBaseProximoPago() {
+                    const pendiente = Number(this.ppDeuda?.pendiente || 0);
+                    const recargo = Number(this.ppDeuda?.recargo || 0);
+                    return Math.max(0, Math.round((pendiente - recargo) * 100) / 100);
+                },
                 abrirProximoPago(data) {
                     this.ppCliente      = data;
                     this.ppPeriodo      = data.actualPeriodo || '';
@@ -1307,7 +1312,7 @@
                         if (cargaId === this.ppCargaId && j.ok) {
                             this.ppDeuda = j;
                             this.ppPeriodo = j.hasta_periodo;
-                            if (j.pendiente > 0 && !this.ppMontoEditado) this.ppMontoOverride = j.pendiente;
+                            if (j.pendiente > 0 && !this.ppMontoEditado) this.ppMontoOverride = this.montoBaseProximoPago();
                             if (j.descripcion_manual) this.ppDescripcion = j.descripcion_manual;
                         }
                     })
@@ -1321,9 +1326,6 @@
                     this.ppGuardando = true;
                     this.ppResultado = null;
                     const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
-                    // El monto que el admin escribe es el que se cobra, tal cual.
-                    // Va a proximo_pago_monto — NO a adeudo_monto, que es del
-                    // botón naranja "Cargo extra".
                     const montoFijado = this.ppMontoOverride !== '' ? Number(this.ppMontoOverride) : null;
                     // Si fijó monto y no eligió período, aplica al mes en curso
                     // (es el pago que el cliente está por hacer).
@@ -1357,7 +1359,7 @@
                 limpiarProximoPago() {
                     this.ppPeriodo       = '';
                     this.ppMonto         = this.ppCliente.tarifa;
-                    this.ppMontoOverride = this.ppDeuda?.pendiente || '';
+                    this.ppMontoOverride = this.montoBaseProximoPago() || '';
                 },
                 // ---
                 createMegasReadonly: false,

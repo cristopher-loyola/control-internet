@@ -66,14 +66,16 @@ class ProximoPagoAcumuladoTest extends TestCase
         foreach ([1, 8, 31] as $dia) {
             $this->travelTo(now()->setDate(2026, 10, $dia));
             $adeudo = $this->adeudo();
-            $this->assertSame(310.0, $adeudo['pendiente']);
-            $this->assertSame(0.0, $adeudo['recargo']);
+            $recargo = $dia >= 8 ? 50.0 : 0.0;
+            $this->assertSame(310.0 + $recargo, $adeudo['pendiente']);
+            $this->assertSame($recargo, $adeudo['recargo']);
             $this->assertSame('2026-09', $adeudo['desde_periodo']);
             $this->assertSame(2, $adeudo['meses_adeudo']);
             $this->assertSame(['septiembre 2026'], $adeudo['lista_meses']);
             $this->assertTrue(app(MorosidadService::class)->debeSerCortado($usuario, $adeudo, '2026-10', $dia));
             $this->getJson(route('admin.pagos.deuda', ['numero' => '8300']))
-                ->assertOk()->assertJsonPath('pendiente', 310)->assertJsonPath('recargo', 0);
+                ->assertOk()->assertJsonPath('pendiente', (int) (310 + $recargo))
+                ->assertJsonPath('recargo', (int) $recargo);
         }
 
         $this->travelTo(now()->setDate(2027, 1, 7));
@@ -121,14 +123,14 @@ class ProximoPagoAcumuladoTest extends TestCase
         ]);
 
         $adeudo = $this->adeudo();
-        $this->assertSame(210.0, $adeudo['pendiente']);
+        $this->assertSame(260.0, $adeudo['pendiente']);
         $this->assertSame(100.0, $adeudo['pagado_parcial']);
         $this->assertSame('2026-10', $adeudo['desde_periodo']);
         $this->assertSame(1, $adeudo['meses_adeudo']);
         $this->assertSame([], $adeudo['lista_meses']);
 
         $factura->delete();
-        $this->assertSame(310.0, $this->adeudo()['pendiente']);
+        $this->assertSame(360.0, $this->adeudo()['pendiente']);
     }
 
     public function test_pagar_el_saldo_acumulado_y_cancelar_el_recibo_conserva_el_ajuste_original(): void

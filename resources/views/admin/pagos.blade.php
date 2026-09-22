@@ -279,7 +279,7 @@
         <p class="mb-1">
             <strong>Cliente con adeudos:</strong>
             <span x-show="manualEditEnabled" x-text="manualReason || '—'"></span>
-            <span x-show="!manualEditEnabled" x-text="adeudo && adeudo.desde_label && (adeudo.desde_label.toLowerCase().includes('adeuda') || adeudo.desde_label.toLowerCase().includes('abril')) ? adeudo.desde_label : (adeudo ? `Adeuda desde ${adeudo.desde_label}` : '')"></span>
+            <span x-show="!manualEditEnabled" x-text="adeudoTexto()"></span>
         </p>
         <p class="mb-1">
             <strong>Total a pagar incluyendo adeudos:</strong> 
@@ -1050,6 +1050,12 @@
             resizing:false, resizeKey:null, resizeStart:{x:0,w:0}, _resizeB:null, _resizeTouchB:null,
             readOnlyMode: false,
             savedOtroLabel: '',
+            adeudoTexto(){
+                const descripcion = String(this.descripcionManual || this.adeudo?.desde_label || '').trim();
+                if (!descripcion) return 'Descripción de adeudo no disponible';
+                return /^(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b/i.test(descripcion)
+                    ? `Adeuda desde ${descripcion}` : descripcion;
+            },
             moneda(v){ return new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'}).format(v||0) },
             hasAdeudos(){
                 const a = this.adeudo;
@@ -1471,8 +1477,9 @@
                                 this.prepayNextMonth = p.prepay_next_month === true;
                                 this.totales.prepay_total = Number(p.prepay_total)||0;
                                 const adeudoPendiente = Number(p.adeudo_pendiente || 0);
+                                this.descripcionManual = p.adeudo_descripcion || '';
                                 this.adeudoListaMeses = p.lista_meses || [];
-                                this.adeudo = adeudoPendiente > 0 ? { pendiente: adeudoPendiente, meses: 0, desde_label: '', recargo: 0, pagado_parcial: 0, lista_meses: this.adeudoListaMeses } : null;
+                                this.adeudo = adeudoPendiente > 0 ? { pendiente: adeudoPendiente, meses: 0, desde_label: p.adeudo_desde_label || this.descripcionManual, recargo: 0, pagado_parcial: 0, lista_meses: this.adeudoListaMeses } : null;
                                 this.adeudoCobro = adeudoPendiente > 0 ? adeudoPendiente : 0;
                                 this.saldoDespues = null;
                                 this.appliedDiscount = Number(p.descuento || 0);
@@ -2066,7 +2073,9 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 this.prepayNextMonth = p.prepay_next_month === true;
                                 this.totales.prepay_total = Number(p.prepay_total)||0;
                                 const adeudoPendiente = Number(p.adeudo_pendiente || 0);
-                                this.adeudo = adeudoPendiente > 0 ? { pendiente: adeudoPendiente, meses: 0, desde_label: '', recargo: 0, pagado_parcial: 0 } : null;
+                                this.descripcionManual = p.adeudo_descripcion || '';
+                                this.adeudoListaMeses = p.lista_meses || [];
+                                this.adeudo = adeudoPendiente > 0 ? { pendiente: adeudoPendiente, meses: 0, desde_label: p.adeudo_desde_label || this.descripcionManual, recargo: 0, pagado_parcial: 0, lista_meses: this.adeudoListaMeses } : null;
                                 this.adeudoCobro = adeudoPendiente > 0 ? adeudoPendiente : 0;
                                 this.saldoDespues = null;
                                 this.appliedDiscount = Number(p.descuento || 0);
@@ -2103,6 +2112,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 prepay_next_month: this.form.prepay==='si' ? this.prepayNextMonth : null,
                                 prepay_total: this.form.prepay==='si'? this.totales.prepay_total : null,
                                 adeudo_pendiente: Number(this.adeudoCobro || 0),
+                                adeudo_desde_label: this.adeudo?.desde_label || '',
+                                adeudo_descripcion: this.descripcionManual || '',
                                 lista_meses: this.adeudo ? this.adeudo.lista_meses : [],
                                 pago_anterior: this.form.pago_anterior,
                                 pago_anterior_fecha: this.pagoAnteriorFecha,
@@ -2188,6 +2199,8 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 prepay_next_month: this.form.prepay==='si' ? this.prepayNextMonth : null,
                                 prepay_total: this.form.prepay==='si'? this.totales.prepay_total : null,
                                 adeudo_pendiente: Number(this.adeudoCobro || 0),
+                                adeudo_desde_label: this.adeudo?.desde_label || '',
+                                adeudo_descripcion: this.descripcionManual || '',
                                 lista_meses: this.adeudo ? this.adeudo.lista_meses : [],
                                 pago_anterior: this.form.pago_anterior,
                                 pago_anterior_fecha: this.pagoAnteriorFecha,
