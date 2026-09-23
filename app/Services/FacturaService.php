@@ -321,11 +321,18 @@ class FacturaService
         }
 
         $manualValue = round((float) $manualValue, 2);
-        $prevTotal = $total;
+        // El total del request ya puede contener la edición. Guardar la captura
+        // tomada al activar el botón, sin confundirla con el importe final.
+        $prevTotal = $datos['payload']['manual_total_previous'] ?? null;
+        if ($prevTotal !== null && (!is_numeric($prevTotal) || !is_finite((float) $prevTotal) || (float) $prevTotal < 0)) {
+            throw new \RuntimeException('Total anterior inválido');
+        }
+        $prevTotal = $prevTotal !== null ? round((float) $prevTotal, 2) : null;
         $total = $manualValue;
 
         $payload['manual_total_enabled'] = true;
         $payload['manual_total_value'] = $manualValue;
+        $payload['manual_total_previous'] = $prevTotal;
         $payload['manual_total_reason'] = mb_substr($reason, 0, 250);
 
         return [

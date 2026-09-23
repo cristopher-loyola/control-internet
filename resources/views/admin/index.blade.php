@@ -61,6 +61,7 @@
 
                 <button @click="exportar('excel')" :disabled="!isValidPeriod()" class="btn btn-success disabled:opacity-60"> Exportar Excel</button>
                 <button @click="exportar('pdf')" :disabled="!isValidPeriod()" class="btn btn-danger disabled:opacity-60"> Exportar PDF</button>
+                <a href="{{ route('admin.dashboard.modificaciones') }}" class="btn btn-warning">Historial de modificaciones</a>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">

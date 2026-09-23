@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\CobradoresController;
 use App\Http\Controllers\Admin\CortesController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\ModificacionesController;
 use Illuminate\Support\Facades\Route;
 
 // Rutas de historial de pagos accesibles para admin y todos los perfiles de pago
@@ -41,6 +42,7 @@ Route::middleware(['auth', 'role:admin'])
         Route::get('/dashboard/cancelados/all', [DashboardController::class, 'allCancelados'])->name('dashboard.cancelados.all');
         Route::get('/dashboard/corte', [DashboardController::class, 'corteCaja'])->name('dashboard.corte');
         Route::get('/dashboard/export', [DashboardController::class, 'exportResumen'])->name('dashboard.export');
+        Route::get('/dashboard/modificaciones', [ModificacionesController::class, 'index'])->name('dashboard.modificaciones');
         Route::get('/dashboard/cancelados', [DashboardController::class, 'canceladosIndex'])->name('dashboard.cancelados');
         Route::post('/dashboard/cancelados/{id}/estado', [DashboardController::class, 'updateEstado'])->name('dashboard.cancelados.estado');
         Route::get('/dashboard/desactivados', [DashboardController::class, 'desactivadosIndex'])->name('dashboard.desactivados');

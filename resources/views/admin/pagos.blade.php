@@ -962,6 +962,7 @@
             otroError: '',
             form:{ numero:'', recargo:getDefaultRecargo(), pago_anterior:0, metodo:'', cobro:'', prepay:'no', prepay_months:6, otro:'no', baja_temporal_months:1, cancelacion_motivo:'', cancelacion_monto:0 },
             manualEditEnabled: false,
+            manualPreviousTotal: null,
             manualTotal: 0,
             manualReason: '',
             manualReasonSaved: '',
@@ -1959,6 +1960,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 this.manualEditEnabled = !this.manualEditEnabled;
                 if (this.manualEditEnabled) {
                     this.manualTotal = Number(this.totales.total) || 0;
+                    this.manualPreviousTotal = this.manualTotal;
                     // Pre-llenar motivo con texto de adeudos si el campo está vacío
                     if (!this.manualReason) {
                         const partes = [];
@@ -2013,6 +2015,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
             },
             clearManualEdit(){
                 this.manualEditEnabled = false;
+                this.manualPreviousTotal = null;
                 this.manualTotal = 0;
                 this.manualReason = '';
                 this.manualReasonSaved = '';
@@ -2137,6 +2140,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 cancelacion_motivo: this.form.otro==='cancelacion' ? (this.form.cancelacion_motivo || '') : null,
                                 cancelacion_monto: this.form.otro==='cancelacion' ? (Number(this.form.cancelacion_monto) || 0) : null,
                                 manual_total_enabled: this.manualEditEnabled,
+                                manual_total_previous: this.manualEditEnabled ? this.manualPreviousTotal : null,
                                 manual_total_value: this.manualEditEnabled ? (Number(this.manualTotal) || 0) : null,
                                 manual_total_reason: this.manualEditEnabled ? (String(this.manualReason || '').trim()) : null,
                                 fecha: this.fecha(),
@@ -2224,6 +2228,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                                 cancelacion_motivo: this.form.otro==='cancelacion' ? (this.form.cancelacion_motivo || '') : null,
                                 cancelacion_monto: this.form.otro==='cancelacion' ? (Number(this.form.cancelacion_monto) || 0) : null,
                                 manual_total_enabled: this.manualEditEnabled,
+                                manual_total_previous: this.manualEditEnabled ? this.manualPreviousTotal : null,
                                 manual_total_value: this.manualEditEnabled ? (Number(this.manualTotal) || 0) : null,
                                 manual_total_reason: this.manualEditEnabled ? (String(this.manualReason || '').trim()) : null,
                                 fecha: this.fecha(),

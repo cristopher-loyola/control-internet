@@ -308,6 +308,56 @@ class PagoSaldoAjustadoTest extends TestCase
         }
     }
 
+    public static function totalesAnteriores(): array
+    {
+        return [[350.0], [159.0], [0.0], [null]];
+    }
+
+    #[DataProvider('totalesAnteriores')]
+    public function test_guarda_total_antes_del_boton_aunque_request_total_ya_este_editado(?float $anterior): void
+    {
+        $this->cliente();
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $payload = [
+            'mensualidad' => 300, 'recargo' => 'no', 'manual_total_enabled' => true,
+            'manual_total_value' => 159, 'manual_total_reason' => 'Ajuste autorizado',
+        ];
+        if ($anterior !== null) {
+            $payload['manual_total_previous'] = $anterior;
+        }
+        $id = $this->postJson(route('admin.pagos.facturas.store'), [
+            'numero_servicio' => '8500', 'total' => 159, 'payload' => $payload,
+        ])->assertOk()->json('id');
+
+        $factura = Factura::findOrFail($id);
+        $guardado = $factura->payload['manual_total_previous'];
+        $this->assertSame($anterior, $guardado === null ? null : (float) $guardado);
+        $this->assertSame(159.0, (float) $factura->total);
+        $auditoria = DB::table('audit_logs')->where('action', 'factura_total_override')->where('entity_id', $id)->first();
+        $auditado = json_decode($auditoria->prev_values, true)['total'];
+        $this->assertSame($anterior, $auditado === null ? null : (float) $auditado);
+
+        $response = $this->get(route('admin.dashboard.modificaciones', ['mes' => '2026-09']))->assertOk();
+        $mostrado = $response->viewData('rows')->first()->total_anterior;
+        $this->assertSame($anterior, $mostrado === null ? null : (float) $mostrado);
+        $excel = $this->get(route('admin.dashboard.modificaciones', ['mes' => '2026-09', 'format' => 'excel']))->assertOk();
+        $this->assertStringContainsString($anterior === null ? 'No registrado' : '$'.number_format($anterior, 2), $excel->streamedContent());
+    }
+
+    public function test_rechaza_un_total_anterior_invalido(): void
+    {
+        $this->cliente();
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $this->postJson(route('admin.pagos.facturas.store'), [
+            'numero_servicio' => '8500', 'total' => 159,
+            'payload' => [
+                'manual_total_enabled' => true, 'manual_total_value' => 159,
+                'manual_total_previous' => -1, 'manual_total_reason' => 'Prueba',
+            ],
+        ])->assertUnprocessable();
+        $this->assertDatabaseCount('facturas', 0);
+    }
+
     public function test_modificar_total_en_el_recibo_liquida_el_adeudo_con_el_importe_autorizado(): void
     {
         $usuario = $this->cliente(['primer_pago' => 900, 'primer_pago_periodo' => '2026-08']);
