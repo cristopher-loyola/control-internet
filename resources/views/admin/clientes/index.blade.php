@@ -1183,6 +1183,15 @@
                                 class="form-input w-full rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm focus:border-sky-400 focus:ring-0 text-sm text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-800"
                                 placeholder="Ej. Adeuda desde septiembre">
                         </div>
+                        <div>
+                            <label for="pp-modificado-por" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                                Nombre de quien modifica <span class="text-red-500">*</span>
+                            </label>
+                            <input id="pp-modificado-por" name="modificado_por" type="text" required maxlength="150"
+                                x-model="ppModificadoPor" x-ref="ppModificadoPor"
+                                class="form-input w-full rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm focus:border-sky-400 focus:ring-0 text-sm text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-800"
+                                placeholder="Escribe tu nombre">
+                        </div>
                     </div>
 
                     <!-- Resultado -->
@@ -1283,6 +1292,7 @@
                 ppMontoEditado: false,
                 ppCargaId: 0,
                 ppDescripcion: '',
+                ppModificadoPor: '',
                 ppGuardando: false,
                 ppResultado: null,
                 montoBaseProximoPago() {
@@ -1298,6 +1308,7 @@
                     this.ppMontoOverride = '';
                     this.ppMontoEditado = false;
                     this.ppDescripcion   = data.actualDescripcion || '';
+                    this.ppModificadoPor = '';
                     this.ppResultado    = null;
                     this.ppGuardando    = false;
                     this.ppModal        = true;
@@ -1323,6 +1334,14 @@
                 },
                 async guardarProximoPago() {
                     if (this.ppGuardando) return;
+                    const modificadoPor = String(this.ppModificadoPor || '').trim();
+                    if (!modificadoPor) {
+                        this.ppResultado = { ok: false, msg: 'Escribe el nombre de quien modifica el adeudo.' };
+                        this.$refs.ppModificadoPor.focus();
+                        this.$refs.ppModificadoPor.reportValidity();
+                        return;
+                    }
+                    if (!this.$refs.ppModificadoPor.reportValidity()) return;
                     this.ppGuardando = true;
                     this.ppResultado = null;
                     const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
@@ -1342,6 +1361,7 @@
                                 proximo_pago:       periodo,
                                 proximo_pago_monto: montoFijado,
                                 adeudo_descripcion: this.ppDescripcion,
+                                modificado_por: modificadoPor,
                             })
                         });
                         const j = await r.json();

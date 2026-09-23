@@ -43,6 +43,7 @@ class PagoSaldoAjustadoTest extends TestCase
     {
         $this->actingAs(User::factory()->create(['role' => 'admin']));
         $this->postJson(route('admin.clientes.proximo-pago', $usuario->id), [
+            'modificado_por' => 'Responsable de prueba',
             'proximo_pago_monto' => $monto, 'adeudo_descripcion' => 'Ajuste autorizado',
         ])->assertOk();
     }
@@ -62,6 +63,7 @@ class PagoSaldoAjustadoTest extends TestCase
         $usuario = $this->cliente(['tarifa' => 500]);
         $this->actingAs(User::factory()->create(['role' => 'admin']));
         $this->postJson(route('admin.clientes.proximo-pago', $usuario->id), [
+            'modificado_por' => 'Responsable de prueba',
             'proximo_pago_monto' => 1000,
             'adeudo_descripcion' => 'Agosto',
         ])->assertOk();

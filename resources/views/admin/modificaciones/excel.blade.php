@@ -12,7 +12,8 @@
 </head>
 <body>
     <h2>Historial de modificaciones de adeudo — {{ ucfirst($mesLabel) }}</h2>
-    <p>{{ $cantidad }} modificaciones mediante “Modificar total”. Incluye recibos cancelados.</p>
+    <p>{{ $cantidad }} modificaciones desde “Modificar total” en Pagos y el botón azul de Clientes. Incluye recibos cancelados.</p>
+    <p>Las filas azules son cambios de Clientes: importes sin recargo y sin cobro.</p>
     @include('admin.modificaciones.tabla')
 </body>
 </html>

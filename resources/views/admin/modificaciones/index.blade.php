@@ -22,7 +22,8 @@
                 @enderror
                 <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">
                     {{ ucfirst($mesLabel) }} · {{ $cantidad }} modificaciones.
-                    Recibos guardados usando “Modificar total”; incluye recibos cancelados.
+                    Cambios desde “Modificar total” en Pagos y el botón azul de Clientes. Incluye recibos cancelados.
+                    Las filas azules son cambios de Clientes: importes sin recargo y sin cobro.
                 </p>
                 <div class="overflow-x-auto">
                     @include('admin.modificaciones.tabla')

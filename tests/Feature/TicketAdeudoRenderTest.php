@@ -183,7 +183,7 @@ class TicketAdeudoRenderTest extends TestCase
 
         $response = $this->actingAs($admin)->postJson(
             route('admin.clientes.proximo-pago', ['id' => $usuario->id], absolute: false),
-            ['proximo_pago' => '2026-09', 'proximo_pago_monto' => 0]
+            ['proximo_pago' => '2026-09', 'proximo_pago_monto' => 0, 'modificado_por' => 'Responsable de prueba']
         );
 
         $response->assertOk()->assertJson([
@@ -322,6 +322,7 @@ class TicketAdeudoRenderTest extends TestCase
                 // debe modificar el saldo que se esta mostrando ahora.
                 'proximo_pago' => '2026-11',
                 'proximo_pago_monto' => 400,
+                'modificado_por' => 'Responsable de prueba',
                 'adeudo_descripcion' => 'Ajuste autorizado',
             ]
         )->assertOk()->assertJson([
@@ -365,6 +366,7 @@ class TicketAdeudoRenderTest extends TestCase
             [
                 'proximo_pago' => '2026-09',
                 'proximo_pago_monto' => 1,
+                'modificado_por' => 'Responsable de prueba',
                 'adeudo_descripcion' => 'Ajuste autorizado de septiembre',
             ]
         )->assertOk()->assertJson([

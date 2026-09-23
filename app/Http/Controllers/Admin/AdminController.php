@@ -1353,9 +1353,12 @@ class AdminController extends Controller
     {
         $request->validate([
             'adeudo_descripcion' => ['nullable', 'string', 'max:255'],
+            'modificado_por' => ['required', 'string', 'max:150'],
+        ], [
+            'modificado_por.required' => 'Escribe el nombre de quien modifica el adeudo.',
+            'modificado_por.max' => 'El nombre no debe superar los 150 caracteres.',
         ]);
 
-        $usuario = Usuario::findOrFail($id);
         $periodo = $request->input('proximo_pago');
         $monto   = $request->input('proximo_pago_monto');
 
@@ -1366,49 +1369,92 @@ class AdminController extends Controller
             return response()->json(['ok' => false, 'message' => 'Monto inválido'], 422);
         }
 
-        // El boton azul establece el total exacto a cobrar; el naranja sigue
-        // siendo el que agrega cargos nuevos sobre ese total.
-        $montoFijado = ($monto !== null && $monto !== '') ? round((float) $monto, 2) : null;
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($request, $id, $periodo, $monto) {
+            $usuario = Usuario::lockForUpdate()->findOrFail($id);
+            $morosidad = app(MorosidadService::class);
+            $adeudoAnterior = $morosidad->calcularAdeudoUsuario($usuario->numero_servicio);
+            // El modal azul edita la base sin recargo.
+            $previos = [
+                'total' => round(max(0, (float) $adeudoAnterior['pendiente'] - (float) $adeudoAnterior['recargo']), 2),
+                'proximo_pago' => $usuario->proximo_pago,
+                'proximo_pago_monto' => $usuario->proximo_pago_monto,
+                'adeudo_descripcion' => $usuario->adeudo_descripcion,
+            ];
 
-        // El boton azul reemplaza el adeudo que se muestra hoy. No debe
-        // heredar una fecha futura guardada por importaciones o adelantos.
-        if ($montoFijado !== null) {
-            $periodo = now()->format('Y-m');
-        }
+            // El boton azul establece el total exacto a cobrar; el naranja sigue
+            // siendo el que agrega cargos nuevos sobre ese total.
+            $montoFijado = ($monto !== null && $monto !== '') ? round((float) $monto, 2) : null;
 
-        if ($montoFijado === 0.0 && $periodo) {
-            // Cero liquida el saldo hasta el periodo seleccionado. El cobro
-            // normal vuelve a comenzar en el mes siguiente.
-            $usuario->proximo_pago = \Illuminate\Support\Carbon::createFromFormat('Y-m-d', $periodo . '-01')
-                ->addMonth()->format('Y-m');
-            $usuario->proximo_pago_monto = null;
-            $usuario->adeudo_monto = 0;
-            $usuario->adeudo_descripcion = null;
-        } else {
-            $usuario->proximo_pago = $periodo ?: null;
-            $usuario->proximo_pago_monto = $montoFijado;
+            // El boton azul reemplaza el adeudo que se muestra hoy. No debe
+            // heredar una fecha futura guardada por importaciones o adelantos.
             if ($montoFijado !== null) {
-                // Es el nuevo TOTAL autorizado, no una cantidad adicional.
-                // El saldo manual viejo se elimina para que no reaparezca.
-                $usuario->adeudo_monto = 0;
+                $periodo = now()->format('Y-m');
             }
-            if ($request->has('adeudo_descripcion')) {
-                $descripcion = trim((string) $request->input('adeudo_descripcion', ''));
-                $usuario->adeudo_descripcion = $descripcion !== '' ? $descripcion : null;
-            }
-        }
-        $usuario->proximo_pago_factura_id = $montoFijado !== null
-            ? (int) Factura::withTrashed()->where('numero_servicio', $usuario->numero_servicio)->max('id')
-            : null;
-        $usuario->save();
 
-        return response()->json([
-            'ok'                 => true,
-            'proximo_pago'       => $usuario->proximo_pago,
-            'proximo_pago_monto' => $usuario->proximo_pago_monto,
-            'pendiente'           => $montoFijado,
-            'adeudo_descripcion' => $usuario->adeudo_descripcion,
-        ]);
+            if ($montoFijado === 0.0 && $periodo) {
+                // Cero liquida el saldo hasta el periodo seleccionado. El cobro
+                // normal vuelve a comenzar en el mes siguiente.
+                $usuario->proximo_pago = \Illuminate\Support\Carbon::createFromFormat('Y-m-d', $periodo . '-01')
+                    ->addMonth()->format('Y-m');
+                $usuario->proximo_pago_monto = null;
+                $usuario->adeudo_monto = 0;
+                $usuario->adeudo_descripcion = null;
+            } else {
+                $usuario->proximo_pago = $periodo ?: null;
+                $usuario->proximo_pago_monto = $montoFijado;
+                if ($montoFijado !== null) {
+                    // Es el nuevo TOTAL autorizado, no una cantidad adicional.
+                    // El saldo manual viejo se elimina para que no reaparezca.
+                    $usuario->adeudo_monto = 0;
+                }
+                if ($request->has('adeudo_descripcion')) {
+                    $descripcion = trim((string) $request->input('adeudo_descripcion', ''));
+                    $usuario->adeudo_descripcion = $descripcion !== '' ? $descripcion : null;
+                }
+            }
+            $usuario->proximo_pago_factura_id = $montoFijado !== null
+                ? (int) Factura::withTrashed()->where('numero_servicio', $usuario->numero_servicio)->max('id')
+                : null;
+            $usuario->save();
+
+            $nuevoTotal = $montoFijado;
+            if ($nuevoTotal === null) {
+                $adeudoNuevo = $morosidad->calcularAdeudoUsuario($usuario->numero_servicio);
+                $nuevoTotal = round(max(0, (float) $adeudoNuevo['pendiente'] - (float) $adeudoNuevo['recargo']), 2);
+            }
+            \Illuminate\Support\Facades\DB::table('audit_logs')->insert([
+                'actor_user_id' => $request->user()->id,
+                'actor_role' => $request->user()->role,
+                'actor_name' => $request->user()->name,
+                'action' => 'cliente_adeudo_override',
+                'table_name' => 'usuarios',
+                'entity_type' => Usuario::class,
+                'entity_id' => (string) $usuario->id,
+                'prev_values' => json_encode($previos),
+                'new_values' => json_encode([
+                    'total' => $nuevoTotal,
+                    'numero_servicio' => $usuario->numero_servicio,
+                    'nombre_cliente' => $usuario->nombre_cliente,
+                    'modificado_por' => trim($request->input('modificado_por')),
+                    'reason' => trim((string) $request->input('adeudo_descripcion', '')),
+                    'proximo_pago' => $usuario->proximo_pago,
+                    'proximo_pago_monto' => $usuario->proximo_pago_monto,
+                    'adeudo_descripcion' => $usuario->adeudo_descripcion,
+                ]),
+                'ip' => $request->ip(),
+                'user_agent' => (string) $request->userAgent(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return response()->json([
+                'ok'                 => true,
+                'proximo_pago'       => $usuario->proximo_pago,
+                'proximo_pago_monto' => $usuario->proximo_pago_monto,
+                'pendiente'           => $montoFijado,
+                'adeudo_descripcion' => $usuario->adeudo_descripcion,
+            ]);
+        });
     }
 
     public function clientesCargoExtra(Request $request, int $id)
