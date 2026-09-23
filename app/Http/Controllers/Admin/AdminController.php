@@ -307,8 +307,7 @@ class AdminController extends Controller
                 $nombre = $payload['nombre'];
             }
 
-            $adeudoPrevio = is_array($payload) ? ($payload['adeudo_monto_previo'] ?? null) : null;
-            $adeudoModificado = $adeudoPrevio !== null && (float) $adeudoPrevio > 0;
+            $totalModificado = !empty($payload['manual_total_enabled']);
 
             return (object) [
                 'id' => $f->id,
@@ -324,9 +323,8 @@ class AdminController extends Controller
                 'descuento' => $payload['descuento'] ?? 0,
                 'cobro' => $payload['cobro'] ?? null,
                 'metodo' => $payload['metodo'] ?? 'Efectivo',
-                'adeudo_modificado' => $adeudoModificado,
-                'adeudo_previo' => $adeudoModificado ? (float) $adeudoPrevio : null,
-                'adeudo_descripcion_previa' => $adeudoModificado ? ($payload['adeudo_descripcion_previa'] ?? null) : null,
+                'adeudo_modificado' => $totalModificado,
+                'motivo_modificacion' => $totalModificado ? ($payload['manual_total_reason'] ?? null) : null,
             ];
         });
 

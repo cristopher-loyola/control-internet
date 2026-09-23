@@ -275,6 +275,39 @@ class PagoSaldoAjustadoTest extends TestCase
         $this->assertSame(50.0, $this->deuda()['pendiente']);
     }
 
+    public static function modificacionesEnHistorial(): array
+    {
+        return [
+            'total manual sin adeudo previo' => [['manual_total_enabled' => true, 'manual_total_reason' => 'Ajuste autorizado'], true],
+            'adeudo previo sin usar el boton' => [['adeudo_monto_previo' => 900], false],
+            'total manual con adeudo previo' => [['manual_total_enabled' => true, 'manual_total_reason' => 'Ajuste autorizado', 'adeudo_monto_previo' => 900], true],
+            'pago normal' => [[], false],
+            'edicion desactivada' => [['manual_total_enabled' => false, 'manual_total_reason' => 'Motivo sin aplicar', 'adeudo_monto_previo' => 900], false],
+        ];
+    }
+
+    #[DataProvider('modificacionesEnHistorial')]
+    public function test_historial_identifica_modificaciones_guardadas(array $payload, bool $modificado): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        Factura::create([
+            'numero_servicio' => '8500', 'reference_number' => 'HISTORIAL',
+            'periodo' => '2026-09', 'total' => 159, 'payload' => $payload,
+        ]);
+
+        $response = $this->get(route('admin.pagos.historial'))->assertOk()
+            ->assertViewHas('rows', fn ($rows) => $rows->first()->adeudo_modificado === $modificado);
+
+        if ($modificado) {
+            $response->assertSee('Modificó adeudo');
+        } else {
+            $response->assertDontSee('Modificó adeudo')->assertDontSee('Motivo sin aplicar');
+        }
+        if (!empty($payload['manual_total_enabled'])) {
+            $response->assertSee('Ajuste autorizado')->assertSee('Total modificado manualmente a $159.00');
+        }
+    }
+
     public function test_modificar_total_en_el_recibo_liquida_el_adeudo_con_el_importe_autorizado(): void
     {
         $usuario = $this->cliente(['primer_pago' => 900, 'primer_pago_periodo' => '2026-08']);
@@ -286,6 +319,8 @@ class PagoSaldoAjustadoTest extends TestCase
                 'manual_total_value' => 100, 'manual_total_reason' => 'Corrección autorizada',
             ],
         ])->assertOk();
+        $this->get(route('admin.pagos.historial'))->assertOk()
+            ->assertSee('Modificó adeudo')->assertSee('Corrección autorizada');
         $this->assertSame(0.0, $this->deuda()['pendiente']);
         $this->assertSame(0.0, (float) $usuario->refresh()->adeudo_monto);
         $this->travelTo(now()->setDate(2026, 10, 7));

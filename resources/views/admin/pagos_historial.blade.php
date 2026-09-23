@@ -88,9 +88,12 @@
                                         <td class="px-4 py-2 whitespace-nowrap text-sm">
                                             @if($r->adeudo_modificado)
                                                 <span class="inline-flex items-center px-2 py-1 rounded text-xs bg-yellow-500 text-white"
-                                                    title="Este pago redujo un adeudo registrado: de ${{ number_format($r->adeudo_previo, 2) }}{{ $r->adeudo_descripcion_previa ? ' ('.$r->adeudo_descripcion_previa.')' : '' }}">
+                                                    title="Total modificado manualmente a ${{ number_format((float)$r->total, 2) }}">
                                                     Modificó adeudo
                                                 </span>
+                                                @if($r->motivo_modificacion)
+                                                    <div class="mt-1 text-xs text-gray-600 dark:text-gray-300 whitespace-normal">{{ $r->motivo_modificacion }}</div>
+                                                @endif
                                             @else
                                                 <span class="text-xs text-gray-400">—</span>
                                             @endif
