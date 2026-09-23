@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\Usuario;
 use App\Models\Factura;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +12,15 @@ use Tests\TestCase;
 class PagoDuplicadoPeriodoTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        foreach (['1001', '2001', '3001'] as $numero) {
+            Usuario::factory()->create(['numero_servicio' => $numero]);
+        }
+        Usuario::factory()->create(['id' => 10, 'numero_servicio' => '4001']);
+    }
 
     public function test_registra_primer_pago_sin_historial(): void
     {
@@ -61,7 +71,7 @@ class PagoDuplicadoPeriodoTest extends TestCase
 
         // Primer pago con usuario_id
         $this->postJson(route('admin.pagos.facturas.store'), [
-            'numero_servicio' => null,
+            'numero_servicio' => '4001',
             'usuario_id' => 10,
             'total' => 500,
             'payload' => ['nombre' => 'Cliente C', 'mensualidad' => 500, 'recargo' => 'no', 'pago_anterior' => 0],
@@ -69,9 +79,9 @@ class PagoDuplicadoPeriodoTest extends TestCase
 
         // Duplicado por usuario_id en mismo periodo
         $dup = $this->postJson(route('admin.pagos.facturas.store'), [
-            'numero_servicio' => 'ZZZ',
+            'numero_servicio' => '4001',
             'usuario_id' => 10,
-            'total' => 500,
+            'total' => 550,
             'payload' => ['nombre' => 'Cliente C', 'mensualidad' => 500, 'recargo' => 'no', 'pago_anterior' => 0],
         ]);
         $dup->assertStatus(409)->assertJson(['ok' => false]);

@@ -342,7 +342,10 @@
                                 </div>
                             </div>
                         </div>
+                        <template x-teleport="body">
                         <div x-show="printFailOpen"
+                             @keydown.escape.window="if (printFailOpen) printFailOpen = false"
+                             @click.self="printFailOpen = false"
                              x-transition:enter="transition ease-out duration-200"
                              x-transition:enter-start="opacity-0"
                              x-transition:enter-end="opacity-100"
@@ -354,17 +357,26 @@
                                  x-transition:enter="transition ease-out duration-200"
                                  x-transition:enter-start="opacity-0 scale-75"
                                  x-transition:enter-end="opacity-100 scale-100"
-                                 class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm p-8 text-center">
+                                 role="dialog" aria-modal="true" aria-label="Error al registrar el pago"
+                                 class="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-sm p-8 text-center">
+                                <button type="button" aria-label="Cerrar ventana de error"
+                                        class="absolute top-3 right-3 inline-flex items-center justify-center w-9 h-9 rounded-full text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                                        @click="printFailOpen = false">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
                                 <div class="mx-auto mb-5 flex items-center justify-center w-20 h-20 rounded-full border-[3px] border-red-400">
                                     <svg class="w-10 h-10 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </div>
                                 <div class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-2">Error</div>
-                                <div class="text-base text-gray-600 dark:text-gray-300 mb-6">No se pudo registrar el pago. Intenta volver a imprimir.</div>
-                                <button class="w-full py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium transition-colors" @click="printFailOpen = false">Entendido, volver a cobrar</button>
+                                <div class="text-base text-gray-600 dark:text-gray-300 mb-6" x-text="printFailMsg || 'No se pudo registrar el pago. Intenta de nuevo.'"></div>
+                                <button type="button" class="w-full py-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white font-medium transition-colors" @click="printFailOpen = false">Cerrar</button>
                             </div>
                         </div>
+                        </template>
                         <div x-show="metodoModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 not-print">
                             <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-96">
                                 <div class="px-5 pt-5 pb-3 border-b border-gray-200 dark:border-gray-700">

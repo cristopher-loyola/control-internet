@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\Usuario;
 use App\Models\Factura;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -13,6 +14,9 @@ class AdminHistorialCancelTest extends TestCase
 
     protected function actingAdmin()
     {
+        foreach (['1111', '2222', '3333'] as $numero) {
+            Usuario::factory()->create(['numero_servicio' => $numero]);
+        }
         $user = User::factory()->create(['role' => 'admin']);
         return $this->actingAs($user);
     }
@@ -90,4 +94,3 @@ class AdminHistorialCancelTest extends TestCase
         $this->assertSame($referencia, $referencia2);
     }
 }
-

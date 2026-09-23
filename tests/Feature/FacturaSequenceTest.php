@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\Usuario;
 use App\Models\Factura;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,9 @@ class FacturaSequenceTest extends TestCase
 
     protected function actingAdmin()
     {
+        foreach (['1001', '1002', '1003'] as $numero) {
+            Usuario::factory()->create(['numero_servicio' => $numero]);
+        }
         $user = User::factory()->create(['role' => 'admin']);
         return $this->actingAs($user);
     }
@@ -22,9 +26,9 @@ class FacturaSequenceTest extends TestCase
     {
         $this->actingAdmin();
 
-        $r1 = $this->postJson(route('admin.pagos.facturas.store'), ['total' => 10.00])->assertOk()->json('referencia');
-        $r2 = $this->postJson(route('admin.pagos.facturas.store'), ['total' => 11.00])->assertOk()->json('referencia');
-        $r3 = $this->postJson(route('admin.pagos.facturas.store'), ['total' => 12.00])->assertOk()->json('referencia');
+        $r1 = $this->postJson(route('admin.pagos.facturas.store'), ['numero_servicio' => '1001', 'total' => 10.00])->assertOk()->json('referencia');
+        $r2 = $this->postJson(route('admin.pagos.facturas.store'), ['numero_servicio' => '1002', 'total' => 11.00])->assertOk()->json('referencia');
+        $r3 = $this->postJson(route('admin.pagos.facturas.store'), ['numero_servicio' => '1003', 'total' => 12.00])->assertOk()->json('referencia');
 
         $this->assertSame(1, $r1);
         $this->assertSame(2, $r2);
@@ -35,7 +39,7 @@ class FacturaSequenceTest extends TestCase
     {
         $this->actingAdmin();
 
-        $ref = $this->postJson(route('admin.pagos.facturas.store'), ['total' => 10.00])->assertOk()->json('referencia');
+        $ref = $this->postJson(route('admin.pagos.facturas.store'), ['numero_servicio' => '1001', 'total' => 10.00])->assertOk()->json('referencia');
 
         $this->expectException(\Illuminate\Database\QueryException::class);
         DB::table('facturas')->insert([

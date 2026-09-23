@@ -422,10 +422,13 @@ class PagosController extends Controller
     public function recibosFacturaStore(Request $request, FacturaService $facturaService)
     {
         $request->validate([
-            'numero_servicio' => ['nullable', 'string'],
+            'numero_servicio' => ['required', 'string', 'exists:usuarios,numero_servicio'],
             'usuario_id' => ['nullable', 'integer'],
             'total' => ['nullable', 'numeric', 'min:0'],
             'payload' => ['nullable', 'array'],
+        ], [
+            'numero_servicio.required' => 'Ingresa un número de servicio registrado para imprimir.',
+            'numero_servicio.exists' => 'El número de servicio no existe. No se puede imprimir el recibo.',
         ]);
 
         $resultado = $facturaService->crearFactura($request);
