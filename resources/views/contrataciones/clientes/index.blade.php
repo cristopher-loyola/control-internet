@@ -458,7 +458,7 @@
                     <x-text-input id="nombre_cliente" name="nombre_cliente" type="text" class="mt-1 block w-full" :value="old('nombre_cliente')" required />
                     <x-input-error :messages="$errors->clienteCreate->get('nombre_cliente')" class="mt-2" />
                 </div>
-                <div class="sm:col-span-2">
+                <div class="sm:col-span-2" hidden>
                     <x-input-label for="domicilio" value="Dirección" />
                     <x-text-input id="domicilio" name="domicilio" type="text" class="mt-1 block w-full" :value="old('domicilio')" />
                     <x-input-error :messages="$errors->clienteCreate->get('domicilio')" class="mt-2" />
@@ -469,7 +469,7 @@
                     <x-text-input id="telefono" name="telefono" type="text" class="mt-1 block w-full" :value="old('telefono')" />
                     <x-input-error :messages="$errors->clienteCreate->get('telefono')" class="mt-2" />
                 </div>
-                <div>
+                <div hidden>
                     <x-input-label for="uso" value="Uso" />
                     <select id="uso" name="uso" class="form-select mt-1 w-full">
                         <option value="">Selecciona una opción</option>
@@ -479,7 +479,7 @@
                     </select>
                     <x-input-error :messages="$errors->clienteCreate->get('uso')" class="mt-2" />
                 </div>
-                <div>
+                <div hidden>
                     <x-input-label for="dispositivo" value="Dispositivo" />
                     <select id="dispositivo" name="dispositivo" class="form-select mt-1 w-full">
                         <option value="">Selecciona una opción</option>
@@ -488,7 +488,7 @@
                     </select>
                     <x-input-error :messages="$errors->clienteCreate->get('dispositivo')" class="mt-2" />
                 </div>
-                <div>
+                <div hidden>
                     <x-input-label for="tecnologia" value="Tecnología" />
                     <select id="tecnologia" name="tecnologia" class="form-select mt-1 w-full" x-ref="createTecnologia" x-on:change="updateMegasCreate()">
                         <option value="">Selecciona una opción</option>
@@ -500,7 +500,7 @@
                 </div>
                 <div>
                     <x-input-label for="tarifa" value="Costo de paquete" />
-                    <select id="tarifa" name="tarifa" class="form-select mt-1 w-full" x-ref="createTarifa" x-on:change="updateMegasCreate()">
+                    <select id="tarifa" name="tarifa" class="form-select mt-1 w-full" x-ref="createTarifa" x-on:change="updateMegasCreate()" required>
                         <option value="">Selecciona una opción</option>
                         <option value="300.00" {{ in_array(old('tarifa'), ['300', '300.00']) ? 'selected' : '' }}>$300</option>
                         <option value="400.00" {{ in_array(old('tarifa'), ['400', '400.00']) ? 'selected' : '' }}>$400</option>
@@ -509,7 +509,7 @@
                     </select>
                     <x-input-error :messages="$errors->clienteCreate->get('tarifa')" class="mt-2" />
                 </div>
-                <div>
+                <div hidden>
                     <x-input-label for="megas" value="Megas" />
                     <x-text-input id="megas" name="megas" type="number" class="mt-1 block w-full" :value="old('megas')" x-ref="createMegas" x-bind:readonly="createMegasReadonly" />
                     <x-input-error :messages="$errors->clienteCreate->get('megas')" class="mt-2" />

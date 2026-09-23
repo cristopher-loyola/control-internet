@@ -136,8 +136,8 @@
                                 <col style="width:18%">
                                 <col style="width:18%">
                                 <col style="width:14%">
-                                <col style="width:8%">
-                                <col style="width:8%">
+                                <col style="width:8%" hidden>
+                                <col style="width:8%" hidden>
                                 <col style="width:10%">
                                 <col style="width:10%">
                                 <col style="width:6%">
@@ -148,8 +148,8 @@
                                     <th class="h-10 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Nombre</th>
                                     <th class="h-10 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Dirección</th>
                                     <th class="h-10 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Número Telefónico</th>
-                                    <th class="h-10 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tecnología</th>
-                                    <th class="h-10 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Megas</th>
+                                    <th hidden class="h-10 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Tecnología</th>
+                                    <th hidden class="h-10 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Megas</th>
                                     <th class="h-10 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Paquete</th>
                                     <th class="h-10 px-2 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider w-36 sm:w-40">Estatus</th>
                                     <th class="h-10 px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
@@ -162,8 +162,8 @@
                                     <td class="h-10 px-4 py-2 align-middle"><div class="skel h-4 w-24"></div></td>
                                     <td class="h-10 px-4 py-2 align-middle"><div class="skel h-4 w-28"></div></td>
                                     <td class="h-10 px-4 py-2 align-middle"><div class="skel h-4 w-24"></div></td>
-                                    <td class="h-10 px-4 py-2 align-middle"><div class="skel h-4 w-12"></div></td>
-                                    <td class="h-10 px-4 py-2 align-middle"><div class="skel h-4 w-10"></div></td>
+                                    <td hidden class="h-10 px-4 py-2 align-middle"><div class="skel h-4 w-12"></div></td>
+                                    <td hidden class="h-10 px-4 py-2 align-middle"><div class="skel h-4 w-10"></div></td>
                                     <td class="h-10 px-4 py-2 align-middle"><div class="skel h-4 w-16"></div></td>
                                     <td class="h-10 px-2 py-2 align-middle"><div class="skel h-6 w-24"></div></td>
                                     <td class="h-10 px-4 py-2 text-center align-middle"><div class="skel h-7 w-16 inline-block"></div></td>
@@ -203,14 +203,14 @@
                                         </td>
                                         <td class="h-10 px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 align-middle">{{ $c->domicilio ?? '—' }}</td>
                                         <td class="h-10 px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 align-middle">{{ $c->telefono ?? '—' }}</td>
-                                        <td class="h-10 px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 align-middle">
+                                        <td hidden class="h-10 px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 align-middle">
                                             @if(!is_null($c->tecnologia))
                                                 {{ strtoupper($c->tecnologia) }}
                                             @else
                                                 —
                                             @endif
                                         </td>
-                                        <td class="h-10 px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 align-middle">{{ $c->megas ?? '—' }}</td>
+                                        <td hidden class="h-10 px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 align-middle">{{ $c->megas ?? '—' }}</td>
                                         <td class="h-10 px-4 py-2 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300 align-middle">
                                             @if(!is_null($c->tarifa))
                                                 ${{ number_format((float) $c->tarifa, 2) }}
@@ -285,7 +285,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="9" class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
+                                        <td colspan="7" class="px-4 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
                                             No hay clientes registrados.
                                         </td>
                                     </tr>
@@ -346,7 +346,7 @@
                     <x-text-input id="nombre_cliente" name="nombre_cliente" type="text" class="mt-1 block w-full" :value="old('nombre_cliente')" required />
                     <x-input-error :messages="$errors->clienteCreate->get('nombre_cliente')" class="mt-2" />
                 </div>
-                <div class="sm:col-span-2">
+                <div class="sm:col-span-2" hidden>
                     <x-input-label for="domicilio" value="Dirección" />
                     <x-text-input id="domicilio" name="domicilio" type="text" class="mt-1 block w-full" :value="old('domicilio')" />
                     <x-input-error :messages="$errors->clienteCreate->get('domicilio')" class="mt-2" />
@@ -357,7 +357,7 @@
                     <x-text-input id="telefono" name="telefono" type="text" class="mt-1 block w-full" :value="old('telefono')" />
                     <x-input-error :messages="$errors->clienteCreate->get('telefono')" class="mt-2" />
                 </div>
-                <div>
+                <div hidden>
                     <x-input-label for="uso" value="Uso" />
                     <select id="uso" name="uso" class="form-select mt-1 w-full">
                         <option value="">Selecciona una opción</option>
@@ -367,7 +367,7 @@
                     </select>
                     <x-input-error :messages="$errors->clienteCreate->get('uso')" class="mt-2" />
                 </div>
-                <div>
+                <div hidden>
                     <x-input-label for="dispositivo" value="Dispositivo" />
                     <select id="dispositivo" name="dispositivo" class="form-select mt-1 w-full">
                         <option value="">Selecciona una opción</option>
@@ -376,7 +376,7 @@
                     </select>
                     <x-input-error :messages="$errors->clienteCreate->get('dispositivo')" class="mt-2" />
                 </div>
-                <div>
+                <div hidden>
                     <x-input-label for="tecnologia" value="Tecnología" />
                     <select id="tecnologia" name="tecnologia" class="form-select mt-1 w-full" x-ref="createTecnologia" x-on:change="updateMegasCreate()">
                         <option value="">Selecciona una opción</option>
@@ -388,7 +388,7 @@
                 </div>
                 <div>
                     <x-input-label for="tarifa" value="Costo de paquete" />
-                    <select id="tarifa" name="tarifa" class="form-select mt-1 w-full" x-ref="createTarifa" x-on:change="updateMegasCreate()">
+                    <select id="tarifa" name="tarifa" class="form-select mt-1 w-full" x-ref="createTarifa" x-on:change="updateMegasCreate()" required>
                         <option value="">Selecciona una opción</option>
                         <option value="300.00" {{ in_array(old('tarifa'), ['300', '300.00']) ? 'selected' : '' }}>$300</option>
                         <option value="400.00" {{ in_array(old('tarifa'), ['400', '400.00']) ? 'selected' : '' }}>$400</option>
@@ -397,7 +397,7 @@
                     </select>
                     <x-input-error :messages="$errors->clienteCreate->get('tarifa')" class="mt-2" />
                 </div>
-                <div>
+                <div hidden>
                     <x-input-label for="megas" value="Megas" />
                     <x-text-input id="megas" name="megas" type="number" class="mt-1 block w-full" :value="old('megas')" x-ref="createMegas" x-bind:readonly="createMegasReadonly" />
                     <x-input-error :messages="$errors->clienteCreate->get('megas')" class="mt-2" />

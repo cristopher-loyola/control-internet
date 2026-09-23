@@ -82,7 +82,7 @@ class ContratacionesController extends Controller
                 'megas' => ['nullable', 'integer', 'min:0'],
                 'tecnologia' => ['nullable', 'string', 'in:ina,foi,fod'],
                 'dispositivo' => ['nullable', 'string', 'in:permanencia voluntaria,como dato'],
-                'tarifa' => ['nullable', 'numeric', 'min:0'],
+                'tarifa' => ['required', 'numeric', 'min:0'],
                 'primer_pago' => ['nullable', 'numeric', 'min:0'],
             ],
             [
