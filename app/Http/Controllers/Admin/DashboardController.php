@@ -1266,7 +1266,7 @@ class DashboardController extends Controller
 
         $rows = [];
         $totalSum = 0.0;       // todos los métodos (para porcentajes y total del desglose)
-        $totalEfectivo = 0.0;  // solo efectivo (lo que se lista en el bloque de Rayón)
+        $totalRayon = 0.0;     // efectivo, tarjeta y cheque (lo que se lista en el bloque de Rayón)
         $metodosData = [];
         foreach ($ventas as $v) {
             $p = is_array($v->payload) ? $v->payload : (is_string($v->payload) ? @json_decode($v->payload, true) : []);
@@ -1277,12 +1277,18 @@ class DashboardController extends Controller
             }
             $monto = round((float) $v->total, 2);
             $totalSum += $monto;
-            // El detalle de Rayón lista SOLO efectivo, para que su total cuadre
-            // contra la caja física. Tarjeta y depósito siguen contándose en el
-            // desglose por método y en su total.
-            if ($metodo === 'Efectivo') {
-                $totalEfectivo += $monto;
-                $rows[] = ['Venta', optional($v->created_at)->format('Y-m-d H:i'), number_format($monto, 2, '.', ''), $nombre, (string) $v->numero_servicio];
+            // El detalle de Rayón lista efectivo, tarjeta y cheque. Los demás métodos
+            // siguen contándose en el desglose por método y en su total.
+            if (in_array($metodo, ['Efectivo', 'Tarjeta de Crédito', 'Cheque'], true)) {
+                $totalRayon += $monto;
+                $rows[] = [
+                    'Venta',
+                    optional($v->created_at)->format('Y-m-d H:i'),
+                    number_format($monto, 2, '.', ''),
+                    $nombre,
+                    (string) $v->numero_servicio,
+                    $metodo === 'Tarjeta de Crédito' ? 'card' : ($metodo === 'Cheque' ? 'check' : ''),
+                ];
             }
 
             if (! isset($metodosData[$metodo])) {
@@ -1317,17 +1323,17 @@ class DashboardController extends Controller
                 'Content-Type' => 'text/csv; charset=UTF-8',
                 'Content-Disposition' => 'attachment; filename="'.$fileBase.'.csv"',
             ];
-            $callback = function () use ($rows, $title, $totalEfectivo, $metodosRows, $zonas, $totalZonas) {
+            $callback = function () use ($rows, $title, $totalRayon, $metodosRows, $zonas, $totalZonas) {
                 echo "\xEF\xBB\xBF";
                 $out = fopen('php://output', 'w');
                 fputcsv($out, [$title]);
                 fputcsv($out, []);
-                fputcsv($out, ['RAYÓN (efectivo)']);
+                fputcsv($out, ['RAYÓN']);
                 fputcsv($out, ['Tipo', 'Fecha', 'Monto', 'Nombre', 'Detalle']);
                 foreach ($rows as $r) {
-                    fputcsv($out, $r);
+                    fputcsv($out, array_slice($r, 0, 5));
                 }
-                fputcsv($out, ['', '', number_format($totalEfectivo, 2, '.', ''), 'TOTAL EFECTIVO', '']);
+                fputcsv($out, ['', '', number_format($totalRayon, 2, '.', ''), 'TOTAL', '']);
 
                 if (! empty($metodosRows)) {
                     fputcsv($out, []);
@@ -1367,7 +1373,7 @@ class DashboardController extends Controller
                 'Content-Disposition' => 'attachment; filename="'.$fileBase.'.xls"',
                 'Cache-Control' => 'max-age=0',
             ];
-            $callback = function () use ($rows, $title, $totalEfectivo, $metodosRows, $zonas, $totalZonas) {
+            $callback = function () use ($rows, $title, $totalRayon, $metodosRows, $zonas, $totalZonas) {
                 echo "\xEF\xBB\xBF";
                 echo '<html><head><meta charset="utf-8"><style>
                 table{ border-collapse:collapse; margin-bottom: 20px; }
@@ -1375,6 +1381,8 @@ class DashboardController extends Controller
                 .hdr{ background:#16a34a; color:#fff; font-weight:bold; text-align:center; }
                 .money{ mso-number-format:"\#\,\#\#0\.00"; text-align:right; }
                 .total-row{ background:#0f766e; color:#fff; font-weight:bold; }
+                .card-row{ background:#bfdbfe; color:#1d4ed8; }
+                .check-row{ background:#fed7aa; color:#c2410c; }
                 .wrapper{ border-collapse:separate; border:none; margin-bottom:0; }
                 .wrapper td{ border:1px solid #000; padding:0 20px 0 0; vertical-align:top; }
                 .granL{ background:#111827; color:#fff; font-weight:bold; }
@@ -1387,14 +1395,15 @@ class DashboardController extends Controller
                 // Primera tabla: Detalle de ventas (izquierda)
                 echo '<table>';
                 echo '<thead>';
-                echo '<tr><th colspan="5" class="hdr">RAYÓN (efectivo)</th></tr>';
+                echo '<tr><th colspan="5" class="hdr">RAYÓN</th></tr>';
                 echo '<tr>';
                 echo '<th class="hdr">Tipo</th><th class="hdr">Fecha</th><th class="hdr">Monto</th><th class="hdr">Nombre</th><th class="hdr">Detalle</th>';
                 echo '</tr>';
                 echo '</thead>';
                 echo '<tbody>';
                 foreach ($rows as $r) {
-                    echo '<tr>';
+                    $rowClass = $r[5] === 'card' ? 'card-row' : ($r[5] === 'check' ? 'check-row' : '');
+                    echo $rowClass !== '' ? '<tr class="'.$rowClass.'">' : '<tr>';
                     echo '<td>'.htmlspecialchars($r[0]).'</td>';
                     echo '<td>'.htmlspecialchars($r[1]).'</td>';
                     echo '<td class="money">'.htmlspecialchars($r[2]).'</td>';
@@ -1403,8 +1412,8 @@ class DashboardController extends Controller
                     echo '</tr>';
                 }
                 echo '<tr class="total-row">';
-                echo '<td colspan="2">TOTAL EFECTIVO</td>';
-                echo '<td class="money">'.htmlspecialchars(number_format($totalEfectivo, 2, '.', '')).'</td>';
+                echo '<td colspan="2">TOTAL</td>';
+                echo '<td class="money">'.htmlspecialchars(number_format($totalRayon, 2, '.', '')).'</td>';
                 echo '<td colspan="2">'.count($rows).' cobros</td>';
                 echo '</tr>';
                 echo '</tbody>';
