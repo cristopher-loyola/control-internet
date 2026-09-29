@@ -884,6 +884,36 @@ class DashboardController extends Controller
         return $this->cortesPorZona('pozo_hondo', 'Pozo Hondo');
     }
 
+    public function detalleTicketCorte(int $id)
+    {
+        $zonas = ['rosalito' => 'Rosalito', 'chivato' => 'Chivato', 'pozo_hondo' => 'Pozo Hondo'];
+        $corte = CorteCaja::with('user:id,name')
+            ->whereIn('zona', array_keys($zonas))
+            ->findOrFail($id);
+
+        $pagos = $corte->facturas()->orderBy('created_at')->orderBy('id')->get()
+            ->sortBy('numero_servicio', SORT_NATURAL)->values()
+            ->map(function (Factura $factura) {
+                $payload = is_array($factura->payload) ? $factura->payload : [];
+
+                return [
+                    'folio' => $factura->reference_number,
+                    'numero_servicio' => $factura->numero_servicio,
+                    'nombre' => $payload['nombre'] ?? '-',
+                    'fecha' => $factura->created_at?->format('d/m/Y H:i'),
+                    'total' => (float) $factura->total - (($payload['recargo'] ?? null) === 'si' ? 50 : 0),
+                ];
+            });
+
+        return view('payments.detalle-ticket-corte', [
+            'corte' => $corte,
+            'titulo' => $zonas[$corte->zona],
+            'pagos' => $pagos,
+            'total' => $pagos->sum('total'),
+            'comision' => $pagos->count() * 10,
+        ]);
+    }
+
     public function corteCaja(Request $request)
     {
         $request->validate([

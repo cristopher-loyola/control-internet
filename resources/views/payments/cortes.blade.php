@@ -26,12 +26,18 @@
                 <div class="p-6 border-b"><h3 class="text-lg font-semibold text-gray-900">Historial de cortes cerrados</h3></div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm text-left text-gray-600">
-                        <thead class="bg-gray-50 text-xs uppercase text-gray-700"><tr><th class="px-4 py-3">Corte</th><th class="px-4 py-3">Cajero</th><th class="px-4 py-3">Inicio</th><th class="px-4 py-3">Fin</th><th class="px-4 py-3">Cobros</th><th class="px-4 py-3">Recaudado</th><th class="px-4 py-3">Comisión</th><th class="px-4 py-3">Total a entregar</th></tr></thead>
+                        <thead class="bg-gray-50 text-xs uppercase text-gray-700"><tr><th class="px-4 py-3">Corte</th><th class="px-4 py-3">Cajero</th><th class="px-4 py-3">Inicio</th><th class="px-4 py-3">Fin</th><th class="px-4 py-3">Cobros</th><th class="px-4 py-3">Recaudado</th><th class="px-4 py-3">Comisión</th><th class="px-4 py-3">Total a entregar</th>@if(auth()->user()->role === 'admin')<th class="px-4 py-3">Acciones</th>@endif</tr></thead>
                         <tbody>
                             @forelse($cortesCerrados as $corte)
-                                <tr class="border-b"><td class="px-4 py-3 font-medium">#{{ $corte->id }}</td><td class="px-4 py-3">{{ $corte->user?->name ?? 'Sin usuario' }}</td><td class="px-4 py-3">{{ $corte->fecha_inicio?->format('d/m/Y H:i') }}</td><td class="px-4 py-3">{{ $corte->fecha_fin?->format('d/m/Y H:i') }}</td><td class="px-4 py-3">{{ $corte->total_pagos }}</td><td class="px-4 py-3 font-semibold text-green-600">${{ number_format((float) $corte->total_recaudado, 2) }}</td><td class="px-4 py-3 text-blue-600">${{ number_format($corte->total_pagos * 10, 2) }}</td><td class="px-4 py-3 font-semibold text-green-700">${{ number_format((float) $corte->total_recaudado - ($corte->total_pagos * 10), 2) }}</td></tr>
+                                <tr class="border-b"><td class="px-4 py-3 font-medium">#{{ $corte->id }}</td><td class="px-4 py-3">{{ $corte->user?->name ?? 'Sin usuario' }}</td><td class="px-4 py-3">{{ $corte->fecha_inicio?->format('d/m/Y H:i') }}</td><td class="px-4 py-3">{{ $corte->fecha_fin?->format('d/m/Y H:i') }}</td><td class="px-4 py-3">{{ $corte->total_pagos }}</td><td class="px-4 py-3 font-semibold text-green-600">${{ number_format((float) $corte->total_recaudado, 2) }}</td><td class="px-4 py-3 text-blue-600">${{ number_format($corte->total_pagos * 10, 2) }}</td><td class="px-4 py-3 font-semibold text-green-700">${{ number_format((float) $corte->total_recaudado - ($corte->total_pagos * 10), 2) }}</td>
+                                    @if(auth()->user()->role === 'admin')
+                                        <td class="px-4 py-3">
+                                            <a href="{{ route('admin.pagos.cortes.detalle-ticket', ['id' => $corte->id]) }}" target="_blank" rel="noopener" class="inline-flex items-center px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg" aria-label="Imprimir detalle de pagos del corte #{{ $corte->id }}">Imprimir detalle de pagos</a>
+                                        </td>
+                                    @endif
+                                </tr>
                             @empty
-                                <tr><td colspan="8" class="px-4 py-6 text-center text-gray-500">No hay cortes cerrados.</td></tr>
+                                <tr><td colspan="{{ auth()->user()->role === 'admin' ? 9 : 8 }}" class="px-4 py-6 text-center text-gray-500">No hay cortes cerrados.</td></tr>
                             @endforelse
                         </tbody>
                     </table>

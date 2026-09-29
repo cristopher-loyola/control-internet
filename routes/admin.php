@@ -24,6 +24,7 @@ Route::middleware(['auth', 'role:admin'])
     ->prefix('admin')
     ->name('admin.')
     ->group(function () {
+        Route::get('/pagos/cortes/{id}/detalle-ticket', [DashboardController::class, 'detalleTicketCorte'])->whereNumber('id')->name('pagos.cortes.detalle-ticket');
         Route::get('/', [AdminController::class, 'index'])->name('index');
 
         
