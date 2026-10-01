@@ -6,7 +6,6 @@ use App\Models\CargoMora;
 use App\Models\Factura;
 use App\Models\Usuario;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class MorosidadService
 {
@@ -43,7 +42,7 @@ class MorosidadService
      * Flujo (corregido para pagos por adelantado):
      * - Determina la mensualidad del cliente.
      * - Calcula el último periodo efectivamente cubierto:
-     *   - Último periodo con pago suficiente (suma de facturas del periodo >= mensualidad).
+     *   - Último periodo con pago suficiente para la mensualidad registrada en sus recibos.
      *   - Si existen pagos por adelantado, extiende la cobertura hasta el periodo final (periodo_factura + prepay_months).
      * - Si el periodo consultado está dentro de la cobertura, el adeudo es 0 (sin recargo).
      * - Si no, calcula meses en adeudo desde el mes posterior al último cubierto hasta el periodo consultado (inclusive),
@@ -429,15 +428,25 @@ class MorosidadService
             ];
         }
 
-        // Ya llegó (o pasó) el mes del primer pago. Lo esperado es: el primer
-        // pago por su mes, más la mensualidad normal por cada mes posterior.
+        // El primer pago conserva su importe programado. Los meses posteriores
+        // con recibos conservan la tarifa cobrada; los nuevos usan la actual.
         $mesesDespues = (int) $ppStart->diffInMonths($curStart);
-        $esperado = $primerPago + ($tarifa * $mesesDespues);
 
         $facturasPagadas = Factura::whereNull('deleted_at')
             ->where('numero_servicio', $numero)
             ->whereBetween('periodo', [$primerPagoPeriodo, $periodo])
-            ->get(['total', 'payload']);
+            ->orderByDesc('id')
+            ->get(['periodo', 'total', 'payload']);
+
+        $facturasPorPeriodo = $facturasPagadas->groupBy('periodo');
+        $costosPorPeriodo = [$primerPagoPeriodo => $primerPago];
+        for ($mes = $ppStart->copy()->addMonth(); $mes->lessThanOrEqualTo($curStart); $mes->addMonth()) {
+            $periodoMes = $mes->format('Y-m');
+            $costosPorPeriodo[$periodoMes] = $this->mensualidadEnRecibos(
+                $facturasPorPeriodo->get($periodoMes, []), $tarifa
+            );
+        }
+        $esperado = array_sum($costosPorPeriodo);
 
         // Una factura puede incluir $50 de recargo, pero ese importe solo
         // liquida la mora de su propio mes. Nunca es un abono a mensualidades
@@ -477,7 +486,7 @@ class MorosidadService
             && $saldoAplicado >= $costoPeriodoMostrado - 0.01) {
             $saldoAplicado -= $costoPeriodoMostrado;
             $desdePeriodoMostrado->addMonth();
-            $costoPeriodoMostrado = $tarifa;
+            $costoPeriodoMostrado = $costosPorPeriodo[$desdePeriodoMostrado->format('Y-m')];
         }
         $mesesMostrados = $pendiente > 0.01
             ? (int) $desdePeriodoMostrado->diffInMonths($curStart) + 1
@@ -537,30 +546,43 @@ class MorosidadService
             ->where('payload->ajuste_liquidado', true)
             ->max('periodo');
 
-        $query = Factura::whereNull('deleted_at')
+        $facturasPorPeriodo = Factura::whereNull('deleted_at')
             ->where('numero_servicio', $numeroServicio)
             ->whereNotNull('periodo')
             ->where('periodo', '<=', $periodoHasta)
-            ->select('periodo', DB::raw('SUM(total) as total_sum'))
-            ->groupBy('periodo')
-            ->orderByDesc('periodo');
+            ->orderByDesc('periodo')
+            ->orderByDesc('id')
+            ->get(['periodo', 'total', 'payload'])
+            ->groupBy('periodo');
 
-        if ($mensualidad <= 0) {
-            return $query->value('periodo');
-        }
-
-        foreach ($query->get() as $row) {
-            $p = (string) ($row->periodo ?? '');
+        foreach ($facturasPorPeriodo as $periodo => $facturas) {
+            $p = (string) $periodo;
             if ($p === '') {
                 continue;
             }
-            $sum = (float) ($row->total_sum ?? 0);
-            if ($sum >= $mensualidad) {
+            // Cambiar el paquete después de pagar no vuelve a abrir ese mes.
+            // La tarifa actual solo es respaldo para recibos sin mensualidad.
+            $mensualidadPeriodo = $this->mensualidadEnRecibos($facturas, $mensualidad);
+            $sum = (float) $facturas->sum('total');
+            if ($mensualidad <= 0 || $sum >= $mensualidadPeriodo) {
                 return $this->maxPeriodo($p, $ultimoAjusteLiquidado);
             }
         }
 
         return $ultimoAjusteLiquidado;
+    }
+
+    /** Recibos ordenados del más reciente al más antiguo; nunca inferir la tarifa de un abono. */
+    private function mensualidadEnRecibos(iterable $facturas, float $mensualidadActual): float
+    {
+        foreach ($facturas as $factura) {
+            $monto = $factura->payload['mensualidad'] ?? null;
+            if (is_numeric($monto) && is_finite((float) $monto) && (float) $monto > 0) {
+                return (float) $monto;
+            }
+        }
+
+        return $mensualidadActual;
     }
 
     private function ultimoPeriodoCubiertoPorPrepay(string $numeroServicio, float $mensualidad): ?string
@@ -585,8 +607,9 @@ class MorosidadService
             }
             $prepayPaid = (float) ($payload['prepay_total'] ?? 0);
             $monthsEffective = $monthsDeclared;
-            if ($mensualidad > 0 && $prepayPaid > 0) {
-                $monthsEffective = $this->prepayEffectiveMonths($mensualidad, $monthsDeclared, $prepayPaid);
+            $mensualidadPagada = $this->mensualidadEnRecibos([$f], $mensualidad);
+            if ($mensualidadPagada > 0 && $prepayPaid > 0) {
+                $monthsEffective = $this->prepayEffectiveMonths($mensualidadPagada, $monthsDeclared, $prepayPaid);
             }
             if ($monthsEffective <= 0) {
                 continue;
