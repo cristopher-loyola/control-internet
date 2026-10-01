@@ -448,18 +448,7 @@ class MorosidadService
         }
         $esperado = array_sum($costosPorPeriodo);
 
-        // Una factura puede incluir $50 de recargo, pero ese importe solo
-        // liquida la mora de su propio mes. Nunca es un abono a mensualidades
-        // futuras. Antes se sumaba el total bruto y $350 pagados sobre un
-        // paquete de $300 dejaban el siguiente mes en $250.
-        $pagado = (float) $facturasPagadas->sum(function (Factura $factura): float {
-            $payload = is_array($factura->payload) ? $factura->payload : [];
-            $incluyeRecargo = ($payload['recargo'] ?? 'no') === 'si'
-                || ($payload['recargo'] ?? false) === true;
-            $recargoPagado = $incluyeRecargo ? 50.0 : 0.0;
-
-            return max(0.0, (float) $factura->total - $recargoPagado);
-        });
+        $pagado = $this->pagosAplicadosSinCreditoAutomatico($facturasPagadas, $costosPorPeriodo);
 
         $recargo = ($today->day >= 8) ? 50.0 : 0.0;
         $moraRow = CargoMora::where('periodo', $periodo)->where('numero_servicio', $numero)->first();
@@ -570,6 +559,36 @@ class MorosidadService
         }
 
         return $ultimoAjusteLiquidado;
+    }
+
+    /**
+     * Aplica abonos al adeudo acumulado hasta el periodo de cada recibo.
+     * El sobrante no paga meses futuros, incluso sin información de recargo.
+     * Los ajustes explícitos ya forman parte de los costos por periodo.
+     */
+    private function pagosAplicadosSinCreditoAutomatico(
+        iterable $facturas,
+        array $costosPorPeriodo,
+        ?string $periodoConCargosIncluidos = null
+    ): float {
+        $facturasPorPeriodo = collect($facturas)->groupBy('periodo');
+        ksort($costosPorPeriodo);
+        $acumulado = 0.0;
+        $aplicado = 0.0;
+        foreach ($costosPorPeriodo as $periodo => $costo) {
+            $acumulado += $costo;
+            $pagado = (float) $facturasPorPeriodo->get($periodo, collect())
+                ->sum(function (Factura $factura) use ($periodoConCargosIncluidos): float {
+                    $recargo = $factura->payload['recargo'] ?? 'no';
+                    $recargoPagado = $factura->periodo !== $periodoConCargosIncluidos
+                        && ($recargo === 'si' || $recargo === true) ? 50.0 : 0.0;
+
+                    return max(0.0, (float) $factura->total - $recargoPagado);
+                });
+            $aplicado += min(max(0.0, $acumulado - $aplicado), $pagado);
+        }
+
+        return round($aplicado, 2);
     }
 
     /** Recibos ordenados del más reciente al más antiguo; nunca inferir la tarifa de un abono. */
@@ -786,18 +805,15 @@ class MorosidadService
             ->where('id', '>', (int) ($usuario->proximo_pago_factura_id ?? 0))
             ->whereBetween('periodo', [$usuario->proximo_pago, $periodo])
             ->get(['periodo', 'total', 'payload']);
-        // El pago del periodo ajustado liquida su total, incluidos cargos.
-        // Un excedente por cargos viejos/recargo no es un adelanto del mes
-        // siguiente: para eso existe el flujo explícito de pagos adelantados.
-        $pagado = min($monto, max(0.0, (float) $facturas
-            ->where('periodo', $usuario->proximo_pago)->sum('total')));
-        $pagado += (float) $facturas->where('periodo', '>', $usuario->proximo_pago)
-            ->sum(function (Factura $factura): float {
-                $recargo = $factura->payload['recargo'] ?? 'no';
-                $recargoPagado = ($recargo === 'si' || $recargo === true) ? 50.0 : 0.0;
-
-                return max(0.0, (float) $factura->total - $recargoPagado);
-            });
+        // El ajuste conserva su importe autorizado, incluidos cargos. Los
+        // pagos posteriores liquidan lo acumulado sin generar crédito futuro.
+        $costosPorPeriodo = [(string) $usuario->proximo_pago => $monto];
+        for ($mes = $inicio->copy()->addMonth(); $mes->lessThanOrEqualTo($curStart); $mes->addMonth()) {
+            $costosPorPeriodo[$mes->format('Y-m')] = $tarifa;
+        }
+        $pagado = $this->pagosAplicadosSinCreditoAutomatico(
+            $facturas, $costosPorPeriodo, (string) $usuario->proximo_pago
+        );
         $pendiente = round(max(0.0, $monto + ($tarifa * $mesesPosteriores) - $pagado), 2);
         $recargo = 0.0;
         if ($pendiente > 0.01) {
