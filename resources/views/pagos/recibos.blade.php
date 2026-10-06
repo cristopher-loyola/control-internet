@@ -150,6 +150,9 @@
                         :value="moneda(totales.prepay_total || 0)">
                     <p class="text-[11px]" :class="prepayError ? 'text-red-600' : 'text-gray-500'" x-text="prepayLegend"></p>
                 </div>
+                <p x-show="reanudaBaja && form.otro === 'no'" x-cloak class="text-sm text-indigo-700 col-span-2">
+                    Al pagar se termina la baja temporal y se cobra la mensualidad de este mes. Su siguiente mensualidad corresponde al mes siguiente.
+                </p>
                 <div x-show="form.otro==='baja_temporal'" x-cloak>
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Meses baja (1–6)</label>
                     <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
@@ -162,6 +165,9 @@
                         <option value="6">6</option>
                     </select>
                 </div>
+                <p x-show="form.otro === 'baja_temporal' && prepayActivo" class="text-sm text-green-700 col-span-2">
+                    La baja temporal iniciará el mes siguiente a <strong x-text="prepayHastaLabel"></strong>, cuando termine el adelanto. Desde entonces se contarán los meses elegidos.
+                </p>
                 <div x-show="form.otro==='cancelacion'" x-cloak class="col-span-2">
                     <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Motivo de cancelación</label>
                     <input type="text" maxlength="200" placeholder="Motivo..."
@@ -1426,7 +1432,9 @@
                     }
                     const adeudoPendiente = Number(this.adeudoCobro || (this.adeudo && this.adeudo.pendiente ? Number(this.adeudo.pendiente) : 0) || 0);
                     const adeudoBase = this.adeudo ? Math.max(0, adeudoPendiente - recargoSrv) : adeudoPendiente;
-                    total = Math.round((adeudoBase + this.totales.prepay_total + rec) * 100) / 100;
+                    total = Math.round(((this.reanudaBaja ? this.mensualidadReanudacion : adeudoBase) + this.totales.prepay_total + rec) * 100) / 100;
+                } else if (this.reanudaBaja) {
+                    total = Math.round((this.mensualidadReanudacion + rec) * 100) / 100;
                 } else if (this.alCorriente) {
                     total = 0;
                 } else {
@@ -1474,7 +1482,10 @@
                 this.otroError = '';
                 this.inputChanged();
             },
+            reanudaBaja: false,
+            mensualidadReanudacion: 0,
             async fetchAdeudo(){
+                this.reanudaBaja = false;
                 this.adeudo = null;
                 this.alCorriente = false;
                 this.descripcionManual = '';
@@ -1484,6 +1495,8 @@
                     const r = await fetch('{{ route('pagos.recibos.deuda') }}?numero='+encodeURIComponent(numero), { headers:{'Accept':'application/json'} });
                     const j = await r.json();
                     if(r.ok && j?.ok){
+                        this.reanudaBaja = !!j.puede_reanudar_baja;
+                        this.mensualidadReanudacion = Number(j.mensualidad_reanudacion || 0);
                         const m = j.pendiente||0;
                         const meses = j.meses_adeudo||0;
                         const serverRecargo = Number(j.recargo||0);
@@ -1611,7 +1624,7 @@
                 return true;
             },
             openConfirm(type = 'receipt'){ 
-                if(this.prepayActivo && !this.ref?.id){
+                if(this.prepayActivo && this.form.otro !== 'baja_temporal' && !this.ref?.id){
                     this.error = 'Pago adelantado vigente. No se puede generar un nuevo pago.';
                     return;
                 }
@@ -1666,7 +1679,7 @@
                 if(this.isSaving) return;
                 this.isSaving = true;
                 try {
-                    if (this.prepayActivo && !this.ref?.id) {
+                    if (this.prepayActivo && this.form.otro !== 'baja_temporal' && !this.ref?.id) {
                         this.error = 'Pago adelantado vigente. No se puede generar un nuevo pago.';
                         return;
                     }

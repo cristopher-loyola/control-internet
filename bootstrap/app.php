@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->prepend(\Illuminate\Http\Middleware\HandleCors::class);
+        $middleware->web(append: [\App\Http\Middleware\ActivarBajasTemporales::class]);
 
         $middleware->alias([
             'role'     => EnsureUserHasRole::class,

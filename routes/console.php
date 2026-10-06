@@ -104,6 +104,12 @@ Artisan::command('usuarios:backfill-baja-temporal {--dry-run : Solo muestra los 
 
 // Tareas programadas (Schedule)
 use Illuminate\Support\Facades\Schedule;
+
+Artisan::command('usuarios:activar-bajas-temporales', function () {
+    app(\App\Services\BajaTemporalService::class)->activarProgramadas();
+})->purpose('Activa las bajas temporales al terminar el adelanto');
+
+Schedule::command('usuarios:activar-bajas-temporales')->dailyAt('00:01');
 use Illuminate\Console\Scheduling\CallbackEvent;
 
 // Limpia backups antiguos cada 15 dias

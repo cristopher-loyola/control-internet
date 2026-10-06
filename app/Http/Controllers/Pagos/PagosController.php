@@ -376,7 +376,7 @@ class PagosController extends Controller
         if ($month !== null && ! preg_match('/^\d{4}\-\d{2}$/', (string) $month)) {
             $month = null;
         }
-        $res = $service->calcularAdeudoUsuario($numero, $month);
+        $res = array_merge($service->calcularAdeudoUsuario($numero, $month), app(\App\Services\BajaTemporalService::class)->informacionReanudacion($numero));
         if (! ($res['ok'] ?? false)) {
             return response()->json($res, 404);
         }
@@ -783,8 +783,14 @@ thead th{ background:#2e7d32; color:#fff; }
             $tienePendiente = ($adeudo['pendiente'] ?? 0) > 0.01;
             $estatusPagadoId = \App\Models\EstatusServicio::whereRaw('LOWER(nombre) = ?', ['pagado'])->value('id') ?? 1;
             $estatusPendienteId = \App\Models\EstatusServicio::whereRaw('LOWER(nombre) = ?', ['pendiente de pago'])->value('id') ?? 4;
+            $restaurarBaja = ! empty($payload['reanuda_baja_temporal'])
+                && $f->id > $limiteAjuste
+                && ($payload['proximo_pago_previo'] ?? '') > now()->format('Y-m')
+                && ! Factura::where('numero_servicio', $f->numero_servicio)->where('id', '>', $f->id)->exists();
             Usuario::where('numero_servicio', $f->numero_servicio)
-                ->update(['estatus_servicio_id' => $tienePendiente ? $estatusPendienteId : $estatusPagadoId]);
+                ->update(['estatus_servicio_id' => $restaurarBaja
+                    ? $payload['estatus_servicio_previo']
+                    : ($tienePendiente ? $estatusPendienteId : $estatusPagadoId)]);
         }
 
         return back()->with('status', 'Recibo cancelado correctamente.');

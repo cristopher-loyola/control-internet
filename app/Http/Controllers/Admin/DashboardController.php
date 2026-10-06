@@ -147,7 +147,12 @@ class DashboardController extends Controller
 
         $usuarios = Usuario::with(['estado', 'estatusServicio'])
             ->when($bajaId > 0, function ($q) use ($bajaId) {
-                $q->where('estatus_servicio_id', $bajaId);
+                $q->where(function ($q) use ($bajaId) {
+                    $q->where('estatus_servicio_id', $bajaId)
+                        ->orWhereIn('numero_servicio', Factura::select('numero_servicio')
+                            ->where('payload->otro', 'baja_temporal')
+                            ->where('payload->baja_temporal_programada', true));
+                });
             }, function ($q) {
                 $q->whereRaw('1 = 0');
             })
@@ -156,6 +161,7 @@ class DashboardController extends Controller
 
         $numeros = $usuarios->getCollection()->pluck('numero_servicio')->filter()->map(fn ($n) => (string) $n)->values()->all();
         $hastaMap = [];
+        $desdeMap = [];
         if (! empty($numeros)) {
             $facturas = Factura::whereNull('deleted_at')
                 ->whereIn('numero_servicio', $numeros)
@@ -175,14 +181,16 @@ class DashboardController extends Controller
                     $months = 1;
                 }
                 $from = $f->created_at ? Carbon::parse($f->created_at) : null;
-                $hasta = $from ? $from->copy()->addMonths($months)->toDateString() : null;
+                $hasta = $payload['baja_temporal_hasta'] ?? ($from ? $from->copy()->addMonths($months)->toDateString() : null);
                 $hastaMap[$num] = $hasta;
+                $desdeMap[$num] = $payload['baja_temporal_desde'] ?? null;
             }
         }
 
-        $usuarios->getCollection()->transform(function ($u) use ($hastaMap) {
+        $usuarios->getCollection()->transform(function ($u) use ($hastaMap, $desdeMap) {
             $num = (string) ($u->numero_servicio ?? '');
             $u->baja_temporal_hasta = $hastaMap[$num] ?? null;
+            $u->baja_temporal_desde = $desdeMap[$num] ?? null;
 
             return $u;
         });

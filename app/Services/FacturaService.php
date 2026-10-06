@@ -22,6 +22,18 @@ class FacturaService
     {
         return DB::transaction(function () use ($request) {
             $datos = $this->extraerDatosBase($request);
+            unset($datos['payload']['reanuda_baja_temporal']);
+            $usuario = Usuario::where('numero_servicio', $datos['numero'])->lockForUpdate()->first();
+            $reanuda = in_array($datos['tipo'], ['normal', 'prepay'])
+                && empty($datos['payload']['es_adeudo_manual'])
+                && app(BajaTemporalService::class)->permiteReanudar($usuario);
+            if ($reanuda) {
+                $datos['facturaLimite'] = max($datos['facturaLimite'], (int) Factura::where('numero_servicio', $datos['numero'])->where('payload->otro', 'baja_temporal')->max('id'));
+                $datos['periodo'] = now()->format('Y-m');
+                $datos['payload']['reanuda_baja_temporal'] = true;
+                $datos['payload']['mes_siguiente'] = false;
+                $datos['payload']['periodo_override'] = $datos['periodo'];
+            }
 
             // 1. Validar prepay vigente
             if ($error = $this->validarPrepayVigente($datos)) {
@@ -52,6 +64,9 @@ class FacturaService
                 return ['ok' => false, 'message' => $e->getMessage(), 'code' => 422];
             }
 
+            if ($reanuda && $total <= 0) {
+                return ['ok' => false, 'message' => 'Registra un pago mayor a cero para reanudar el servicio.', 'code' => 422];
+            }
             // 5. Validar duplicados
             if ($duplicado = $this->buscarDuplicado($datos, $payload, $total)) {
                 return $this->retornarDuplicado($duplicado, $datos);
@@ -224,6 +239,9 @@ class FacturaService
         $descuento = round((float) ($datos['payload']['descuento'] ?? 0), 2);
         $total = round(max(0, $adeudoPendiente + $bajaTotal - $descuento), 2);
 
+        $inicio = app(BajaTemporalService::class)->inicio((string) $datos['numero']);
+        $fin = $inicio->copy()->addMonths($months);
+
         $payload = array_merge($datos['payload'], [
             'mensualidad' => $mensualidad,
             'otro' => 'baja_temporal',
@@ -234,6 +252,9 @@ class FacturaService
             'adeudo_pendiente' => $adeudoPendiente,
             'baja_temporal_months' => $months,
             'baja_temporal_total' => $bajaTotal,
+            'baja_temporal_desde' => $inicio->toDateString(),
+            'baja_temporal_hasta' => $fin->toDateString(),
+            'baja_temporal_programada' => $inicio->gt(now()),
             'adeudo_prev' => $adeudoPendiente,
             'adeudo_nuevo' => round($adeudoPendiente + $bajaTotal, 2),
         ]);
@@ -278,6 +299,13 @@ class FacturaService
      */
     private function procesarPagoNormal(array $datos): array
     {
+        if (! empty($datos['payload']['reanuda_baja_temporal'])) {
+            $mensualidad = $this->obtenerMensualidad($datos['usuarioId'], $datos['numero'], $datos['payload']);
+            $payload = array_merge($datos['payload'], ['mensualidad' => $mensualidad]);
+            $recargo = ($payload['recargo'] ?? 'no') === 'si' ? 50 : 0;
+            $adelanto = $datos['tipo'] === 'prepay' ? (float) ($payload['prepay_total'] ?? 0) : 0;
+            return ['error' => false, 'total' => round(max(0, $mensualidad + $recargo + $adelanto - (float) ($payload['descuento'] ?? 0)), 2), 'payload' => $payload];
+        }
         return [
             'error' => false,
             'total' => round((float) ($datos['request']->input('total', 0)), 2),
@@ -626,17 +654,20 @@ class FacturaService
         // diga "Baja temporal".
         $payload = is_array($factura->payload) ? $factura->payload : (is_string($factura->payload) ? @json_decode($factura->payload, true) : []);
         $months = (int) ($payload['baja_temporal_months'] ?? 0);
-        $proximoPago = $months > 0 ? now()->addMonths($months)->format('Y-m') : $usuario->proximo_pago;
+        $proximoPago = ! empty($payload['baja_temporal_hasta'])
+            ? Carbon::parse($payload['baja_temporal_hasta'])->format('Y-m')
+            : ($months > 0 ? now()->startOfMonth()->addMonths($months)->format('Y-m') : $usuario->proximo_pago);
+        $estatusId = ! empty($payload['baja_temporal_programada']) ? $usuario->estatus_servicio_id : $baja->id;
 
         $usuario->update([
-            'estatus_servicio_id' => $baja->id,
+            'estatus_servicio_id' => $estatusId,
             'adeudo_monto' => 0,
             'adeudo_descripcion' => null,
             'proximo_pago' => $proximoPago,
         ]);
 
         $this->logAuditoria('usuario_baja_temporal', 'usuarios', $usuario->id, $prev, [
-            'estatus_servicio_id' => $baja->id,
+            'estatus_servicio_id' => $estatusId,
             'adeudo_monto' => 0,
             'adeudo_descripcion' => null,
             'proximo_pago' => $proximoPago,
@@ -662,6 +693,20 @@ class FacturaService
         $esAdeudoManual = !empty($payload['es_adeudo_manual']);
         $esPrepay = !empty($payload['prepay']) && ($payload['prepay'] === 'si' || $payload['prepay'] === true);
         $esEdicionManual = !empty($payload['manual_total_enabled']);
+        if (! empty($payload['reanuda_baja_temporal'])) {
+            $prev = ['estatus_servicio_id' => $usuario->estatus_servicio_id, 'proximo_pago' => $usuario->proximo_pago];
+            $payload['proximo_pago_previo'] = $usuario->proximo_pago;
+            $payload['proximo_pago_monto_previo'] = $usuario->proximo_pago_monto;
+            $payload['estatus_servicio_previo'] = $usuario->estatus_servicio_id;
+            $factura->payload = $payload;
+            $factura->saveQuietly();
+            $usuario->proximo_pago = now()->startOfMonth()->addMonth()->format('Y-m');
+            $usuario->proximo_pago_monto = null;
+            $usuario->save();
+            $this->logAuditoria('usuario_reanuda_baja_temporal', 'usuarios', $usuario->id, $prev, [
+                'proximo_pago' => $usuario->proximo_pago, 'factura_id' => $factura->id,
+            ]);
+        }
         $esAjusteProximoPago = $usuario->proximo_pago_monto !== null
             && !empty($factura->periodo)
             && (string) ($usuario->proximo_pago ?? '') === (string) $factura->periodo;

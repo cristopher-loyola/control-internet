@@ -53,6 +53,9 @@
                                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200">
                                             {{ optional($u->estatusServicio)->nombre }}
                                         </span>
+                                        @if($u->baja_temporal_desde)
+                                            <div class="text-xs mt-1">{{ $u->baja_temporal_desde > now()->toDateString() ? 'Baja programada desde' : 'Baja desde' }} {{ $u->baja_temporal_desde }}</div>
+                                        @endif
                                     </td>
                                     <td class="px-4 py-3">
                                         <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200">
