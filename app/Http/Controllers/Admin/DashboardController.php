@@ -1318,12 +1318,18 @@ class DashboardController extends Controller
 
         $rows = [];
         $cancelacionesRows = [];
+        // Las transferencias por lote pueden guardar solo el número de servicio.
+        $nombresClientes = Usuario::whereIn('numero_servicio', $ventas->pluck('numero_servicio')->filter()->unique())
+            ->pluck('nombre_cliente', 'numero_servicio');
         $totalSum = 0.0;       // todos los métodos (para porcentajes y total del desglose)
-        $totalRayon = 0.0;     // efectivo, tarjeta y cheque (lo que se lista en el bloque de Rayón)
+        $totalRayon = 0.0;     // pagos listados en Rayón, sin cancelaciones
         $metodosData = [];
         foreach ($ventas as $v) {
             $p = is_array($v->payload) ? $v->payload : (is_string($v->payload) ? @json_decode($v->payload, true) : []);
-            $nombre = $p['nombre'] ?? '';
+            $nombre = trim((string) ($p['nombre'] ?? ''));
+            if ($nombre === '') {
+                $nombre = $nombresClientes->get($v->numero_servicio, 'Sin nombre registrado');
+            }
             $metodo = $p['metodo'] ?? 'Efectivo';
             if (empty($metodo) || strtolower($metodo) === 'desconocido') {
                 $metodo = 'Efectivo';
@@ -1339,9 +1345,8 @@ class DashboardController extends Controller
                     (string) $v->numero_servicio,
                 ];
             }
-            // El detalle de Rayón lista efectivo, tarjeta y cheque. Los demás métodos
-            // siguen contándose en el desglose por método y en su total.
-            if (! $esCancelacion && in_array($metodo, ['Efectivo', 'Tarjeta de Crédito', 'Cheque'], true)) {
+            // Incluir también las transferencias en el detalle de Rayón.
+            if (! $esCancelacion && in_array($metodo, ['Efectivo', 'Deposito a cuenta', 'Tarjeta de Crédito', 'Cheque'], true)) {
                 $totalRayon += $monto;
                 $rows[] = [
                     'Venta',
@@ -1349,7 +1354,13 @@ class DashboardController extends Controller
                     number_format($monto, 2, '.', ''),
                     $nombre,
                     (string) $v->numero_servicio,
-                    $metodo === 'Tarjeta de Crédito' ? 'card' : ($metodo === 'Cheque' ? 'check' : ''),
+                    $metodo === 'Deposito a cuenta' ? 'Transferencia (depósito a cuenta)' : $metodo,
+                    match ($metodo) {
+                        'Tarjeta de Crédito' => 'card',
+                        'Cheque' => 'check',
+                        'Deposito a cuenta' => 'transfer',
+                        default => '',
+                    },
                 ];
             }
 
@@ -1391,11 +1402,11 @@ class DashboardController extends Controller
                 fputcsv($out, [$title]);
                 fputcsv($out, []);
                 fputcsv($out, ['RAYÓN']);
-                fputcsv($out, ['Tipo', 'Fecha', 'Monto', 'Nombre', 'Detalle']);
+                fputcsv($out, ['Tipo', 'Fecha', 'Monto', 'Nombre', 'Detalle', 'Método de pago']);
                 foreach ($rows as $r) {
-                    fputcsv($out, array_slice($r, 0, 5));
+                    fputcsv($out, array_slice($r, 0, 6));
                 }
-                fputcsv($out, ['', '', number_format($totalRayon, 2, '.', ''), 'TOTAL', '']);
+                fputcsv($out, ['', '', number_format($totalRayon, 2, '.', ''), 'TOTAL', '', '']);
                 fputcsv($out, []);
                 fputcsv($out, ['CANCELACIONES']);
                 fputcsv($out, ['Fecha', 'Monto', 'Nombre', 'Servicio']);
@@ -1454,6 +1465,7 @@ class DashboardController extends Controller
                 .total-row{ background:#0f766e; color:#fff; font-weight:bold; }
                 .card-row{ background:#bfdbfe; color:#1d4ed8; }
                 .check-row{ background:#fed7aa; color:#c2410c; }
+                .transfer-row{ background:#86efac; color:#14532d; }
                 .wrapper{ border-collapse:separate; border:none; margin-bottom:0; }
                 .wrapper td{ border:1px solid #000; padding:0 20px 0 0; vertical-align:top; }
                 .granL{ background:#111827; color:#fff; font-weight:bold; }
@@ -1466,27 +1478,28 @@ class DashboardController extends Controller
                 // Primera tabla: Detalle de ventas (izquierda)
                 echo '<table>';
                 echo '<thead>';
-                echo '<tr><th colspan="5" class="hdr">RAYÓN</th></tr>';
+                echo '<tr><th colspan="6" class="hdr">RAYÓN</th></tr>';
                 echo '<tr>';
-                echo '<th class="hdr">Tipo</th><th class="hdr">Fecha</th><th class="hdr">Monto</th><th class="hdr">Nombre</th><th class="hdr">Detalle</th>';
+                echo '<th class="hdr">Tipo</th><th class="hdr">Fecha</th><th class="hdr">Monto</th><th class="hdr">Nombre</th><th class="hdr">Detalle</th><th class="hdr">Método de pago</th>';
                 echo '</tr>';
                 echo '</thead>';
                 echo '<tbody>';
                 foreach ($rows as $r) {
-                    $rowClass = $r[5] === 'card' ? 'card-row' : ($r[5] === 'check' ? 'check-row' : '');
+                    $rowClass = match ($r[6]) {
+                        'card' => 'card-row',
+                        'check' => 'check-row',
+                        'transfer' => 'transfer-row',
+                        default => '',
+                    };
                     echo $rowClass !== '' ? '<tr class="'.$rowClass.'">' : '<tr>';
                     echo '<td>'.htmlspecialchars($r[0]).'</td>';
                     echo '<td>'.htmlspecialchars($r[1]).'</td>';
                     echo '<td class="money">'.htmlspecialchars($r[2]).'</td>';
                     echo '<td>'.htmlspecialchars($r[3]).'</td>';
                     echo '<td>'.htmlspecialchars($r[4]).'</td>';
+                    echo '<td>'.htmlspecialchars($r[5]).'</td>';
                     echo '</tr>';
                 }
-                echo '<tr class="total-row">';
-                echo '<td colspan="2">TOTAL</td>';
-                echo '<td class="money">'.htmlspecialchars(number_format($totalRayon, 2, '.', '')).'</td>';
-                echo '<td colspan="2">'.count($rows).' cobros</td>';
-                echo '</tr>';
                 echo '</tbody>';
                 echo '</table>';
 
@@ -1593,11 +1606,11 @@ class DashboardController extends Controller
         </style></head><body>';
         $html .= '<h3>'.htmlspecialchars($title).'</h3>';
         $html .= '<h4>DETALLE DE VENTAS</h4>';
-        $html .= '<table><thead><tr><th>Tipo</th><th>Fecha</th><th>Monto</th><th>Nombre</th><th>Detalle</th></tr></thead><tbody>';
+        $html .= '<table><thead><tr><th>Tipo</th><th>Fecha</th><th>Monto</th><th>Nombre</th><th>Detalle</th><th>Método de pago</th></tr></thead><tbody>';
         foreach ($rows as $r) {
-            $html .= '<tr><td>'.htmlspecialchars($r[0]).'</td><td>'.htmlspecialchars($r[1]).'</td><td class="money">$'.htmlspecialchars($r[2]).'</td><td>'.htmlspecialchars($r[3]).'</td><td>'.htmlspecialchars($r[4]).'</td></tr>';
+            $html .= '<tr><td>'.htmlspecialchars($r[0]).'</td><td>'.htmlspecialchars($r[1]).'</td><td class="money">$'.htmlspecialchars($r[2]).'</td><td>'.htmlspecialchars($r[3]).'</td><td>'.htmlspecialchars($r[4]).'</td><td>'.htmlspecialchars($r[5]).'</td></tr>';
         }
-        $html .= '</tbody><tfoot><tr><td></td><td>TOTAL</td><td class="money">$'.htmlspecialchars(number_format($totalSum, 2, '.', '')).'</td><td colspan="2"></td></tr></tfoot></table>';
+        $html .= '</tbody><tfoot><tr><td></td><td>TOTAL</td><td class="money">$'.htmlspecialchars(number_format($totalRayon, 2, '.', '')).'</td><td colspan="3">'.count($rows).' cobros</td></tr></tfoot></table>';
 
         if (! empty($metodosRows)) {
             $html .= '<br><h4>DESGLOSE POR MÉTODO DE PAGO</h4>';
