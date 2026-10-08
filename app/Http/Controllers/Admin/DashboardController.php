@@ -1261,7 +1261,14 @@ class DashboardController extends Controller
             'pozo_hondo' => ['nombre' => 'POZO HONDO',  'color' => '#7c3aed'],
             'chivato'    => ['nombre' => 'CHIVATO',     'color' => '#ea580c'],
         ];
-        $ventasZona = Factura::whereNull('deleted_at')
+        $cortesZona = $period === 'month'
+            ? CorteCaja::with('facturas')
+                ->whereIn('zona', array_keys($zonasDef))
+                ->where('estado', 'cerrado')
+                ->whereBetween('fecha_fin', [$range['from'], $range['to']])
+                ->orderBy('fecha_fin')->orderBy('id')->get()
+            : collect();
+        $ventasZona = $period === 'month' ? collect() : Factura::whereNull('deleted_at')
             ->whereBetween(DB::raw(Factura::FECHA_REPORTE_SQL), [$range['from'], $range['to']])
             ->whereHas('cajero', function ($q) use ($zonasDef) {
                 $q->whereIn('role', array_keys($zonasDef));
@@ -1272,7 +1279,12 @@ class DashboardController extends Controller
 
         $zonas = [];
         foreach ($zonasDef as $rol => $def) {
-            $delZona = $ventasZona->filter(fn ($v) => optional($v->cajero)->role === $rol);
+            // En el mensual, cada corte se incluye completo en el mes de cierre.
+            // Los cortes activos y los pagos sin corte cerrado quedan fuera.
+            $cortesDeZona = $cortesZona->where('zona', $rol);
+            $delZona = $period === 'month'
+                ? $cortesDeZona->flatMap(fn ($corte) => $corte->facturas->sortBy('numero_servicio', SORT_NUMERIC))
+                : $ventasZona->filter(fn ($v) => optional($v->cajero)->role === $rol);
             $filas = [];
             $suma = 0.0;
             foreach ($delZona as $v) {
@@ -1298,6 +1310,8 @@ class DashboardController extends Controller
                 'rows'   => $filas,
                 'total'  => $suma,
                 'count'  => count($filas),
+                'cortes' => $cortesDeZona->map(fn ($corte) => 'Inicio: '.$corte->fecha_inicio?->format('d/m/Y H:i')
+                    .' | Cierre: '.$corte->fecha_fin?->format('d/m/Y H:i'))->all(),
             ];
         }
         $totalZonas = array_sum(array_column($zonas, 'total'));
@@ -1386,6 +1400,9 @@ class DashboardController extends Controller
                 foreach ($zonas as $z) {
                     fputcsv($out, []);
                     fputcsv($out, [$z['nombre']]);
+                    foreach ($z['cortes'] as $corteInfo) {
+                        fputcsv($out, [$corteInfo]);
+                    }
                     fputcsv($out, ['Fecha', 'Monto', 'Nombre', 'Detalle']);
                     foreach ($z['rows'] as $r) {
                         fputcsv($out, $r);
@@ -1505,6 +1522,9 @@ class DashboardController extends Controller
                     }
                     echo '</tr>';
                     echo '</thead><tbody>';
+                    foreach ($z['cortes'] as $corteInfo) {
+                        echo '<tr><td colspan="4">'.htmlspecialchars($corteInfo).'</td></tr>';
+                    }
                     foreach ($z['rows'] as $r) {
                         echo '<tr>';
                         echo '<td>'.htmlspecialchars($r[0]).'</td>';
@@ -1571,6 +1591,9 @@ class DashboardController extends Controller
                 $html .= '<th style="background:'.$z['color'].'">'.$h.'</th>';
             }
             $html .= '</tr></thead><tbody>';
+            foreach ($z['cortes'] as $corteInfo) {
+                $html .= '<tr><td colspan="4">'.htmlspecialchars($corteInfo).'</td></tr>';
+            }
             foreach ($z['rows'] as $r) {
                 $html .= '<tr><td>'.htmlspecialchars($r[0]).'</td><td class="money">$'.htmlspecialchars($r[1]).'</td><td>'.htmlspecialchars($r[2]).'</td><td>'.htmlspecialchars($r[3]).'</td></tr>';
             }
