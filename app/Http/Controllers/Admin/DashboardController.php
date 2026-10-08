@@ -1317,6 +1317,7 @@ class DashboardController extends Controller
         $totalZonas = array_sum(array_column($zonas, 'total'));
 
         $rows = [];
+        $cancelacionesRows = [];
         $totalSum = 0.0;       // todos los métodos (para porcentajes y total del desglose)
         $totalRayon = 0.0;     // efectivo, tarjeta y cheque (lo que se lista en el bloque de Rayón)
         $metodosData = [];
@@ -1329,9 +1330,18 @@ class DashboardController extends Controller
             }
             $monto = round((float) $v->total, 2);
             $totalSum += $monto;
+            $esCancelacion = ($p['otro'] ?? null) === 'cancelacion';
+            if ($esCancelacion) {
+                $cancelacionesRows[] = [
+                    optional($v->created_at)->format('Y-m-d H:i'),
+                    number_format($monto, 2, '.', ''),
+                    $nombre,
+                    (string) $v->numero_servicio,
+                ];
+            }
             // El detalle de Rayón lista efectivo, tarjeta y cheque. Los demás métodos
             // siguen contándose en el desglose por método y en su total.
-            if (in_array($metodo, ['Efectivo', 'Tarjeta de Crédito', 'Cheque'], true)) {
+            if (! $esCancelacion && in_array($metodo, ['Efectivo', 'Tarjeta de Crédito', 'Cheque'], true)) {
                 $totalRayon += $monto;
                 $rows[] = [
                     'Venta',
@@ -1375,7 +1385,7 @@ class DashboardController extends Controller
                 'Content-Type' => 'text/csv; charset=UTF-8',
                 'Content-Disposition' => 'attachment; filename="'.$fileBase.'.csv"',
             ];
-            $callback = function () use ($rows, $title, $totalRayon, $metodosRows, $zonas, $totalZonas) {
+            $callback = function () use ($rows, $title, $totalRayon, $metodosRows, $zonas, $totalZonas, $cancelacionesRows) {
                 echo "\xEF\xBB\xBF";
                 $out = fopen('php://output', 'w');
                 fputcsv($out, [$title]);
@@ -1386,6 +1396,12 @@ class DashboardController extends Controller
                     fputcsv($out, array_slice($r, 0, 5));
                 }
                 fputcsv($out, ['', '', number_format($totalRayon, 2, '.', ''), 'TOTAL', '']);
+                fputcsv($out, []);
+                fputcsv($out, ['CANCELACIONES']);
+                fputcsv($out, ['Fecha', 'Monto', 'Nombre', 'Servicio']);
+                foreach ($cancelacionesRows as $r) {
+                    fputcsv($out, $r);
+                }
 
                 if (! empty($metodosRows)) {
                     fputcsv($out, []);
@@ -1428,7 +1444,7 @@ class DashboardController extends Controller
                 'Content-Disposition' => 'attachment; filename="'.$fileBase.'.xls"',
                 'Cache-Control' => 'max-age=0',
             ];
-            $callback = function () use ($rows, $title, $totalRayon, $metodosRows, $zonas, $totalZonas) {
+            $callback = function () use ($rows, $title, $totalRayon, $metodosRows, $zonas, $totalZonas, $cancelacionesRows) {
                 echo "\xEF\xBB\xBF";
                 echo '<html><head><meta charset="utf-8"><style>
                 table{ border-collapse:collapse; margin-bottom: 20px; }
@@ -1509,6 +1525,16 @@ class DashboardController extends Controller
                     echo '</table>';
                 }
 
+                echo '<table><thead><tr><th colspan="4" style="background:#dc2626;color:#fff;font-weight:bold;text-align:center">CANCELACIONES</th></tr>';
+                echo '<tr><th>Fecha</th><th>Monto</th><th>Nombre</th><th>Servicio</th></tr></thead><tbody>';
+                foreach ($cancelacionesRows as $r) {
+                    echo '<tr><td>'.htmlspecialchars($r[0]).'</td><td class="money">'.htmlspecialchars($r[1]).'</td><td>'.htmlspecialchars($r[2]).'</td><td>'.htmlspecialchars($r[3]).'</td></tr>';
+                }
+                if (empty($cancelacionesRows)) {
+                    echo '<tr><td colspan="4">Sin cancelaciones en el periodo</td></tr>';
+                }
+                echo '</tbody></table>';
+
                 // Un bloque por zona, cada uno con su color
                 foreach ($zonas as $z) {
                     echo '</td><td>';
@@ -1582,6 +1608,16 @@ class DashboardController extends Controller
             }
             $html .= '</tbody></table>';
         }
+
+        $html .= '<br><table><thead><tr><th colspan="4" style="background:#dc2626">CANCELACIONES</th></tr>';
+        $html .= '<tr><th>Fecha</th><th>Monto</th><th>Nombre</th><th>Servicio</th></tr></thead><tbody>';
+        foreach ($cancelacionesRows as $r) {
+            $html .= '<tr><td>'.htmlspecialchars($r[0]).'</td><td class="money">$'.htmlspecialchars($r[1]).'</td><td>'.htmlspecialchars($r[2]).'</td><td>'.htmlspecialchars($r[3]).'</td></tr>';
+        }
+        if (empty($cancelacionesRows)) {
+            $html .= '<tr><td colspan="4">Sin cancelaciones en el periodo</td></tr>';
+        }
+        $html .= '</tbody></table>';
 
         // Un bloque por zona, cada uno con su color
         foreach ($zonas as $z) {
