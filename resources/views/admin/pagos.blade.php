@@ -1216,11 +1216,11 @@
                     return '';
                 }
             },
-            mesFinalCobertura(meses){
+            mesSiguientePago(meses){
                 if(!meses) return '';
                 const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date();
                 d.setDate(1);
-                d.setMonth(d.getMonth() + Number(meses) - (this.prepayNextMonth ? 0 : 1));
+                d.setMonth(d.getMonth() + Number(meses) + (this.prepayNextMonth ? 1 : 0));
                 const mes = d.toLocaleDateString('es-MX', { month: 'long' });
                 const year = d.getFullYear();
                 return `${mes} de ${year}`;
@@ -2316,7 +2316,7 @@ html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact;margin:0;pad
                 const hora = this.hora();
                 const folio = this.refNumberPad();
                 const adeudoPeriodoLine = (this.adeudo && Number(this.adeudo.meses||0) > 0) ? `<div class="line"><div class="l">Período adeudo</div><div style="max-width:42mm">${this.adeudoPeriodoLabel() || '—'}</div></div>` : '';
-                const prepayLine = this.form.prepay === 'si' ? `<div class="line"><div class="l">Pago adelantado</div><div>${this.moneda(this.totales.prepay_total || 0)}</div></div><div class="line"><div class="l">Meses adelantados</div><div>${this.form.prepay_months} (hasta ${this.mesFinalCobertura(this.form.prepay_months)})</div></div><div class="sep"></div>` : '';
+                const prepayLine = this.form.prepay === 'si' ? `<div class="line"><div class="l">Pago adelantado</div><div>${this.moneda(this.totales.prepay_total || 0)}</div></div><div class="line"><div class="l">Meses adelantados</div><div>${this.form.prepay_months}</div></div><div class="line"><div class="l">Siguiente pago</div><div>${this.mesSiguientePago(this.form.prepay_months)}</div></div><div class="sep"></div>` : '';
                 const discountLine = this.appliedDiscount > 0 ? `<div class="line"><div class="l">Descuento</div><div>${this.moneda(this.appliedDiscount)}</div></div>` : '';
                 const html = `
 <!doctype html>

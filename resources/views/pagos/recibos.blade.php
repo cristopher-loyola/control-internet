@@ -513,7 +513,8 @@
                                 <div class="hidden" x-show="adeudoCobro > 0">Adeudo pendiente</div><div class="hidden" x-show="adeudoCobro > 0" x-text="moneda(adeudoCobro)"></div>
                                 <div class="hidden" x-show="adeudo && Number(adeudo.meses||0) > 0">Período adeudo</div><div class="hidden" x-show="adeudo && Number(adeudo.meses||0) > 0" x-text="adeudoPeriodoLabel() || '—'"></div>
                                 <div class="hidden" x-show="form.prepay==='si'">Total adelanto</div><div class="hidden" x-show="form.prepay==='si'" x-text="moneda(totales.prepay_total || 0)"></div>
-                                <div class="hidden" x-show="form.prepay==='si'">Meses adelantados</div><div class="hidden" x-show="form.prepay==='si'" x-text="`${form.prepay_months} (hasta ${mesFinalCobertura(form.prepay_months)})` || '-'"></div>
+                                <div class="hidden" x-show="form.prepay==='si'">Meses adelantados</div><div class="hidden" x-show="form.prepay==='si'" x-text="form.prepay_months || '-'"></div>
+                                <div class="hidden" x-show="form.prepay==='si'">Siguiente pago</div><div class="hidden" x-show="form.prepay==='si'" x-text="mesSiguientePago(form.prepay_months) || '-'"></div>
                                 <div class="hidden">Su pago anterior</div><div class="hidden" x-text="moneda(form.pago_anterior || 0)"></div>
                                 <div class="hidden">Fecha de pago anterior</div><div class="hidden" x-text="pagoAnteriorFecha || '—'"></div>
                                 <div>Total a pagar en número</div><div x-text="moneda(totales.total)"></div>
@@ -554,7 +555,8 @@
                                 <div class="hidden" x-show="adeudoCobro > 0">Adeudo pendiente</div><div class="hidden" x-show="adeudoCobro > 0" x-text="moneda(adeudoCobro)"></div>
                                 <div class="hidden" x-show="adeudo && Number(adeudo.meses||0) > 0">Período adeudo</div><div class="hidden" x-show="adeudo && Number(adeudo.meses||0) > 0" x-text="adeudoPeriodoLabel() || '—'"></div>
                                 <div class="hidden" x-show="form.prepay==='si'">Total adelanto</div><div class="hidden" x-show="form.prepay==='si'" x-text="moneda(totales.prepay_total || 0)"></div>
-                                <div class="hidden" x-show="form.prepay==='si'">Meses adelantados</div><div class="hidden" x-show="form.prepay==='si'" x-text="`${form.prepay_months} (hasta ${mesFinalCobertura(form.prepay_months)})` || '-'"></div>
+                                <div class="hidden" x-show="form.prepay==='si'">Meses adelantados</div><div class="hidden" x-show="form.prepay==='si'" x-text="form.prepay_months || '-'"></div>
+                                <div class="hidden" x-show="form.prepay==='si'">Siguiente pago</div><div class="hidden" x-show="form.prepay==='si'" x-text="mesSiguientePago(form.prepay_months) || '-'"></div>
                                 <div class="hidden">Su pago anterior</div><div class="hidden" x-text="moneda(form.pago_anterior || 0)"></div>
                                 <div class="hidden">Fecha de pago anterior</div><div class="hidden" x-text="pagoAnteriorFecha || '—'"></div>
                                 <div>Total a pagar en número</div><div x-text="moneda(totales.total)"></div>
@@ -1114,11 +1116,11 @@
                     return '';
                 }
             },
-            mesFinalCobertura(meses){
+            mesSiguientePago(meses){
                 if(!meses) return '';
                 const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date();
                 d.setDate(1);
-                d.setMonth(d.getMonth() + Number(meses) - (this.prepayNextMonth ? 0 : 1));
+                d.setMonth(d.getMonth() + Number(meses) + (this.prepayNextMonth ? 1 : 0));
                 const mes = d.toLocaleDateString('es-MX', { month: 'long' });
                 const year = d.getFullYear();
                 return `${mes} de ${year}`;
@@ -1941,7 +1943,7 @@
 
                 const recargoLine = this.form.recargo === 'si' ? `<div class="line"><div class="l">Recargo</div><div>SI</div></div>` : '';
                 const adeudoPeriodoLine = (this.adeudo && Number(this.adeudo.meses||0) > 0) ? `<div class="line"><div class="l">Período adeudo</div><div style="max-width:42mm">${this.adeudoPeriodoLabel() || '—'}</div></div>` : '';
-                const prepayLine = this.form.prepay === 'si' ? `<div class="line"><div class="l">Pago adelantado</div><div>${this.moneda(this.totales.prepay_total || 0)}</div></div><div class="line"><div class="l">Meses adelantados</div><div>${this.form.prepay_months} (hasta ${this.mesFinalCobertura(this.form.prepay_months)})</div></div><div class="sep"></div>` : '';
+                const prepayLine = this.form.prepay === 'si' ? `<div class="line"><div class="l">Pago adelantado</div><div>${this.moneda(this.totales.prepay_total || 0)}</div></div><div class="line"><div class="l">Meses adelantados</div><div>${this.form.prepay_months}</div></div><div class="line"><div class="l">Siguiente pago</div><div>${this.mesSiguientePago(this.form.prepay_months)}</div></div><div class="sep"></div>` : '';
                 const discountLine = this.appliedDiscount > 0 ? `<div class="line"><div class="l">Descuento</div><div>${this.moneda(this.appliedDiscount)}</div></div>` : '';
                 const html = `
 <!doctype html>
