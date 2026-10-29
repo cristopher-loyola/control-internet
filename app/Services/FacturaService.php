@@ -394,6 +394,12 @@ class FacturaService
             'manual_label' => !empty($payload['es_adeudo_manual']) ? ($payload['label'] ?? null) : null,
         ];
 
+        if ($datos['tipo'] === 'prepay') {
+            $fingerprintData['prepay'] = true;
+            $fingerprintData['prepay_months'] = (int) ($payload['prepay_months'] ?? 0);
+            $fingerprintData['prepay_next_month'] = ($payload['prepay_next_month'] ?? false) === true;
+            $fingerprintData['prepay_total'] = (float) ($payload['prepay_total'] ?? 0);
+        }
         if ($datos['facturaLimite'] > 0) {
             $fingerprintData['ajuste_factura_id'] = $datos['facturaLimite'];
         }
@@ -527,6 +533,12 @@ class FacturaService
             'manual_label' => !empty($payload['es_adeudo_manual']) ? ($payload['label'] ?? null) : null,
         ];
 
+        if ($datos['tipo'] === 'prepay') {
+            $fingerprintData['prepay'] = true;
+            $fingerprintData['prepay_months'] = (int) ($payload['prepay_months'] ?? 0);
+            $fingerprintData['prepay_next_month'] = ($payload['prepay_next_month'] ?? false) === true;
+            $fingerprintData['prepay_total'] = (float) ($payload['prepay_total'] ?? 0);
+        }
         if ($datos['facturaLimite'] > 0) {
             $fingerprintData['ajuste_factura_id'] = $datos['facturaLimite'];
         }

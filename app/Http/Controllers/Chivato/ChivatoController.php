@@ -7,6 +7,7 @@ use App\Models\AppSetting;
 use App\Models\CorteCaja;
 use App\Models\Factura;
 use App\Models\Usuario;
+use App\Services\FacturaService;
 use App\Services\MorosidadService;
 use App\Services\PrepayDashboardService;
 use App\Services\WhatsAppNotifierService;
@@ -87,7 +88,7 @@ class ChivatoController extends Controller
 
             // Calcular comisión por reconexión (solo si se cobró recargo en el recibo)
             $recargoCobrado = isset($payload['recargo']) && $payload['recargo'] === 'si';
-            $comisionReconexion = $recargoCobrado ? 50 : 0;
+            $comisionReconexion = $f->recargoParaCorte();
 
             // Comisión por recibo cobrado ($10 por cada recibo)
             $comisionRecibo = 10;
@@ -176,11 +177,18 @@ class ChivatoController extends Controller
         if ($factura->numero_servicio) {
             $limiteAjuste = (int) Usuario::where('numero_servicio', $factura->numero_servicio)
                 ->value('proximo_pago_factura_id');
-            if ($factura->id > $limiteAjuste && !empty($payload['adeudo_monto_previo']) && (float) $payload['adeudo_monto_previo'] > 0) {
-                Usuario::where('numero_servicio', $factura->numero_servicio)->update([
-                    'adeudo_monto' => (float) $payload['adeudo_monto_previo'],
-                    'adeudo_descripcion' => $payload['adeudo_descripcion_previa'] ?? null,
-                ]);
+            $restaurar = [];
+            if (!empty($payload['adeudo_monto_previo']) && (float) $payload['adeudo_monto_previo'] > 0) {
+                $restaurar['adeudo_monto'] = (float) $payload['adeudo_monto_previo'];
+                $restaurar['adeudo_descripcion'] = $payload['adeudo_descripcion_previa'] ?? null;
+            }
+            foreach (['proximo_pago', 'proximo_pago_monto', 'proximo_pago_factura_id'] as $campo) {
+                if (array_key_exists($campo.'_previo', $payload)) {
+                    $restaurar[$campo] = $payload[$campo.'_previo'];
+                }
+            }
+            if ($factura->id > $limiteAjuste && $restaurar) {
+                Usuario::where('numero_servicio', $factura->numero_servicio)->update($restaurar);
             }
 
             $adeudo = $morosidadService->calcularAdeudoUsuario((string) $factura->numero_servicio, null);
@@ -370,7 +378,7 @@ class ChivatoController extends Controller
         ]);
     }
 
-    public function recibosFacturaStore(Request $request, MorosidadService $morosidadService, WhatsAppNotifierService $whatsapp)
+    public function recibosFacturaStore(Request $request, MorosidadService $morosidadService, WhatsAppNotifierService $whatsapp, FacturaService $facturaService)
     {
         $request->validate([
             'numero_servicio' => ['required', 'string', 'exists:usuarios,numero_servicio'],
@@ -397,7 +405,7 @@ class ChivatoController extends Controller
         // La notificación de WhatsApp se manda DESPUÉS de confirmar la transacción
         // (nunca dentro de ella): una llamada HTTP externa lenta no debe retener el
         // lock del contador de facturas, compartido por los 3 perfiles de cobro.
-        $resultado = DB::transaction(function () use ($request, $morosidadService) {
+        $resultado = DB::transaction(function () use ($request, $morosidadService, $facturaService) {
             $payloadInput = $request->input('payload', []);
             $periodoOverride = isset($payloadInput['periodo_override']) && preg_match('/^\d{4}-\d{2}$/', $payloadInput['periodo_override'])
                 ? $payloadInput['periodo_override'] : null;
@@ -410,6 +418,26 @@ class ChivatoController extends Controller
 
             // Buscar corte activo para asociar el pago
             $corteActivo = CorteCaja::obtenerActivo($zona, $user->id);
+            // El adelanto usa las mismas reglas de cobertura y saldo que administrador.
+            if (($payloadInput['prepay'] ?? 'no') === 'si' && ($payloadInput['otro'] ?? 'no') === 'no') {
+                $debiaCortarse = $morosidadService->debeSerCortadoPorNumero($numero);
+                $pago = $facturaService->crearFactura($request);
+                if (! ($pago['ok'] ?? false)) {
+                    return ['status' => $pago['code'] ?? 422, 'body' => $pago];
+                }
+                $nuevo = empty($pago['reused']);
+                if ($nuevo) {
+                    Factura::whereKey($pago['id'])->update(['corte_caja_id' => $corteActivo->id]);
+                }
+
+                return [
+                    'status' => 200,
+                    'body' => array_merge($pago, ['necesita_reactivacion' => $nuevo && $debiaCortarse]),
+                    'debia_cortarse' => $nuevo && $debiaCortarse,
+                    'numero' => $numero,
+                    'nombre' => $payloadInput['nombre'] ?? null,
+                ];
+            }
             if ($numero) {
                 $prepay = Factura::whereNull('deleted_at')
                     ->where('numero_servicio', $numero)
@@ -807,7 +835,7 @@ class ChivatoController extends Controller
 
         $totalRecaudado = $facturas->sum(function($f) {
             $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
-            $recargo = (isset($payload['recargo']) && $payload['recargo'] === 'si') ? 50 : 0;
+            $recargo = $f->recargoParaCorte();
             return $f->total - $recargo;
         });
         $totalPagos = $facturas->count();
@@ -907,7 +935,7 @@ class ChivatoController extends Controller
         $pagos = $facturas->map(function ($f) {
             $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
             $recargoCobrado = isset($payload['recargo']) && $payload['recargo'] === 'si';
-            $comisionReconexion = $recargoCobrado ? 50 : 0;
+            $comisionReconexion = $f->recargoParaCorte();
 
             return [
                 'numero_servicio' => $f->numero_servicio,
@@ -960,7 +988,7 @@ class ChivatoController extends Controller
                 'estado' => $corte->estado,
                 'total_recaudado' => $facturas->sum(function($f) {
                     $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
-                    $recargo = (isset($payload['recargo']) && $payload['recargo'] === 'si') ? 50 : 0;
+                    $recargo = $f->recargoParaCorte();
                     return $f->total - $recargo;
                 }),
                 'total_pagos' => $facturas->count(),
@@ -1051,7 +1079,7 @@ class ChivatoController extends Controller
             echo '<tr><td><strong>Total Recaudado:</strong></td><td class="money">' . number_format($facturas->sum('total'), 2, '.', '') . '</td></tr>';
             $totalRecaudado = $facturas->sum(function($f) {
                 $payload = is_array($f->payload) ? $f->payload : (is_string($f->payload) ? @json_decode($f->payload, true) : []);
-                $recargo = (isset($payload['recargo']) && $payload['recargo'] === 'si') ? 50 : 0;
+                $recargo = $f->recargoParaCorte();
                 return $f->total - $recargo;
             });
             $totalComisionRecibo = $facturas->count() * 10;
@@ -1086,7 +1114,7 @@ class ChivatoController extends Controller
                 $recargoCobrado = isset($payload['recargo']) && $payload['recargo'] === 'si';
 
                 // Mostrar el monto sin el recargo
-                $montoMostrar = $f->total - ($recargoCobrado ? 50 : 0);
+                $montoMostrar = $f->total - $f->recargoParaCorte();
 
                 echo '<tr>';
                 echo '<td class="text">' . htmlspecialchars($folio) . '</td>';

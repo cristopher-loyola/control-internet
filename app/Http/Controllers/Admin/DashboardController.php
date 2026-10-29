@@ -793,7 +793,7 @@ class DashboardController extends Controller
             $payload = is_array($pago->payload)
                 ? $pago->payload
                 : (is_string($pago->payload) ? @json_decode($pago->payload, true) : []);
-            $recargo = (($payload['recargo'] ?? null) === 'si') ? 50 : 0;
+            $recargo = (new Factura(['total' => $pago->total, 'payload' => $payload]))->recargoParaCorte();
             $pago->total_corte = max(0, (float) $pago->total - $recargo);
 
             return $pago;
@@ -813,7 +813,7 @@ class DashboardController extends Controller
                 $payload = is_array($factura->payload)
                     ? $factura->payload
                     : (is_string($factura->payload) ? @json_decode($factura->payload, true) : []);
-                $recargo = (($payload['recargo'] ?? null) === 'si') ? 50 : 0;
+                $recargo = $factura->recargoParaCorte();
 
                 return (float) $factura->total - $recargo;
             });
@@ -860,7 +860,7 @@ class DashboardController extends Controller
             $corte->total_pagos_actual = $corte->facturas->count();
             $corte->total_recaudado_actual = $corte->facturas->sum(function (Factura $factura) {
                 $payload = is_array($factura->payload) ? $factura->payload : [];
-                $recargo = (($payload['recargo'] ?? null) === 'si') ? 50 : 0;
+                $recargo = $factura->recargoParaCorte();
 
                 return (float) $factura->total - $recargo;
             });
@@ -909,7 +909,7 @@ class DashboardController extends Controller
                     'numero_servicio' => $factura->numero_servicio,
                     'nombre' => $payload['nombre'] ?? '-',
                     'fecha' => $factura->created_at?->format('d/m/Y H:i'),
-                    'total' => (float) $factura->total - (($payload['recargo'] ?? null) === 'si' ? 50 : 0),
+                    'total' => (float) $factura->total - $factura->recargoParaCorte(),
                 ];
             });
 
@@ -1293,7 +1293,7 @@ class DashboardController extends Controller
                 // $10 por cada recibo cobrado. Salen en el ticket pero no entran al
                 // corte ni al dinero entregado, así que tampoco deben sumar aquí
                 // (mismo criterio que el "TOTAL A ENTREGAR" del corte de zona).
-                $comisionReconexion = (($p['recargo'] ?? null) === 'si') ? 50 : 0;
+                $comisionReconexion = $v->recargoParaCorte();
                 $comisionRecibo = 10;
                 $monto = round((float) $v->total - $comisionReconexion - $comisionRecibo, 2);
                 $suma += $monto;

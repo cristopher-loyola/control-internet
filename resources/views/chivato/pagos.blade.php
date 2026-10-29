@@ -63,10 +63,10 @@
                                 </div>
 
                                 <div class="sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                    <div class="hidden">
+                                    <div>
                                         <label class="block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1">Pago por adelantado</label>
                                         <select class="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 shadow-sm"
-                                            x-model="form.prepay" :disabled="readOnlyMode" @change="inputChanged()">
+                                            x-model="form.prepay" :disabled="readOnlyMode" @change="onPrepayChange()">
                                             <option value="no">No</option>
                                             <option value="si">Sí</option>
                                         </select>
@@ -172,6 +172,11 @@
                                 <span>Sus pagos están al corriente</span>
                             </p>
                         </div>
+                    </div>
+
+                    <div x-show="prepayActivo" x-cloak class="mt-4 mb-4 p-4 bg-green-50 border border-green-200 rounded-lg not-print">
+                        <h3 class="text-lg font-semibold text-green-800">Pago adelantado activo</h3>
+                        <p class="text-sm text-green-700">Este cliente tiene pagado hasta <strong x-text="prepayHastaLabel"></strong>.</p>
                     </div>
 
                     <br>
@@ -538,6 +543,7 @@
             adeudoListaMeses: [],
             saldoDespues: null,
             pagadoMesActual: false,
+            alCorriente: false,
             prepayActivo: false,
             prepayNextMonth: true,
             prepayHastaLabel: '',
@@ -595,20 +601,24 @@
             },
             otroLabel(){
                 if (this.readOnlyMode && this.savedOtroLabel) return this.savedOtroLabel;
-                
+
                 let partes = [];
-                
+
                 if (this.form.otro === 'cancelacion') partes.push('Cancelación de servicio');
                 if (this.form.otro === 'baja_temporal') {
                     const m = Number(this.form.baja_temporal_months || 1);
                     partes.push(`Baja temporal (${m} ${m === 1 ? 'mes' : 'meses'})`);
+                }
+                if (this.form.prepay === 'si') {
+                    const m = Number(this.form.prepay_months || 0);
+                    partes.push(`Pago adelantado (${m} ${m === 1 ? 'mes' : 'meses'})`);
                 }
 
                 // lista_meses ya viene sin el mes en curso, así que si trae algo
                 // es que debe 2 meses o más. Si solo debe el mes actual queda
                 // vacía y no se imprime nada (el cliente lo leía como si
                 // siguiera debiendo después de pagar).
-                if (this.adeudoListaMeses && this.adeudoListaMeses.length > 0) {
+                if (!this.manualEditEnabled && this.adeudoListaMeses && this.adeudoListaMeses.length > 0) {
                     const groups = {};
                     this.adeudoListaMeses.forEach(m => {
                         const p = String(m).split(' ');
@@ -669,6 +679,15 @@
                 }catch(_){
                     return '';
                 }
+            },
+            mesSiguientePago(meses){
+                if(!meses) return '';
+                const d = this.ref.created_at ? new Date(this.ref.created_at) : new Date();
+                d.setDate(1);
+                d.setMonth(d.getMonth() + Number(meses) + (this.prepayNextMonth ? 1 : 0));
+                const mes = d.toLocaleDateString('es-MX', { month: 'long' });
+                const year = d.getFullYear();
+                return `${mes} de ${year}`;
             },
             mesFinalCobertura(meses){
                 if(!meses) return '';
@@ -842,6 +861,11 @@
                 if(this.resizing){ this.resizing=false; this.resizeKey=null; this.saveLayout(); return; }
                 this.dragging=null; this.dragRef=null; this.saveLayout();
             },
+            recargoMonto(){
+                if (this.form.recargo !== 'si') return 0;
+                const srv = Number(this.adeudo?.recargo || 0);
+                return srv > 0 ? srv : 50;
+            },
             recalcular(){
                 if(this.ref && this.ref.id) return;
                 const mensualidad = Number(this.datos.mensualidad)||0;
@@ -866,8 +890,11 @@
                             this.totales.prepay_total = Math.round((base * (1 - percent/100)) * 100) / 100;
                         }
                     }
-                    const adeudoPendiente = Number(this.adeudoCobro || (this.adeudo && this.adeudo.pendiente ? Number(this.adeudo.pendiente) : 0) || 0);
-                    total = Math.round((adeudoPendiente + this.totales.prepay_total) * 100) / 100;
+                    // Separar el recargo del adeudo para respetar la selección sin duplicarlo.
+                    const adeudoPendiente = Number(this.adeudo?.pendiente ?? this.adeudoCobro ?? 0);
+                    const adeudoBase = Math.max(0, adeudoPendiente - Number(this.adeudo?.recargo || 0));
+                    this.adeudoCobro = adeudoPendiente;
+                    total = Math.round((adeudoBase + this.totales.prepay_total + this.recargoMonto()) * 100) / 100;
                 }else{
                     if (this.adeudo && this.adeudo.meses > 0) {
                         let pendienteSrv = Number(this.adeudo.pendiente || 0);
@@ -896,8 +923,15 @@
                 }
                 this.recalcular();
             },
+            onPrepayChange(){
+                if (this.form.prepay === 'si' && this.ref?.id) {
+                    this.ref = { numero: null, id: null, created_at: null };
+                }
+                this.inputChanged();
+            },
             async fetchAdeudo(){
                 this.adeudo = null;
+                this.alCorriente = false;
                 const numero = String(this.form.numero||'').trim();
                 if(!numero) return;
                 try{
@@ -906,7 +940,8 @@
                     if(r.ok && j?.ok){
                         const m = j.pendiente||0;
                         const meses = (j.meses_mostrados ?? j.meses_adeudo) || 0;
-                        if(isFinite(m) && m>0 && meses>0){
+                        this.alCorriente = !!j.cubierto_este_mes;
+                        if(isFinite(m) && m>0){
                             this.adeudo = {
                                 desde_periodo: j.desde_periodo_mostrado || j.desde_periodo,
                                 desde_label: j.desde_mes_label || '',
@@ -922,6 +957,7 @@
                         } else {
                             this.adeudo = { desde_periodo:j.desde_periodo_mostrado || j.desde_periodo, desde_label:j.desde_mes_label||'', meses:meses, pendiente:0, recargo:Number(j.recargo||0), pagado_parcial:0, lista_meses: j.lista_meses || [] };
                         }
+                        if (this.alCorriente && !this.ref?.id) this.form.recargo = 'no';
                         if (this.ref && this.ref.id) {
                             this.saldoDespues = Number(this.adeudo?.pendiente || 0);
                         } else {
@@ -962,6 +998,7 @@
                 return String(n).padStart(8,'0');
             },
             async fetchPagoAnterior(){
+                const recargoGuardado = this.ref?.id ? this.form.recargo : null;
                 this.pagoAnteriorFecha = '';
                 try{
                     let url = '{{ route('chivato.recibos.prev') }}?numero='+encodeURIComponent(this.form.numero);
@@ -1010,6 +1047,7 @@
                 }
                 this.recalcular();
                 await this.fetchAdeudo();
+                if (recargoGuardado !== null) this.form.recargo = recargoGuardado;
             },
             metodoValido(){
                 // Siempre retorna true - método de pago es siempre Efectivo
@@ -1055,7 +1093,7 @@
                         this.error = 'Pago adelantado vigente. No se puede generar un nuevo pago.';
                         return;
                     }
-                    if (!this.ref || !this.ref.id) {
+                    if (!this.ref || !this.ref.id || this.ref.confirmed === false) {
                         const ok = await this.emitirFactura();
                         if (!ok) {
                             this.showPrintFail(this.error);
@@ -1083,8 +1121,34 @@
                 if(this.printTimerId){ clearTimeout(this.printTimerId); this.printTimerId=null; }
                 this.saveConfirmOpen = false;
             },
+            async confirmarFacturaEnCorte(){
+                if (this.ref?.confirmed === true) return true;
+                if (!this.ref?.id) return false;
+                try {
+                    const url = '{{ route('chivato.recibos.facturas.verificar', ['id'=>'__ID__']) }}'.replace('__ID__', this.ref.id);
+                    const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                    const j = await r.json();
+                    if (!r.ok || !j?.ok || !j?.existe) {
+                        this.error = 'El pago se guardó, pero no se pudo confirmar en el corte. Reintenta la impresión; no se registrará otro pago.';
+                        return false;
+                    }
+                    this.ref.confirmed = true;
+                    this.error = '';
+                    await this.fetchPagoAnterior();
+                    await this.fetchPrepayStatus();
+                    return true;
+                } catch (_) {
+                    this.error = 'No se pudo confirmar el pago en el corte. Reintenta la impresión; no se registrará otro pago.';
+                    return false;
+                }
+            },
             async emitirFactura(){
                 try{
+                    if (this.ref?.id) return await this.confirmarFacturaEnCorte();
+                    if (this.prepayActivo) {
+                        this.error = 'Pago adelantado vigente. No se puede generar un nuevo pago.';
+                        return false;
+                    }
                     const token = document.querySelector('meta[name=csrf-token]')?.getAttribute('content') || '';
                     const r = await fetch('{{ route('chivato.recibos.facturas.store') }}', {
                         method:'POST',
@@ -1127,25 +1191,8 @@
                         this.ref.numero = j.referencia;
                         this.ref.id = j.id;
                         this.ref.created_at = new Date().toISOString();
-                        await this.fetchPagoAnterior();
-
-                        // Segunda verificación: confirmar con el servidor que el pago
-                        // realmente quedó guardado en el corte activo antes de imprimir.
-                        try{
-                            const vr = await fetch('{{ url('chivato/recibos/facturas') }}/'+j.id+'/verificar');
-                            const vj = await vr.json();
-                            if(!vr.ok || !vj?.ok || !vj?.existe){
-                                this.error = 'El pago no se pudo confirmar en el corte. No se imprimirá el ticket, intenta de nuevo.';
-                                this.ref = { numero: null, id: null, created_at: null };
-                                return false;
-                            }
-                        }catch(_){
-                            this.error = 'No se pudo confirmar el pago en el corte. Intenta de nuevo.';
-                            this.ref = { numero: null, id: null, created_at: null };
-                            return false;
-                        }
-
-                        return true;
+                        this.ref.confirmed = false;
+                        return await this.confirmarFacturaEnCorte();
                     }
                     this.error = j?.message || 'No se pudo guardar el pago. Intenta de nuevo.';
                     return false;
@@ -1162,7 +1209,7 @@
                     return;
                 }
                 try {
-                if(!this.ref || !this.ref.id){
+                if(!this.ref || !this.ref.id || this.ref.confirmed === false){
                     const ok = await this.emitirFactura();
                     if(!ok){
                         w.close();
@@ -1188,7 +1235,7 @@
                 const mes = this.mesEnCursoCompleto();
                 const otros = this.otroLabel();
                 const importe = this.moneda(this.bajaTemporalImporte());
-                const recargo = this.form.recargo === 'si' ? 'SI' : 'NO';
+                const recargoLine = this.form.recargo === 'si' ? `<div class="line"><div class="l">Recargo</div><div>SI</div></div>` : '';
                 const totalNum = this.moneda(this.totales.total);
                 const totalLetra = this.totales.letra || '';
                 const metodo = this.form.metodo || '—';
@@ -1196,11 +1243,8 @@
                 const fecha = this.fecha();
                 const hora = this.hora();
                 const folio = this.refNumberPad();
-                const prepayLabel = this.form.prepay === 'si' ? 'SÍ' : 'NO';
-                const adeudoLine = (Number(this.adeudoCobro || 0) > 0) ? `<div class="line"><div class="l">Adeudo pendiente</div><div>${this.moneda(Number(this.adeudoCobro))}</div></div>` : '';
-                const adeudoPeriodoLine = (this.adeudo && Number(this.adeudo.meses||0) > 0) ? `<div class="line"><div class="l">Período adeudo</div><div style="max-width:58%">${this.adeudoPeriodoLabel() || '—'}</div></div>` : '';
-                const saldoLine = (this.saldoDespues !== null) ? `<div class="line"><div class="l">Saldo pendiente</div><div>${this.moneda(Number(this.saldoDespues || 0))}</div></div>` : '';
-                const prepayLine = this.form.prepay === 'si' ? `<div class="line"><div class="l">Pago adelantado</div><div>${this.moneda(this.totales.prepay_total || 0)}</div></div><div class="line"><div class="l">Meses adelantados</div><div>${this.form.prepay_months} (hasta ${this.mesFinalCobertura(this.form.prepay_months)})</div></div><div class="sep"></div>` : '';
+                const adeudoPeriodoLine = (this.adeudo && Number(this.adeudo.meses||0) > 0) ? `<div class="line"><div class="l">Período adeudo</div><div style="max-width:42mm">${this.adeudoPeriodoLabel() || '—'}</div></div>` : '';
+                const prepayLine = this.form.prepay === 'si' ? `<div class="line"><div class="l">Pago adelantado</div><div>${this.moneda(this.totales.prepay_total || 0)}</div></div><div class="line"><div class="l">Meses adelantados</div><div>${this.form.prepay_months}</div></div><div class="line"><div class="l">Siguiente pago</div><div>${this.mesSiguientePago(this.form.prepay_months)}</div></div><div class="sep"></div>` : '';
                 const discountLine = this.appliedDiscount > 0 ? `<div class="line"><div class="l">Descuento</div><div>${this.moneda(this.appliedDiscount)}</div></div>` : '';
                 const html = `
 <!doctype html>
@@ -1209,25 +1253,21 @@
 <meta charset="utf-8">
 <title>Recibo</title>
 <style>
-/* Lienzo fijo ancho (640px) con letra grande: al imprimir, el navegador
-   lo encoge para ajustarlo al ancho del papel (nunca lo agranda), así la
-   proporción letra/ancho del ticket es siempre la misma en cualquier rollo. */
 @page{ size:80mm auto; margin:0 }
 html,body{ margin:0; padding:0 }
-body{ width:640px }
-.ticket{ width:640px; box-sizing:border-box; margin:0; padding:0; font-family: Arial, sans-serif; font-size:40px; color:#111 }
-.logo{ text-align:center; margin-bottom:10px }
-.logo img{ width:100%; height:auto }
-.banner{ text-align:center; margin-top:14px }
-.banner img{ width:100%; height:auto }
+.ticket{ width:72mm; max-width:72mm; margin:0 auto; padding:6px 4px; font-family: Arial, sans-serif; font-size:12px; color:#111 }
+.logo{ text-align:center; margin-bottom:6px }
+.logo img{ max-width:70mm; height:auto }
+.banner{ text-align:center; margin-top:8px }
+.banner img{ max-width:70mm; height:auto }
 .center{ text-align:center }
-.title{ font-weight:700; font-size:48px; margin:10px 0 }
-.line{ display:grid; grid-template-columns:auto 1fr; justify-content:space-between; gap:12px; margin:6px 0 }
+.title{ font-weight:700; font-size:14px; margin:6px 0 }
+.line{ display:grid; grid-template-columns:auto 1fr; justify-content:space-between; gap:8px; margin:2px 0 }
 .line .l{ font-weight:600; white-space:nowrap }
-.line .l + div{ text-align:left !important; word-break:break-word; padding-left:6px }
-.sep{ border-top:2px dotted #555; margin:10px 0 }
-.folio{ font-weight:700; font-size:40px; margin-bottom:8px }
-.footer{ font-size:30px; font-weight:600; color:#555; margin-top:10px; padding-top:10px; border-top:2px solid #999; text-align:center }
+.line .l + div{ text-align:left !important; word-break:break-word; padding-left:4px }
+.sep{ border-top:1px dotted #555; margin:6px 0 }
+.folio{ font-weight:700; font-size:12px; margin-bottom:4px }
+.footer{ font-size:10px; font-weight:600; color:#555; margin-top:6px; padding-top:6px; border-top:1px solid #999; text-align:center }
 </style>
 </head>
 <body>
@@ -1235,15 +1275,16 @@ body{ width:640px }
   <div class="logo"><img src="${logo}" onerror="this.style.display='none'"></div>
   ${folio ? `<div class="folio">Folio: ${folio}</div>` : ''}
   <div class="title center">Recibo de pago</div>
+  <div class="line"><div class="l">Estatus</div><div>PAGADO</div></div>
   <div class="line"><div class="l">ID</div><div>${id}</div></div>
   <div class="line"><div class="l">Nombre</div><div>${nombre}</div></div>
   <div class="line"><div class="l">Mes</div><div>${mes}</div></div>
+  <div class="line"><div class="l">Otros</div><div>${otros}</div></div>
   <div class="line"><div class="l">Importe</div><div>${importe}</div></div>
-  <div class="line"><div class="l">Recargo</div><div>${recargo}</div></div>
+  ${discountLine}
+  ${recargoLine}
   <div class="sep"></div>
-  ${adeudoLine}
   ${adeudoPeriodoLine}
-  ${saldoLine}
   ${prepayLine}
   <div class="line"><div class="l">Total (número)</div><div>${totalNum}</div></div>
   <div class="line"><div class="l">Total (letra)</div><div>${totalLetra}</div></div>
@@ -1292,6 +1333,7 @@ Le recordamos que los pagos deben realizarse del día 1 al 7 de cada mes. Poster
             },
             async buscar(){
                 this.prepayNextMonth = true;
+                this.alCorriente = false;
                 this.error='';
                 if(!this.form.numero){ this.error='Ingresa el número de servicio'; return }
 
