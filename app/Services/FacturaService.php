@@ -640,6 +640,23 @@ class FacturaService
         $esAdeudoManual = !empty($payload['es_adeudo_manual']);
         $esPrepay = !empty($payload['prepay']) && ($payload['prepay'] === 'si' || $payload['prepay'] === true);
         $esEdicionManual = !empty($payload['manual_total_enabled']);
+        $esAjusteProximoPago = $usuario->proximo_pago_monto !== null
+            && !empty($factura->periodo)
+            && (string) ($usuario->proximo_pago ?? '') === (string) $factura->periodo;
+        // La emision de la factura desde Pagos confirma el importe que el
+        // administrador fijo para ese periodo; al registrarse, el ajuste queda cerrado.
+        $ajusteLiquidado = $esAjusteProximoPago;
+
+        if ($esAjusteProximoPago) {
+            $payload['proximo_pago_previo'] = $usuario->proximo_pago;
+            $payload['proximo_pago_monto_previo'] = $usuario->proximo_pago_monto;
+            $payload['adeudo_monto_previo'] = $adeudoMonto;
+            $payload['adeudo_descripcion_previa'] = $usuario->adeudo_descripcion;
+            $payload['ajuste_descripcion'] = $usuario->adeudo_descripcion;
+            $payload['ajuste_liquidado'] = $ajusteLiquidado;
+            $factura->payload = $payload;
+            $factura->saveQuietly();
+        }
 
         // Limpiar adeudo_monto solo cuando el pago cubre TODO el saldo manual (pagos parciales solo restan)
         $limpiarAdeudoManual = $adeudoMonto > 0 && $totalPagado >= $adeudoMonto - 0.01;
@@ -741,6 +758,16 @@ class FacturaService
             }
         }
 
+        if ($ajusteLiquidado) {
+            // La factura conserva el periodo liquidado y el siguiente mes se
+            // programa expresamente con la tarifa normal del cliente.
+            $usuario->proximo_pago = Carbon::createFromFormat('Y-m-d', $factura->periodo . '-01')
+                ->addMonth()->format('Y-m');
+            $usuario->proximo_pago_monto = round($mensualidad, 2);
+            $usuario->adeudo_monto = 0;
+            $usuario->adeudo_descripcion = null;
+        }
+
         // Flush adeudo changes now so calcularAdeudoUsuario reads updated adeudo_monto (not stale DB value)
         if ($adeudoMonto > 0 && $totalPagado > 0) {
             Usuario::where('numero_servicio', $usuario->numero_servicio)->update([
@@ -763,6 +790,7 @@ class FacturaService
             'adeudo_monto' => $usuario->adeudo_monto,
             'adeudo_descripcion' => $usuario->adeudo_descripcion,
             'proximo_pago' => $usuario->proximo_pago,
+            'proximo_pago_monto' => $usuario->proximo_pago_monto,
         ];
 
         $usuario->update($updateData);

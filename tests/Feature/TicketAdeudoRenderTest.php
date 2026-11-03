@@ -232,6 +232,35 @@ class TicketAdeudoRenderTest extends TestCase
         $this->assertSame(1.0, $resultado['pendiente']);
         $this->assertSame('Ajuste autorizado de septiembre', $resultado['desde_mes_label']);
 
+        $this->postJson(route('admin.pagos.facturas.store', absolute: false), [
+            'numero_servicio' => '8201',
+            'usuario_id' => $usuario->id,
+            'total' => 1,
+            'payload' => [
+                'nombre' => 'Cliente descripcion',
+                'mensualidad' => 400,
+                'recargo' => 'no',
+                'pago_anterior' => 0,
+            ],
+        ])->assertOk();
+
+        $usuario->refresh();
+        $this->assertSame('2026-10', $usuario->proximo_pago);
+        $this->assertSame(400.0, (float) $usuario->proximo_pago_monto);
+        $this->assertNull($usuario->adeudo_descripcion);
+        $factura = Factura::where('numero_servicio', '8201')->latest('id')->firstOrFail();
+        $this->assertSame('2026-09', $factura->periodo);
+        $this->assertSame('Ajuste autorizado de septiembre', $factura->payload['ajuste_descripcion']);
+        $this->assertTrue($factura->payload['ajuste_liquidado']);
+
+        \Illuminate\Support\Carbon::setTestNow('2026-10-02 09:00:00');
+        // En este fixture el fallback 4 corresponde a un catÃ¡logo distinto;
+        // mantener el servicio activo para probar exclusivamente la recurrencia.
+        $usuario->update(['estatus_servicio_id' => 1]);
+        $octubre = app(MorosidadService::class)->calcularAdeudoUsuario('8201');
+        $this->assertSame(400.0, $octubre['pendiente']);
+        $this->assertSame('octubre 2026', $octubre['desde_mes_label']);
+
         \Illuminate\Support\Carbon::setTestNow();
     }
 

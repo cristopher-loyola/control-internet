@@ -102,6 +102,20 @@ class MorosidadService
         $ultimoPeriodoPrepay = $this->ultimoPeriodoCubiertoPorPrepay($numero, $mensualidad);
         $ultimoPeriodoCubierto = $this->maxPeriodo($ultimoPeriodoPagoSuficiente, $ultimoPeriodoPrepay);
 
+        // Un pago con monto personalizado liquida exactamente el periodo de
+        // su factura, aunque sea menor que la tarifa normal. Si es el movimiento
+        // mas reciente, ese periodo es el punto real desde el que se reanuda el cobro.
+        $ultimaFactura = Factura::whereNull('deleted_at')
+            ->where('numero_servicio', $numero)
+            ->whereNotNull('periodo')
+            ->where('periodo', '<=', $periodo)
+            ->orderByDesc('periodo')->orderByDesc('id')
+            ->first(['periodo', 'payload']);
+        $payloadUltima = $ultimaFactura && is_array($ultimaFactura->payload) ? $ultimaFactura->payload : [];
+        if ($ultimaFactura && !empty($payloadUltima['ajuste_liquidado'])) {
+            $ultimoPeriodoCubierto = (string) $ultimaFactura->periodo;
+        }
+
         // Extender cobertura con proximo_pago aunque ya haya facturas (ej. adelanto/transferencia registrado en Excel).
         // proximo_pago = "2026-08" significa que julio ya está cubierto → último cubierto = "2026-07".
         if (!empty($usuario->proximo_pago) && preg_match('/^\d{4}-\d{2}$/', (string) $usuario->proximo_pago)) {
@@ -189,6 +203,14 @@ class MorosidadService
                     $desdePeriodo = $periodo;
                 }
             }
+        }
+
+        if ($ultimaFactura && !empty($payloadUltima['ajuste_liquidado'])
+            && (string) $ultimaFactura->periodo < $periodo) {
+            $ultimoPeriodoCubierto = (string) $ultimaFactura->periodo;
+            $desdeAjuste = $this->periodoStart($ultimoPeriodoCubierto)->addMonth();
+            $desdePeriodo = $desdeAjuste->format('Y-m');
+            $mesesAdeudo = $desdeAjuste->diffInMonths($curStart) + 1;
         }
 
         $recargo = ($today->day >= 8 && $mesesAdeudo >= 1) ? 50.0 : 0.0;
@@ -493,6 +515,13 @@ class MorosidadService
 
     private function ultimoPeriodoConPagoSuficiente(string $numeroServicio, float $mensualidad, string $periodoHasta): ?string
     {
+        $ultimoAjusteLiquidado = Factura::whereNull('deleted_at')
+            ->where('numero_servicio', $numeroServicio)
+            ->whereNotNull('periodo')
+            ->where('periodo', '<=', $periodoHasta)
+            ->where('payload->ajuste_liquidado', true)
+            ->max('periodo');
+
         $query = Factura::whereNull('deleted_at')
             ->where('numero_servicio', $numeroServicio)
             ->whereNotNull('periodo')
@@ -512,11 +541,11 @@ class MorosidadService
             }
             $sum = (float) ($row->total_sum ?? 0);
             if ($sum >= $mensualidad) {
-                return $p;
+                return $this->maxPeriodo($p, $ultimoAjusteLiquidado);
             }
         }
 
-        return null;
+        return $ultimoAjusteLiquidado;
     }
 
     private function ultimoPeriodoCubiertoPorPrepay(string $numeroServicio, float $mensualidad): ?string

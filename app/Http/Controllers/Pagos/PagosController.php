@@ -761,6 +761,9 @@ thead th{ background:#2e7d32; color:#fff; }
         if (is_array($payload) && array_key_exists('proximo_pago_previo', $payload)) {
             $updateUsuario['proximo_pago'] = $payload['proximo_pago_previo'];
         }
+        if (is_array($payload) && array_key_exists('proximo_pago_monto_previo', $payload)) {
+            $updateUsuario['proximo_pago_monto'] = $payload['proximo_pago_monto_previo'];
+        }
 
         // Recalcular estatus del usuario tras cancelación
         if ($f->numero_servicio) {
