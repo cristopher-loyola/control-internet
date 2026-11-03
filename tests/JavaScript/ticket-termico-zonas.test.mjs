@@ -69,10 +69,15 @@ for (const zona of ['chivato', 'pozo_hondo', 'rosalito']) {
             const zone = ticket(zona, overrides);
             await admin.component.printThermal();
             await zone.component.printThermal();
-            // El transporte de impresión difiere en móviles; el documento impreso es el mismo.
-            const document = (rendered) => rendered.split('<script>')[0].split('\n').map(line => line.trimEnd()).join('\n');
+            // El transporte de impresión difiere en móviles y las zonas usan su propio
+            // lienzo de letra grande; el contenido impreso es el mismo.
+            const document = (rendered) => rendered.split('<script>')[0]
+                .replace(/<style>[^]*?<\/style>/, '')
+                .replace(/(Período adeudo<\/div><div) style="[^"]*"/, '$1')
+                .split('\n').map(line => line.trimEnd()).join('\n');
             assert.equal(document(zone.html()), document(admin.html()));
             assert.match(zone.html(), /size:80mm auto/);
+            assert.match(zone.html(), /\.ticket\{ width:640px;[^}]*font-size:40px/);
             assert.match(zone.html(), /<div class="l">Estatus<\/div><div>PAGADO/);
             assert.doesNotMatch(zone.html(), /Adeudo pendiente|Saldo pendiente/);
             if (zone.component.form.prepay === 'si') {
