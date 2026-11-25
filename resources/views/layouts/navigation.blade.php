@@ -10,6 +10,7 @@
         'contrataciones' => route('contrataciones.index'),
         'rosalito' => route('rosalito.index'),
         'pozo_hondo' => route('pozo_hondo.index'),
+        'mesas' => route('mesas.index'),
         'chivato' => route('chivato.index'),
         default => url('/'),
     };
@@ -145,7 +146,7 @@
                         <img src="{{ asset('images/Clogo4.png') }}" class="block h-9 w-auto object-contain" alt="Control Internet Logo" />
                     @elseif ($role === 'contrataciones')
                         <img src="{{ asset('images/Clogo3.png') }}" class="block h-9 w-auto object-contain" alt="Control Internet Logo" />
-                    @elseif (in_array($role, ['rosalito', 'pozo_hondo', 'chivato'], true))
+                    @elseif (in_array($role, ['rosalito', 'pozo_hondo', 'chivato', 'mesas'], true))
                         <img src="{{ asset('images/Clogo.png') }}" class="block h-9 w-auto object-contain" alt="Control Internet Logo" />
                     @else
                         <x-application-logo class="block h-9 w-auto fill-current text-gray-800 dark:text-gray-200" />

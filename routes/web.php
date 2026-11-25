@@ -20,6 +20,7 @@ Route::get('/dashboard', function () {
         'contrataciones' => redirect()->route('contrataciones.index'),
         'rosalito' => redirect()->route('rosalito.index'),
         'pozo_hondo' => redirect()->route('pozo_hondo.index'),
+        'mesas' => redirect()->route('mesas.index'),
         'chivato' => redirect()->route('chivato.index'),
         default => abort(404),
     };
@@ -38,4 +39,5 @@ require __DIR__.'/pagos.php';
 require __DIR__.'/contrataciones.php';
 require __DIR__.'/rosalito.php';
 require __DIR__.'/pozo_hondo.php';
+require __DIR__.'/mesas.php';
 require __DIR__.'/chivato.php';

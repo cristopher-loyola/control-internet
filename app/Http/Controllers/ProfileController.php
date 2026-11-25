@@ -18,7 +18,7 @@ class ProfileController extends Controller
     public function edit(Request $request): View
     {
         $user = $request->user();
-        $view = in_array($user->role, ['rosalito', 'pozo_hondo', 'chivato']) 
+        $view = in_array($user->role, ['rosalito', 'pozo_hondo', 'chivato', 'mesas']) 
             ? 'profile.edit-sidebar' 
             : 'profile.edit';
         

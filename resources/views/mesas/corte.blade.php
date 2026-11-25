@@ -1,0 +1,352 @@
+<x-app-sidebar>
+    <x-slot name="headerTitle">Corte - Mesas</x-slot>
+
+    <div class="min-h-screen bg-gray-100 py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <!-- Header -->
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-800 mb-2">Corte de Caja - Pagos Exitosos</h2>
+                        <p class="text-sm text-gray-600">Lista de todos los pagos cobrados exitosamente en el perfil Mesas</p>
+                        @if(isset($corteActivo) && $corteActivo)
+                            <div class="mt-2 p-2 bg-blue-100 rounded-md inline-flex items-center gap-3">
+                                <span class="text-sm text-black-800">
+                                    <span class="font-semibold">Corte activo:</span> {{ \Carbon\Carbon::parse($corteActivo->fecha_inicio)->format('d/m/Y H:i') }}
+                                </span>
+                                <a href="{{ route('mesas.corte.exportar', $ordenarPorServicio ? ['orden' => 'numero_servicio'] : []) }}"
+                                   class="inline-flex items-center px-3 py-1.5 bg-green-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-900 focus:bg-green-900 active:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-600 focus:ring-offset-2 transition ease-in-out duration-150 shadow-sm">
+                                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                    Exportar Excel
+                                </a>
+                            </div>
+                        @else
+                            <div class="mt-2 p-2 bg-yellow-100 rounded-md inline-block">
+                                <span class="text-sm text-yellow-800">
+                                    No hay corte activo - Mostrando pagos del día
+                                </span>
+                            </div>
+                        @endif
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-gray-500">Total de registros</p>
+                        <p class="text-2xl font-bold text-gray-900">{{ $pagos->count() }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtro de Fechas -->
+            <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+                <form method="GET" action="{{ route('mesas.corte') }}" class="flex flex-wrap items-end gap-4">
+                    <div class="flex-1 min-w-[200px]">
+                        <label for="fecha_inicio" class="block text-sm font-medium text-gray-700 mb-1">Fecha de inicio</label>
+                        <input type="date" name="fecha_inicio" id="fecha_inicio"
+                            value="{{ $fechaInicio }}"
+                            class="w-full rounded-md border border-gray-400 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                    <div class="flex-1 min-w-[200px]">
+                        <label for="fecha_fin" class="block text-sm font-medium text-gray-700 mb-1">Fecha de fin</label>
+                        <input type="date" name="fecha_fin" id="fecha_fin"
+                            value="{{ $fechaFin }}"
+                            class="w-full rounded-md border border-gray-400 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="submit" name="orden" value="{{ $ordenarPorServicio ? 'numero_servicio' : 'fecha' }}"
+                            class="inline-flex items-center px-4 py-2.5 bg-blue-600 border border-transparent rounded-md font-semibold text-sm text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150 shadow-md">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                            Filtrar
+                        </button>
+                        @if($fechaInicio || $fechaFin)
+                            <a href="{{ route('mesas.corte', $ordenarPorServicio ? ['orden' => 'numero_servicio'] : []) }}"
+                                class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                                Limpiar
+                            </a>
+                        @endif
+                    </div>
+                    <x-corte-orden-servicio :activo="$ordenarPorServicio" />
+                </form>
+                @if($fechaInicio || $fechaFin)
+                    <div class="mt-4 p-3 bg-blue-50 rounded-md">
+                        <p class="text-sm text-blue-700">
+                            <span class="font-semibold">Mostrando resultados:</span>
+                            @if($fechaInicio && $fechaFin)
+                                Del {{ \Carbon\Carbon::parse($fechaInicio)->format('d/m/Y') }} al {{ \Carbon\Carbon::parse($fechaFin)->format('d/m/Y') }}
+                            @elseif($fechaInicio)
+                                Desde el {{ \Carbon\Carbon::parse($fechaInicio)->format('d/m/Y') }}
+                            @elseif($fechaFin)
+                                Hasta el {{ \Carbon\Carbon::parse($fechaFin)->format('d/m/Y') }}
+                            @endif
+                        </p>
+                    </div>
+                @endif
+            </div>
+
+            <!-- Tabla de Pagos Exitosos -->
+            <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left text-gray-500">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                            <tr>
+                                <th class="px-4 py-3">Folio</th>
+                                <th class="px-4 py-3" aria-sort="{{ $ordenarPorServicio ? 'ascending' : 'none' }}">No. Servicio</th>
+                                <th class="px-4 py-3">Cliente</th>
+                                <th class="px-4 py-3">Periodo</th>
+                                <th class="px-4 py-3">Total</th>
+                                <th class="px-4 py-3">Método</th>
+                                <th class="px-4 py-3">Quién cobró</th>
+                                <th class="px-4 py-3">Comisión Recibo</th>
+                                <th class="px-4 py-3">Fecha</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($pagos as $pago)
+                                <tr class="bg-white border-b hover:bg-gray-50">
+                                    <td class="px-4 py-3 font-medium text-gray-900">
+                                        {{ str_pad($pago['reference_number'], 8, '0', STR_PAD_LEFT) }}
+                                    </td>
+                                    <td class="px-4 py-3">{{ $pago['numero_servicio'] }}</td>
+                                    <td class="px-4 py-3">{{ $pago['nombre'] }}</td>
+                                    <td class="px-4 py-3">{{ $pago['periodo'] }}</td>
+                                    <td class="px-4 py-3 font-medium text-green-600">
+                                        ${{ number_format($pago['total'], 2) }}
+                                    </td>
+                                    <td class="px-4 py-3">{{ $pago['metodo'] }}</td>
+                                    <td class="px-4 py-3">{{ $pago['cobro'] }}</td>
+                                    <td class="px-4 py-3">
+                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            ${{ number_format($pago['comision_recibo'], 2) }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3">{{ $pago['fecha_formateada'] }}</td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="10" class="px-4 py-8 text-center text-gray-500">
+                                        No hay pagos registrados en este momento.
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Resumen del corte -->
+            <div class="mt-6">
+                <div class="bg-white rounded-lg shadow-sm p-6 max-w-md">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-gray-600">Total recaudado</p>
+                            <p class="text-2xl font-bold text-green-600">
+                                ${{ number_format($pagos->sum('total'), 2) }}
+                            </p>
+                            <p class="text-xs text-gray-500 mt-1">
+                                {{ $pagos->count() }} pago{{ $pagos->count() !== 1 ? 's' : '' }}
+                            </p>
+                            <div class="mt-3 pt-3 border-t border-gray-200">
+                                <p class="text-sm text-blue-600 font-medium">Comisión por Recibo</p>
+                                <p class="text-xl font-bold text-blue-600">
+                                    ${{ number_format($totalComisionRecibo, 2) }}
+                                </p>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    {{ $pagos->count() }} recibo{{ $pagos->count() !== 1 ? 's' : '' }} cobrado{{ $pagos->count() !== 1 ? 's' : '' }}
+                                </p>
+                            </div>
+                            <div class="mt-3 pt-3 border-t-2 border-gray-300">
+                                <p class="text-sm text-green-700 font-semibold">TOTAL A ENTREGAR</p>
+                                <p class="text-2xl font-bold text-green-700">
+                                    ${{ number_format($pagos->sum('total') - $totalComisionRecibo, 2) }}
+                                </p>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Total recaudado menos comisiones
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <div class="p-3 bg-green-100 rounded-lg">
+                                <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <button onclick="imprimirTicketTermico()"
+                                class="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                title="Imprimir ticket térmico (resumen)">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                                </svg>
+                            </button>
+                            <button onclick="imprimirTicketDetalle()"
+                                class="p-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                                title="Imprimir detalle de pagos">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17h6m-6-4h6m-6-4h6M5 21h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</x-app-sidebar>
+
+<script>
+function imprimirTicketTermico() {
+  const totalCaja      = {{ $pagos->sum('total') }};
+  const numPagos       = {{ $pagos->count() }};
+  const cobrador       = "{{ $cobrador }}";
+  const comisionRecibo = {{ $totalComisionRecibo ?? 0 }};
+  const totalEntregar  = totalCaja - comisionRecibo;
+
+  const zona  = 'MESAS';
+  const fecha = new Date().toLocaleString('es-MX', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+  const fmt = n => '$' + n.toFixed(2)
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+  const html = `
+  <html><head><meta charset="UTF-8">
+  <style>
+    @page { margin: 10mm; }
+    * { margin:0; padding:0; box-sizing:border-box }
+    body {
+      font-family: 'Courier New', monospace;
+      font-size: 30px; color: #000;
+      width: 100%;
+    }
+    .center { text-align: center }
+    .right  { text-align: right }
+    table   { width: 100%; border-collapse: collapse }
+    td      { padding: 14px 0; font-size: 28px }
+    .lbl    { color: #000; font-size: 26px; font-weight: bold }
+    .muted  { color: #000; font-size: 22px }
+    .bold   { font-weight: bold }
+    .total  { font-size: 48px; font-weight: bold }
+    .dash   { border-top: 2px solid #000; margin: 22px 0 }
+    .solid  { border-top: 4px solid #000; margin: 22px 0 }
+  </style></head><body>
+
+  <div class="center">
+    <div class="bold" style="font-size:56px">TICKET DE CORTE</div>
+    <div style="font-size:30px;letter-spacing:2px;color:#000;font-weight:bold">${zona}</div>
+  </div>
+
+  <hr class="dash">
+
+  <table>
+    <tr><td class="lbl">Fecha</td>
+        <td class="right">${fecha}</td></tr>
+    <tr><td class="lbl">Cobrador</td>
+        <td class="right bold">${cobrador}</td></tr>
+    <tr><td class="lbl">N° de pagos</td>
+        <td class="right bold">${numPagos}</td></tr>
+  </table>
+
+  <hr class="dash">
+
+  <table>
+    <tr><td class="lbl">Total en caja</td>
+        <td class="right">${fmt(totalCaja)}</td></tr>
+    <tr><td class="lbl">(-) Comisión recibo</td>
+        <td class="right">${fmt(comisionRecibo)}</td></tr>
+  </table>
+
+  <hr class="solid">
+
+  <table>
+    <tr><td class="bold" style="font-size:36px">TOTAL A ENTREGAR</td>
+        <td class="right total">${fmt(totalEntregar)}</td></tr>
+  </table>
+
+  </body></html>`;
+
+  const w = window.open('', '_blank', 'width=850,height=1100,toolbar=0');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => { w.print(); w.close(); }, 600);
+}
+
+@php
+    $pagosDetalle = $pagos->map(fn($p) => [
+        'numero_servicio' => $p['numero_servicio'],
+        'nombre'          => $p['nombre'],
+        'total'           => $p['total'],
+        'fecha'           => $p['fecha_formateada'],
+    ])->values();
+@endphp
+function imprimirTicketDetalle() {
+  const pagos = @json($pagosDetalle);
+  const cobrador = "{{ $cobrador }}";
+  const zona = 'MESAS';
+  const fechaImpresion = new Date().toLocaleString('es-MX', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+  const fmt = n => '$' + n.toFixed(2)
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+  const filas = pagos.map(p => `
+    <div style="display:flex;justify-content:space-between;margin-top:18px">
+      <span class="bold" style="font-size:30px">${p.numero_servicio}</span>
+      <span class="bold" style="font-size:30px">${fmt(p.total)}</span>
+    </div>
+    <div style="font-size:26px">${p.nombre || '-'}</div>
+    <div class="muted" style="font-size:22px">${p.fecha}</div>
+    <hr class="dash">
+  `).join('');
+
+  const html = `
+  <html><head><meta charset="UTF-8">
+  <style>
+    @page { margin: 10mm; }
+    * { margin:0; padding:0; box-sizing:border-box }
+    body {
+      font-family: 'Courier New', monospace;
+      font-size: 26px; color: #000;
+      width: 100%;
+    }
+    .center  { text-align: center }
+    .right   { text-align: right }
+    table    { width: 100%; border-collapse: collapse }
+    .resumen td { padding: 12px 0; font-size: 28px }
+    .lbl     { color: #000; font-size: 26px; font-weight: bold }
+    .muted   { color: #000; font-size: 22px }
+    .bold    { font-weight: bold }
+    .dash    { border-top: 2px solid #000; margin: 18px 0 }
+    .solid   { border-top: 4px solid #000; margin: 22px 0 }
+  </style></head><body>
+
+  <div class="center">
+    <div class="bold" style="font-size:52px">DETALLE DE PAGOS</div>
+    <div style="font-size:30px;letter-spacing:2px;color:#000;font-weight:bold">${zona}</div>
+  </div>
+
+  <hr class="dash">
+
+  <table class="resumen">
+    <tr><td class="lbl">Fecha impresión</td>
+        <td class="right">${fechaImpresion}</td></tr>
+    <tr><td class="lbl">Cobrador</td>
+        <td class="right bold">${cobrador}</td></tr>
+    <tr><td class="lbl">N° de pagos</td>
+        <td class="right bold">${pagos.length}</td></tr>
+  </table>
+
+  <hr class="solid">
+
+  ${filas}
+
+  </body></html>`;
+
+  const w = window.open('', '_blank', 'width=850,height=1100,toolbar=0');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => { w.print(); w.close(); }, 600);
+}
+</script>

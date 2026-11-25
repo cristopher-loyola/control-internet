@@ -28,6 +28,12 @@ class CreateAdditionalUsersSeeder extends Seeder
                 'password' => '12345678',
                 'role' => 'chivato',
             ],
+            [
+                'name' => 'Mesas',
+                'email' => 'mesas@control.test',
+                'password' => '12345678',
+                'role' => 'mesas',
+            ],
         ];
 
         foreach ($users as $userData) {

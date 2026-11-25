@@ -28,6 +28,7 @@ class AdminController extends Controller
         'contrataciones',
         'rosalito',
         'pozo_hondo',
+        'mesas',
         'chivato',
     ];
 

@@ -11,6 +11,7 @@ return [
         'contrataciones' => 'bg-[#5C73D1]',
         'rosalito' => 'bg-black',
         'pozo_hondo' => 'bg-black',
+        'mesas' => 'bg-black',
         'chivato' => 'bg-black',
     ],
     'header' => [
@@ -20,6 +21,7 @@ return [
         'contrataciones' => 'bg-[#5C73D1] text-white',
         'rosalito' => 'bg-black text-white',
         'pozo_hondo' => 'bg-black text-white',
+        'mesas' => 'bg-black text-white',
         'chivato' => 'bg-black text-white',
     ],
 ];

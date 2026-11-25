@@ -85,7 +85,7 @@
                             <span class="text-sm font-medium">Dashboard</span>
                         </a>
 
-                        @if(in_array(auth()->user()->role, ['chivato', 'pozo_hondo', 'rosalito']))
+                        @if(in_array(auth()->user()->role, ['chivato', 'pozo_hondo', 'rosalito', 'mesas']))
                         <a href="{{ route(auth()->user()->role . '.pagos') }}"
                            class="flex items-center gap-3 px-3 py-3 rounded-lg {{ request()->routeIs(auth()->user()->role . '.pagos') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-800' }}">
                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
