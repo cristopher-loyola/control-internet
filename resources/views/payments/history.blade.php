@@ -29,6 +29,7 @@
                                 $corteRoute = match($location) {
                                     'rosalito' => 'pagos.rosalito.cortes',
                                     'chivato' => 'pagos.chivato.cortes',
+                                    'mesas' => 'pagos.mesas.cortes',
                                     default => 'pagos.pozo-hondo.cortes',
                                 };
                             @endphp

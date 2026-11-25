@@ -14,7 +14,7 @@ class RouteHelper
         $role = auth()->user()->role ?? 'admin';
         
         // Casos especiales donde la ruta no sigue el patrón estándar
-        if (in_array($location, ['rosalito', 'chivato', 'pozo_hondo', 'pozo-hondo'])) {
+        if (in_array($location, ['rosalito', 'chivato', 'pozo_hondo', 'pozo-hondo', 'mesas'])) {
             $routeName = $location === 'pozo_hondo' || $location === 'pozo-hondo' ? 'pagos.pozo-hondo.history' : "pagos.{$location}.history";
             return route($routeName);
         }

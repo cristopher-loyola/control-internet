@@ -70,6 +70,75 @@ class PerfilMesasTest extends TestCase
         $this->get(route('mesas.index'))->assertSee(route('mesas.corte.exportar'), false);
     }
 
+    public function test_admin_y_pagos_ven_la_tarjeta_de_mesas(): void
+    {
+        foreach (['admin' => 'admin.index', 'pagos' => 'pagos.index'] as $rol => $dashboard) {
+            $this->actingAs(User::factory()->create(['role' => $rol]));
+            $this->get(route($dashboard))->assertOk()
+                ->assertSeeInOrder(['Pagos de Rosalito', 'Pagos de Perfil Chivato', 'Pagos de Pozo Hondo', 'Pagos de Mesas'])
+                ->assertSee(route('pagos.mesas.history'), false);
+        }
+    }
+
+    public function test_admin_abre_historial_y_cortes_de_mesas_y_su_caja_no_suma_cobros_de_mesas(): void
+    {
+        $cobrador = User::factory()->create(['role' => 'mesas']);
+        $corte = CorteCaja::create([
+            'user_id' => $cobrador->id, 'zona' => 'mesas', 'fecha_inicio' => now(), 'estado' => 'cerrado', 'fecha_fin' => now(),
+        ]);
+        Factura::forceCreate([
+            'reference_number' => 501, 'numero_servicio' => '8500', 'periodo' => '2026-11',
+            'total' => 350, 'payload' => ['nombre' => 'Cliente mesas', 'recargo' => 'si'],
+            'created_by' => $cobrador->id, 'corte_caja_id' => $corte->id,
+        ]);
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $this->get(route('pagos.mesas.history'))->assertOk()
+            ->assertSee('Mesas')
+            ->assertSee(route('pagos.mesas.cortes'), false)
+            ->assertSee('8500');
+        $this->get(route('pagos.mesas.cortes'))->assertOk()->assertSee('Mesas');
+        $this->get(route('admin.pagos.cortes.detalle-ticket', $corte->id))->assertOk()->assertSee('Mesas');
+
+        // La caja de oficina no debe contar lo que cobró el punto Mesas.
+        $this->getJson(route('admin.dashboard.corte'))->assertOk()
+            ->assertJsonCount(0, 'ventas');
+    }
+
+    public function test_resumen_mensual_incluye_cortes_cerrados_de_mesas_y_no_los_activos(): void
+    {
+        $cobrador = User::factory()->create(['role' => 'mesas']);
+        $cerrado = CorteCaja::create([
+            'user_id' => $cobrador->id, 'zona' => 'mesas', 'estado' => 'cerrado',
+            'fecha_inicio' => Carbon::parse('2026-11-02 09:00'), 'fecha_fin' => Carbon::parse('2026-11-08 18:00'),
+        ]);
+        $activo = CorteCaja::create([
+            'user_id' => $cobrador->id, 'zona' => 'mesas', 'estado' => 'activo',
+            'fecha_inicio' => Carbon::parse('2026-11-09 09:00'),
+        ]);
+        // $350 con recargo: al resumen entran 350 - 50 (reconexión) - 10 (comisión) = 290.
+        Factura::forceCreate([
+            'reference_number' => 701, 'numero_servicio' => '8701', 'periodo' => '2026-11', 'total' => 350,
+            'payload' => ['nombre' => 'Cliente corte cerrado', 'recargo' => 'si'],
+            'created_by' => $cobrador->id, 'corte_caja_id' => $cerrado->id,
+        ]);
+        Factura::forceCreate([
+            'reference_number' => 702, 'numero_servicio' => '8702', 'periodo' => '2026-11', 'total' => 300,
+            'payload' => ['nombre' => 'Cliente corte activo', 'recargo' => 'no'],
+            'created_by' => $cobrador->id, 'corte_caja_id' => $activo->id,
+        ]);
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $csv = $this->get(route('admin.dashboard.export', ['format' => 'csv', 'period' => 'month', 'month' => '2026-11']))
+            ->assertOk()->streamedContent();
+
+        $this->assertStringContainsString('MESAS', $csv);
+        $this->assertStringContainsString('Cliente corte cerrado', $csv);
+        $this->assertStringContainsString('290.00', $csv);
+        $this->assertStringNotContainsString('Cliente corte activo', $csv);
+    }
+
     public function test_perfiles_no_pueden_entrar_al_otro(): void
     {
         $this->actingAs(User::factory()->create(['role' => 'pozo_hondo']));
@@ -115,7 +184,7 @@ class PerfilMesasTest extends TestCase
         $corteOtro = CorteCaja::create([
             'user_id' => $otro->id, 'zona' => 'pozo_hondo', 'fecha_inicio' => now(), 'estado' => 'activo',
         ]);
-        Factura::create([
+        Factura::forceCreate([
             'reference_number' => 999, 'numero_servicio' => '8500', 'periodo' => '2026-10',
             'total' => 300, 'payload' => [], 'created_by' => $otro->id, 'corte_caja_id' => $corteOtro->id,
         ]);

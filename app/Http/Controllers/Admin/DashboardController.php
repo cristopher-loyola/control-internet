@@ -567,7 +567,7 @@ class DashboardController extends Controller
                 ->whereNull('deleted_at')
                 ->whereBetween(DB::raw(Factura::FECHA_REPORTE_SQL), [$range['from'], $range['to']])
                 ->whereHas('cajero', function ($q) {
-                    $q->whereNotIn('role', ['pozo_hondo', 'rosalito', 'chivato']);
+                    $q->whereNotIn('role', ['pozo_hondo', 'rosalito', 'chivato', 'mesas']);
                 })
                 ->select(['total', 'payload', 'created_at'])
                 ->get();
@@ -848,6 +848,14 @@ class DashboardController extends Controller
         return $this->paymentsHistory($request, 'pozo-hondo');
     }
 
+    /**
+     * Historial de pagos de Mesas
+     */
+    public function mesasPaymentsHistory(Request $request)
+    {
+        return $this->paymentsHistory($request, 'mesas');
+    }
+
     private function cortesPorZona(string $zona, string $titulo)
     {
         $cortesActivos = CorteCaja::with(['user:id,name', 'facturas:id,corte_caja_id,total,payload'])
@@ -892,9 +900,14 @@ class DashboardController extends Controller
         return $this->cortesPorZona('pozo_hondo', 'Pozo Hondo');
     }
 
+    public function mesasCortes()
+    {
+        return $this->cortesPorZona('mesas', 'Mesas');
+    }
+
     public function detalleTicketCorte(int $id)
     {
-        $zonas = ['rosalito' => 'Rosalito', 'chivato' => 'Chivato', 'pozo_hondo' => 'Pozo Hondo'];
+        $zonas = ['rosalito' => 'Rosalito', 'chivato' => 'Chivato', 'pozo_hondo' => 'Pozo Hondo', 'mesas' => 'Mesas'];
         $corte = CorteCaja::with('user:id,name')
             ->whereIn('zona', array_keys($zonas))
             ->findOrFail($id);
@@ -933,7 +946,7 @@ class DashboardController extends Controller
         $ventas = Factura::whereNull('deleted_at')
             ->whereBetween(DB::raw(Factura::FECHA_REPORTE_SQL), [$from, $to])
             ->whereHas('cajero', function ($q) {
-                $q->whereNotIn('role', ['pozo_hondo', 'rosalito', 'chivato']);
+                $q->whereNotIn('role', ['pozo_hondo', 'rosalito', 'chivato', 'mesas']);
             })
             ->orderBy('created_at')
             ->get();
@@ -1249,7 +1262,7 @@ class DashboardController extends Controller
         $ventas = Factura::whereNull('deleted_at')
             ->whereBetween(DB::raw(Factura::FECHA_REPORTE_SQL), [$range['from'], $range['to']])
             ->whereHas('cajero', function ($q) {
-                $q->whereNotIn('role', ['pozo_hondo', 'rosalito', 'chivato']);
+                $q->whereNotIn('role', ['pozo_hondo', 'rosalito', 'chivato', 'mesas']);
             })
             ->get()
             ->sortBy('numero_servicio', SORT_NUMERIC);
@@ -1260,6 +1273,7 @@ class DashboardController extends Controller
             'rosalito'   => ['nombre' => 'ROSALITO',    'color' => '#2563eb'],
             'pozo_hondo' => ['nombre' => 'POZO HONDO',  'color' => '#7c3aed'],
             'chivato'    => ['nombre' => 'CHIVATO',     'color' => '#ea580c'],
+            'mesas'      => ['nombre' => 'MESAS',       'color' => '#0d9488'],
         ];
         $cortesZona = $period === 'month'
             ? CorteCaja::with('facturas')
@@ -1691,7 +1705,7 @@ class DashboardController extends Controller
         $ventas = Factura::whereNull('deleted_at')
             ->whereBetween(DB::raw(Factura::FECHA_REPORTE_SQL), [$range['from'], $range['to']])
             ->whereHas('cajero', function ($q) {
-                $q->whereNotIn('role', ['pozo_hondo', 'rosalito', 'chivato']);
+                $q->whereNotIn('role', ['pozo_hondo', 'rosalito', 'chivato', 'mesas']);
             })
             ->get(['created_at', 'total']);
         $buckets = [];

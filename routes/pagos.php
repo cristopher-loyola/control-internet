@@ -70,6 +70,7 @@ Route::middleware(['auth', 'role:pagos'])
         Route::get('/rosalito', [DashboardController::class, 'rosalitoPaymentsHistory'])->name('rosalito.history');
         Route::get('/chivato', [DashboardController::class, 'chivatoPaymentsHistory'])->name('chivato.history');
         Route::get('/pozo-hondo', [DashboardController::class, 'pozoHondoPaymentsHistory'])->name('pozo-hondo.history');
+        Route::get('/mesas', [DashboardController::class, 'mesasPaymentsHistory'])->name('mesas.history');
 
         // Configuración de pago anticipado (consumido por la UI de pagos)
         Route::get('/prepay-settings', [PagosController::class, 'prepaySettings'])->name('prepay.settings');

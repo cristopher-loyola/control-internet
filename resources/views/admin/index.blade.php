@@ -119,9 +119,10 @@
                 <x-rosalito-payments-card />
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <x-perfil-chivato-payments-card />
                 <x-pozo-hondo-payments-card />
+                <x-mesas-payments-card />
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
